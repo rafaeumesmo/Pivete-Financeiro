@@ -636,283 +636,293 @@ Quando o usuário não souber o que fazer, sugira algo concreto e curto.`;
     <div className="min-h-screen w-full bg-[#111114]">
       {/* MOBILE LAYOUT (< 1024px) */}
       {!isDesktop && (
-        <div className="mx-auto w-full max-w-full px-4 py-6">
-          <div className="flex flex-col overflow-hidden bg-[#18181c] rounded-[32px]">
-            <div className="flex items-center justify-between px-6 pt-4 pb-1 flex-shrink-0">
-              <span className="text-xs font-semibold text-white/70">9:41</span>
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-white/60">
-                  <path d="M1.5 8.5C5.5 4.5 12 2.5 17.5 4.5L19 3C13 .5 5 2.5.5 7L1.5 8.5ZM5.5 12.5C7.5 10.5 10 9.5 12.5 9.5S17.5 10.5 19.5 12.5L21 11C18.5 8.5 15.5 7.5 12.5 7.5S6.5 8.5 4 11L5.5 12.5ZM12 20L21.5 10.5L20 9C17 12 14.5 13 12 13S7 12 4 9L2.5 10.5L12 20Z" />
+        <div className="flex flex-col w-full h-screen bg-[#111114] overflow-hidden">
+
+          {/* HEADER */}
+          <div className="flex-shrink-0 flex items-center justify-between px-5 pt-safe pt-4 pb-3 bg-[#111114]">
+            <div>
+              <h1 className="text-[22px] font-black tracking-tight leading-none text-white">
+                Task<span style={{ color: "#2563eb" }}>Match</span>
+              </h1>
+              <p className="text-[11px] text-white/30 mt-0.5">Decida rápido, viva mais.</p>
+            </div>
+            <div className="flex gap-2">
+              <button className="w-9 h-9 rounded-2xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/40">
+                  <path strokeLinecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <div className="w-5 h-2.5 border border-white/50 rounded-sm relative">
-                  <div className="absolute inset-[1px] left-[1px] right-[3px] bg-white/70 rounded-sm" />
-                  <div className="absolute right-[-3px] top-1/2 -translate-y-1/2 w-0.5 h-1 bg-white/40 rounded-r" />
-                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("create")}
+                className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* PROGRESS BAR — só na home com cards */}
+          {activeTab === "home" && remaining > 0 && (
+            <div className="flex-shrink-0 px-5 pb-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] text-white/30 font-medium">Deck pessoal</span>
+                <span className="text-[11px] text-white/20 bg-white/[0.05] px-2.5 py-0.5 rounded-full">
+                  {remaining} de {total} restantes
+                </span>
+              </div>
+              <div className="h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-[#2563eb] rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                />
               </div>
             </div>
+          )}
 
-            <div className="px-6 pt-2 pb-4 flex items-center justify-between flex-shrink-0">
-              <div>
-                <h1 className="text-xl font-black tracking-tight leading-none text-white">
-                  Task<span style={{ color: "#2563eb" }}>Match</span>
-                </h1>
-                <p className="text-xs text-white/30 mt-0.5">Decida rápido, viva mais.</p>
-              </div>
-              <div className="flex gap-2">
-                <button className="w-8 h-8 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/50">
-                    <path strokeLinecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                </button>
-                <button className="w-8 h-8 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center" onClick={() => setActiveTab("create")}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+          {/* CONTENT AREA */}
+          <div className="flex-1 min-h-0 overflow-hidden relative">
 
-            {remaining > 0 && (
-              <div className="px-6 mb-3 flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/40 font-medium">Deck pessoal</span>
-                  <span className="text-xs text-white/30 bg-white/5 px-2.5 py-0.5 rounded-full">
-                    {remaining} de {total} restantes
-                  </span>
-                </div>
-                <div className="h-[2px] bg-white/6 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-[#2563eb] rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ type: "spring", stiffness: 120, damping: 20 }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-1 flex-col min-h-0 px-6 relative overflow-hidden">
-              {activeTab === "home" ? (
-                remaining > 0 ? (
+            {/* ── HOME ── */}
+            {activeTab === "home" && (
+              <div className="flex flex-col h-full">
+                {remaining > 0 ? (
                   <>
-                    <div className="relative" style={{ height: cardHeight }}>
-                      {tasks
-                        .slice(-3)
-                        .reverse()
-                        .map((task, i, arr) => {
-                          const isTop = i === 0;
-                          const stackIndex = arr.length - 1 - i;
-                          return (
-                            <SwipeCard
-                              key={task.id}
-                              task={task}
-                              isTop={isTop}
-                              stackIndex={stackIndex}
-                              onSwipe={handleSwipe}
-                            />
-                          );
-                        })}
+                    {/* Card stack — ocupa o espaço disponível */}
+                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative">
+                      <div className="relative w-full h-full">
+                        {tasks
+                          .slice(-3)
+                          .reverse()
+                          .map((task, i, arr) => {
+                            const isTop = i === 0;
+                            const stackIndex = arr.length - 1 - i;
+                            return (
+                              <SwipeCard
+                                key={task.id}
+                                task={task}
+                                isTop={isTop}
+                                stackIndex={stackIndex}
+                                onSwipe={handleSwipe}
+                              />
+                            );
+                          })}
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between px-2 mt-3 mb-4">
-                      <div className="flex items-center gap-1.5 text-red-400/50">
+                    {/* Direction hints */}
+                    <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
+                      <div className="flex items-center gap-1.5 text-red-400/45">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
-                        <span className="text-[10px] font-medium tracking-wide uppercase">Depois</span>
+                        <span className="text-[9px] font-semibold tracking-widest uppercase">Depois</span>
                       </div>
-                      <div className="flex flex-col items-center text-blue-400/50">
+                      <div className="flex flex-col items-center text-blue-400/45">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
                         </svg>
-                        <span className="text-[10px] font-medium tracking-wide uppercase">Delegar</span>
+                        <span className="text-[9px] font-semibold tracking-widest uppercase">Delegar</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-emerald-400/50">
-                        <span className="text-[10px] font-medium tracking-wide uppercase">Aceitar</span>
+                      <div className="flex items-center gap-1.5 text-emerald-400/45">
+                        <span className="text-[9px] font-semibold tracking-widest uppercase">Aceitar</span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
                     </div>
 
-                    <ActionButtons onAction={(dir) => topTask && handleSwipe(dir, topTask)} disabled={!topTask} />
+                    {/* Action buttons */}
+                    <div className="flex-shrink-0 flex items-center justify-center gap-5 pb-4">
+                      <ActionButtons onAction={(dir) => topTask && handleSwipe(dir, topTask)} disabled={!topTask} />
+                    </div>
                   </>
                 ) : (
                   <EmptyState stats={stats} onReset={handleReset} />
-                )
-              ) : activeTab === "explore" ? (
-                <motion.div
-                  className="flex h-full flex-col px-4 py-6 overflow-hidden"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex-shrink-0 mb-5">
-                    <div className="text-sm font-medium text-white/70 mb-4">Explorar</div>
-                    <div className="text-lg font-semibold text-white">Delegações recentes</div>
-                    <p className="text-sm text-white/50 mt-1">Veja para quem suas tarefas foram enviadas e como responderam.</p>
-                  </div>
+                )}
+              </div>
+            )}
 
-                  <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-                    {sharedHistory.length === 0 ? (
-                      <div className="flex h-full flex-col items-center justify-center rounded-[26px] bg-white/5 p-6 text-center text-white/60">
-                        <div className="text-xl mb-3">Nada delegado ainda</div>
-                        <p className="text-sm text-white/50">Use o gesto de delegar no deck para começar a ver o histórico aqui.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {sharedHistory.map((item) => {
-                          const acceptedNames = item.recipients.filter((r) => r.accepted).map((r) => r.name);
-                          const refusedNames = item.recipients.filter((r) => !r.accepted).map((r) => r.name);
-                          return (
-                            <div key={`${item.id}-${item.title}`} className="rounded-[22px] bg-white/5 p-4 border border-white/10">
-                              <div className="flex items-center justify-between mb-3 gap-3">
-                                <div>
-                                  <div className="text-[10px] uppercase tracking-[0.24em] text-white/40">Delegado</div>
-                                  <div className="text-base font-semibold text-white mt-2">{item.title}</div>
-                                </div>
-                                <div className="rounded-2xl bg-[#111319] px-3 py-2 text-[12px] text-[#2563eb]">Histórico</div>
-                              </div>
-                              <div className="text-sm text-white/50">{item.description}</div>
-                              <div className="mt-4 text-sm text-white/60 leading-relaxed">
-                                {acceptedNames.length > 0 && <span>{acceptedNames.join(", ")} aceitaram</span>}
-                                {acceptedNames.length > 0 && refusedNames.length > 0 && <span>, </span>}
-                                {refusedNames.length > 0 && (
-                                  <span>{refusedNames.join(", ")} recusou{refusedNames.length > 1 ? "ram" : ""}</span>
-                                )}
-                              </div>
+            {/* ── EXPLORE ── */}
+            {activeTab === "explore" && (
+              <motion.div
+                className="flex flex-col h-full px-5 pt-4 overflow-y-auto"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Explorar</p>
+                <h2 className="text-lg font-bold text-white mb-1">Delegações recentes</h2>
+                <p className="text-sm text-white/40 mb-5">Veja para quem suas tarefas foram enviadas.</p>
+
+                {sharedHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center flex-1 rounded-3xl bg-white/[0.03] border border-white/[0.06] p-8 text-center">
+                    <div className="text-3xl mb-3 opacity-30">↑</div>
+                    <p className="text-sm text-white/30">Nada delegado ainda</p>
+                    <p className="text-xs text-white/20 mt-1">Use o gesto de delegar no deck para começar.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pb-6">
+                    {sharedHistory.map((item) => {
+                      const acceptedNames = item.recipients.filter((r) => r.accepted).map((r) => r.name);
+                      const refusedNames  = item.recipients.filter((r) => !r.accepted).map((r) => r.name);
+                      return (
+                        <div key={`${item.id}-${item.title}`} className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-1">Delegado</div>
+                              <div className="text-base font-semibold text-white">{item.title}</div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                            <div className="rounded-xl bg-[#111319] px-2.5 py-1 text-[11px] text-[#2563eb] flex-shrink-0">Histórico</div>
+                          </div>
+                          <p className="text-sm text-white/40 mb-2">{item.description}</p>
+                          <p className="text-sm">
+                            {acceptedNames.length > 0 && <span className="text-emerald-400">{acceptedNames.join(", ")} aceitaram</span>}
+                            {acceptedNames.length > 0 && refusedNames.length > 0 && <span className="text-white/20"> · </span>}
+                            {refusedNames.length > 0 && <span className="text-red-400">{refusedNames.join(", ")} recusou{refusedNames.length > 1 ? "ram" : ""}</span>}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
-                </motion.div>
-              ) : activeTab === "ia" ? (
-                <motion.div
-                  className="flex flex-1 flex-col min-h-0"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex-shrink-0 px-4 pt-4 pb-2">
-                    <h2 className="text-sm font-medium text-white/70">RAF</h2>
-                  </div>
+                )}
+              </motion.div>
+            )}
 
-                  <div className="flex flex-1 flex-col min-h-0 px-4 overflow-hidden">
-                    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-                      <div
-                        className="flex-1 min-h-0 overflow-y-auto"
-                        style={{ WebkitOverflowScrolling: "touch" }}
-                      >
-                        <div className="px-2 pt-4 pb-24 space-y-2.5">
-                          {chatMessages.map((message, index) => {
-                            const isUser = message.sender === "user";
-                            const previous = chatMessages[index - 1];
-                            const showIcon = !isUser && (!previous || previous.sender !== "raf");
+            {/* ── RAF ── */}
+            {activeTab === "ia" && (
+              <motion.div
+                className="flex flex-col h-full"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {/* Header */}
+                <div className="flex-shrink-0 px-5 pt-4 pb-3 border-b border-white/[0.05]">
+                  <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Assistente</p>
+                  <h2 className="text-base font-bold text-white">⚡ RAF</h2>
+                </div>
 
-                            return (
-                              <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                                <div className={`flex ${isUser ? "justify-end" : "justify-start"} w-full`}>
-                                  <div className={`flex ${isUser ? "justify-end" : "justify-start"} gap-2 items-start ${isUser ? "ml-auto" : "mr-auto"}`}>
-                                    {!isUser && showIcon && (
-                                      <div className="mt-1 text-[15px] text-white/70">⚡</div>
-                                    )}
-                                    <div
-                                      className={`max-w-[78%] rounded-[18px] px-4 py-2.5 text-sm leading-relaxed ${
-                                        isUser
-                                          ? "bg-[#2979FF] text-white rounded-[18px] rounded-br-[4px]"
-                                          : "bg-[#2A2A3A] text-[#E0E0E0] rounded-[18px] rounded-bl-[4px]"
-                                      }`}
-                                    >
-                                      {message.text}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {isChatLoading && (
-                            <div className="flex justify-start">
-                              <div className="flex items-start gap-2 max-w-[78%]">
-                                <div className="mt-1 text-[15px] text-white/70">⚡</div>
-                                <div className="rounded-[18px] bg-[#2A2A3A] px-4 py-2.5 text-sm text-[#E0E0E0]">
-                                  <div className="flex items-center gap-[6px]">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-white/70 animate-pulse" />
-                                    <span className="h-2.5 w-2.5 rounded-full bg-white/70 animate-pulse delay-150" />
-                                    <span className="h-2.5 w-2.5 rounded-full bg-white/70 animate-pulse delay-300" />
-                                  </div>
-                                </div>
-                              </div>
+                {/* Messages */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4" style={{ WebkitOverflowScrolling: "touch" }}>
+                  <div className="space-y-2.5 pb-2">
+                    {chatMessages.map((message, index) => {
+                      const isUser = message.sender === "user";
+                      const previous = chatMessages[index - 1];
+                      const showIcon = !isUser && (!previous || previous.sender !== "raf");
+                      return (
+                        <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                          <div className={`flex items-start gap-1.5 ${isUser ? "ml-auto" : "mr-auto"}`}>
+                            {!isUser && showIcon && <div className="mt-1 text-[13px] text-white/40 flex-shrink-0">⚡</div>}
+                            {!isUser && !showIcon && <div className="w-[19px] flex-shrink-0" />}
+                            <div
+                              className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                                isUser
+                                  ? "bg-[#2563eb] text-white rounded-br-[4px]"
+                                  : "bg-white/[0.07] text-white/80 rounded-bl-[4px]"
+                              }`}
+                            >
+                              {message.text}
                             </div>
-                          )}
-
-                          <div ref={chatEndRef} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isChatLoading && (
+                      <div className="flex justify-start">
+                        <div className="flex items-start gap-1.5">
+                          <div className="mt-1 text-[13px] text-white/40">⚡</div>
+                          <div className="bg-white/[0.07] rounded-2xl rounded-bl-[4px] px-4 py-2.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse" />
+                              <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-150" />
+                              <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-300" />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
+                    <div ref={chatEndRef} />
                   </div>
+                </div>
 
-                  <motion.div
-                    animate={{ opacity: showQuickActions ? 1 : 0, height: showQuickActions ? "auto" : 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="flex-shrink-0 overflow-hidden"
-                  >
-                    <div
-                      className="flex min-h-[56px] items-center overflow-x-auto px-4 py-2 gap-2 hide-scrollbar"
-                      style={{ WebkitOverflowScrolling: "touch" }}
+                {/* Quick actions */}
+                <AnimatePresence>
+                  {chatInput.trim() === "" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex-shrink-0 overflow-hidden"
                     >
-                      {quickActions.map((action) => (
-                        <button
-                          key={action.prompt}
-                          type="button"
-                          onClick={() => handleQuickAction(action.prompt)}
-                          className="whitespace-nowrap rounded-[20px] border border-[rgba(255,255,255,0.15)] bg-transparent px-[14px] py-2 text-[13px] text-[#E0E0E0] transition hover:border-white/30 hover:text-white"
-                        >
-                          {action.label}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-
-                  <div className="flex-shrink-0 px-3 pb-3 pt-2 bg-[#18181c]/95 backdrop-blur-sm">
-                    <form
-                      onSubmit={handleSendMessage}
-                      className="flex items-end gap-3 rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.07)] px-3 py-2"
-                    >
-                      <textarea
-                        value={chatInput}
-                        onChange={(event) => setChatInput(event.target.value)}
-                        placeholder="Mensagem..."
-                        disabled={isChatLoading}
-                        rows={1}
-                        className="flex-1 min-h-[44px] max-h-[144px] resize-none rounded-[24px] border-none bg-transparent px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isChatLoading || chatInput.trim() === ""}
-                        className={`inline-flex h-12 w-12 items-center justify-center rounded-full transition ${
-                          chatInput.trim() === "" ? "bg-white/10 text-white/40" : "bg-[#2979FF] text-white hover:bg-blue-500"
-                        }`}
+                      <div
+                        className="flex items-center gap-2 px-5 py-2 overflow-x-auto"
+                        style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
                       >
-                        <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h14M13 4l7 6-7 6" />
-                        </svg>
-                      </button>
-                    </form>
-                  </div>
-                </motion.div>
-              ) : activeTab === "create" ? (
-                <motion.form
-                  className="space-y-5"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onSubmit={(event) => {
-                    event.preventDefault();
+                        {quickActions.map((action) => (
+                          <button
+                            key={action.prompt}
+                            type="button"
+                            onClick={() => handleQuickAction(action.prompt)}
+                            className="whitespace-nowrap flex-shrink-0 rounded-full border border-white/[0.12] bg-transparent px-4 py-2 text-[13px] text-white/50 transition hover:border-white/25 hover:text-white/75"
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Input */}
+                <div className="flex-shrink-0 px-4 pb-3 pt-2 bg-[#111114]">
+                  <form
+                    onSubmit={handleSendMessage}
+                    className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-3 py-2"
+                  >
+                    <textarea
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }}}
+                      placeholder="Mensagem..."
+                      disabled={isChatLoading}
+                      rows={1}
+                      className="flex-1 min-h-[40px] max-h-[120px] resize-none bg-transparent px-2 py-2 text-sm text-white placeholder:text-white/30 outline-none disabled:opacity-50"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isChatLoading || chatInput.trim() === ""}
+                      className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition ${
+                        chatInput.trim() === "" ? "bg-white/10 text-white/30" : "bg-[#2563eb] text-white"
+                      }`}
+                    >
+                      <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h14M13 4l7 6-7 6" />
+                      </svg>
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── CREATE ── */}
+            {activeTab === "create" && (
+              <motion.div
+                className="h-full overflow-y-auto px-5 pt-4 pb-6"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Nova tarefa</p>
+                <h2 className="text-lg font-bold text-white mb-5">Criar card</h2>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
                     if (!newTaskData.title.trim() || !newTaskData.description.trim()) {
-                      showToast("Preencha título e descrição.", "bg-red-600/90 backdrop-blur-md");
+                      showToast("Preencha título e descrição.", "bg-red-600/90");
                       return;
                     }
-
                     const newTask = {
                       id: nextTaskId,
                       title: newTaskData.title.trim(),
@@ -922,303 +932,249 @@ Quando o usuário não souber o que fazer, sugira algo concreto e curto.`;
                       gradient: "from-sky-600 via-cyan-600 to-emerald-600",
                       accent: "#22c55e",
                     };
-
                     setTasks((prev) => [...prev, newTask]);
                     setNextTaskId((id) => id + 1);
                     setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨" });
-                    showToast("Tarefa criada!", "bg-emerald-600/90 backdrop-blur-md");
+                    showToast("Tarefa criada!", "bg-emerald-600/90");
                     setActiveTab("home");
                   }}
+                  className="flex flex-col gap-4"
                 >
-                  <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
-                    <div className="mb-4 text-center">
-                      <div className="text-6xl mb-3">✍️</div>
-                      <h2 className="text-2xl font-bold text-white">Criar nova tarefa</h2>
-                      <p className="text-sm text-white/60 mt-2">Adicione um card novo para o seu deck.</p>
-                    </div>
-
-                    <label className="block text-white/70 text-xs uppercase tracking-[0.24em] mb-2">Título</label>
+                  <div>
+                    <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label>
                     <input
                       value={newTaskData.title}
-                      onChange={(event) => setNewTaskData((prev) => ({ ...prev, title: event.target.value }))}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                      onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))}
+                      className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25"
                       placeholder="Ex: Comprar mantimentos"
                     />
-
-                    <label className="block text-white/70 text-xs uppercase tracking-[0.24em] mb-2">Descrição</label>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label>
                     <textarea
                       value={newTaskData.description}
-                      onChange={(event) => setNewTaskData((prev) => ({ ...prev, description: event.target.value }))}
-                      className="w-full min-h-[110px] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                      placeholder="Escreva os detalhes da tarefa..."
+                      onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))}
+                      className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none"
+                      placeholder="Detalhes da tarefa..."
                     />
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="block">
-                        <span className="text-white/70 text-xs uppercase tracking-[0.24em] mb-2 inline-block">Categoria</span>
-                        <select
-                          value={newTaskData.category}
-                          onChange={(event) => setNewTaskData((prev) => ({ ...prev, category: event.target.value }))}
-                          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                        >
-                          {categoryOptions.map((category) => (
-                            <option key={category} value={category} className="bg-[#111114] text-white">
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <label className="block">
-                        <span className="text-white/70 text-xs uppercase tracking-[0.24em] mb-2 inline-block">Emoji</span>
-                        <input
-                          value={newTaskData.emoji}
-                          onChange={(event) => setNewTaskData((prev) => ({ ...prev, emoji: event.target.value }))}
-                          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                          placeholder="✨"
-                        />
-                      </label>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="mt-6 w-full rounded-2xl bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-                    >
-                      Adicionar tarefa
-                    </button>
                   </div>
-                </motion.form>
-              ) : activeTab === "profile" ? (
-                <motion.div
-                  className="flex h-full flex-col px-4 py-6 overflow-hidden"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex-shrink-0 mb-6">
-                    <div className="text-sm font-medium text-white/70 mb-4">Perfil</div>
-                    <div className="flex flex-col items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={openProfileEditor}
-                        className="relative flex items-center justify-center w-20 h-20 rounded-full bg-white/8 border border-white/12 text-5xl text-white transition hover:bg-white/10"
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label>
+                      <select
+                        value={newTaskData.category}
+                        onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))}
+                        className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60"
                       >
-                        {profile.avatar}
-                        <span className="absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full bg-[#11181f]/95 border border-white/10 text-[13px]">
-                          ✏️
-                        </span>
-                      </button>
-                      <div className="text-center">
-                        <div className="text-xl font-semibold text-white">{profile.name}</div>
-                        <div className="text-[13px] text-white/45 mt-1">{profile.handle}</div>
-                      </div>
+                        {["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (
+                          <option key={c} value={c} className="bg-[#111114]">{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label>
+                      <input
+                        value={newTaskData.emoji}
+                        onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))}
+                        className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25"
+                        placeholder="✨"
+                      />
                     </div>
                   </div>
-
-                  <div className="flex gap-2 mb-6">
-                    <div className="flex-1 rounded-[14px] bg-white/6 p-3">
-                      <div className="text-[22px] font-semibold text-[#2563eb]">{stats.accepted + stats.rejected + stats.shared}</div>
-                      <div className="text-[11px] text-white/50 mt-1">Tarefas feitas</div>
-                    </div>
-                    <div className="flex-1 rounded-[14px] bg-white/6 p-3">
-                      <div className="text-[22px] font-semibold text-[#F59E0B]">5</div>
-                      <div className="text-[11px] text-white/50 mt-1">Sequência</div>
-                    </div>
-                    <div className="flex-1 rounded-[14px] bg-white/6 p-3">
-                      <div className="text-[22px] font-semibold text-[#10B981]">{Math.round(((stats.accepted + stats.rejected + stats.shared) / total) * 100) || 0}%</div>
-                      <div className="text-[11px] text-white/50 mt-1">Taxa</div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="rounded-[16px] bg-white/5 overflow-hidden border border-white/10">
-                      <button
-                        type="button"
-                        onClick={openProfileEditor}
-                        className="flex w-full items-center gap-3 px-4 py-4 text-left text-white transition hover:bg-white/10"
-                      >
-                        <span className="text-[18px] text-white/50">👤</span>
-                        <span className="flex-1 text-sm">Editar perfil</span>
-                        <span className="text-white/30">›</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("Configurações de notificações em breve.", "bg-white/10")}
-                        className="flex w-full items-center gap-3 px-4 py-4 text-left text-white transition hover:bg-white/10 border-t border-white/6"
-                      >
-                        <span className="text-[18px] text-white/50">🔔</span>
-                        <span className="flex-1 text-sm">Notificações</span>
-                        <span className="text-white/30">›</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("Configuração de aparência em breve.", "bg-white/10")}
-                        className="flex w-full items-center gap-3 px-4 py-4 text-left text-white transition hover:bg-white/10 border-t border-white/6"
-                      >
-                        <span className="text-[18px] text-white/50">🎨</span>
-                        <span className="flex-1 text-sm">Aparência</span>
-                        <span className="text-white/30">›</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowAboutModal(true)}
-                        className="flex w-full items-center gap-3 px-4 py-4 text-left text-white transition hover:bg-white/10 border-t border-white/6"
-                      >
-                        <span className="text-[18px] text-white/50">ℹ️</span>
-                        <span className="flex-1 text-sm">Sobre o TaskMatch</span>
-                        <span className="text-white/30">›</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex w-full items-center gap-3 px-4 py-4 text-left text-red-300 transition hover:bg-red-500/10 border-t border-white/6"
-                      >
-                        <span className="text-[18px] text-red-300">🚪</span>
-                        <span className="flex-1 text-sm text-red-100">Sair</span>
-                        <span className="text-red-300">›</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {showProfileEditor && (
-                    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 py-6">
-                      <div className="w-full max-w-md rounded-[30px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
-                        <div className="mb-4 flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-white">Editar perfil</div>
-                            <div className="text-[12px] text-white/45">Atualize nome, nick e emoji.</div>
-                          </div>
-                          <button type="button" onClick={closeProfileEditor} className="text-white/50 hover:text-white">
-                            ✕
-                          </button>
-                        </div>
-                        <div className="mb-4 flex items-center justify-center gap-3">
-                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/8 border border-white/12 text-4xl">
-                            {editedProfile.avatar}
-                          </div>
-                          <div className="space-y-1 text-sm text-white/50">
-                            <div>Toque em um emoji abaixo</div>
-                          </div>
-                        </div>
-                        <div className="space-y-3 mb-4">
-                          <input
-                            value={editedProfile.name}
-                            onChange={(event) => setEditedProfile((prev) => ({ ...prev, name: event.target.value }))}
-                            placeholder="Seu nome"
-                            className="w-full rounded-[12px] bg-white/7 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none border border-transparent focus:border-[#2563eb] focus:bg-white/10"
-                          />
-                          <input
-                            value={editedProfile.handle}
-                            onChange={(event) => setEditedProfile((prev) => ({ ...prev, handle: event.target.value }))}
-                            placeholder="@nick"
-                            className="w-full rounded-[12px] bg-white/7 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none border border-transparent focus:border-[#2563eb] focus:bg-white/10"
-                          />
-                        </div>
-                        <div className="mb-4 grid grid-cols-5 gap-2">
-                          {profileEmojis.map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={() => setEditedProfile((prev) => ({ ...prev, avatar: emoji }))}
-                              className={`rounded-2xl p-3 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/5"}`}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex gap-3">
-                          <button
-                            type="button"
-                            onClick={closeProfileEditor}
-                            className="flex-1 rounded-[14px] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={saveProfileEdits}
-                            className="flex-1 rounded-[14px] bg-[#2563eb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-                          >
-                            Salvar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {showAboutModal && (
-                    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 py-6">
-                      <div className="w-full max-w-md rounded-[30px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
-                        <div className="mb-4 flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-white">Sobre o TaskMatch</div>
-                            <div className="text-[12px] text-white/45">Informações do app</div>
-                          </div>
-                          <button type="button" onClick={() => setShowAboutModal(false)} className="text-white/50 hover:text-white">
-                            ✕
-                          </button>
-                        </div>
-                        <div className="space-y-4 text-sm text-white/70">
-                          <div>
-                            <div className="text-white font-semibold">TaskMatch</div>
-                            <div className="text-[13px] text-white/45">Versão 0.0.0</div>
-                          </div>
-                          <p>
-                            TaskMatch é um app dark minimalista para tomar decisões rápidas e organizar seu dia com foco em ação.
-                          </p>
-                          <p className="text-[13px] text-white/45">
-                            Criado para ajudar você a priorizar tarefas, manter ritmo e seguir produtivo sem distrações.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowAboutModal(false)}
-                          className="mt-5 w-full rounded-[14px] bg-[#2563eb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-                        >
-                          Fechar
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  className="flex h-full items-center justify-center px-4 py-8"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl">
-                    <div className="text-6xl mb-4">{tabInfo[activeTab].emoji}</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">{tabInfo[activeTab].title}</h2>
-                    <p className="text-sm text-white/60 leading-relaxed mb-8">{tabInfo[activeTab].description}</p>
-                    <button
-                      onClick={() => setActiveTab("home")}
-                      className="inline-flex items-center justify-center rounded-2xl bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-                    >
-                      Voltar ao Deck
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-
-            <div className="flex-shrink-0 border-t pb-6 pt-2" style={{ borderColor: "rgba(255,255,255,0.06)", background: "#111114" }}>
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
                   <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="flex-1 flex flex-col items-center gap-1 py-1 w-1/4 float-left"
+                    type="submit"
+                    className="w-full rounded-2xl bg-[#2563eb] py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition mt-2"
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#2563eb" : "rgba(255,255,255,0.25)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
-                    </svg>
-                    <span className="text-[9px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>
-                      {tab.label}
-                    </span>
+                    Adicionar tarefa
                   </button>
-                );
-              })}
-            </div>
+                </form>
+              </motion.div>
+            )}
+
+            {/* ── PROFILE ── */}
+            {activeTab === "profile" && (
+              <motion.div
+                className="h-full overflow-y-auto px-5 pt-4 pb-6"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {/* Avatar */}
+                <div className="flex flex-col items-center gap-2 mb-6">
+                  <button
+                    type="button"
+                    onClick={openProfileEditor}
+                    className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition"
+                  >
+                    {profile.avatar}
+                    <span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span>
+                  </button>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-white">{profile.name}</div>
+                    <div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-2 mb-5">
+                  {[
+                    { label: "Feitas",    value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" },
+                    { label: "Sequência", value: 5,                                               color: "text-amber-400" },
+                    { label: "Taxa",
+                      value: stats.accepted + stats.rejected + stats.shared > 0
+                        ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%`
+                        : "0%",
+                      color: "text-emerald-400" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3">
+                      <div className={`text-xl font-bold ${color}`}>{value}</div>
+                      <div className="text-[11px] text-white/35 mt-0.5">{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Menu */}
+                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+                  {[
+                    { label: "Editar perfil",    action: openProfileEditor,                                 icon: "👤" },
+                    { label: "Notificações",      action: () => showToast("Em breve.", "bg-white/10"),      icon: "🔔" },
+                    { label: "Aparência",         action: () => showToast("Em breve.", "bg-white/10"),      icon: "🎨" },
+                    { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true),                    icon: "ℹ️" },
+                  ].map(({ label, action, icon }, i) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={action}
+                      className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}
+                    >
+                      <span className="text-[17px] text-white/40">{icon}</span>
+                      <span className="flex-1 text-sm">{label}</span>
+                      <span className="text-white/20 text-lg leading-none">›</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"
+                  >
+                    <span className="text-[17px]">🚪</span>
+                    <span className="flex-1 text-sm text-red-300">Sair</span>
+                    <span className="text-red-400/40 text-lg leading-none">›</span>
+                  </button>
+                </div>
+
+                {/* Profile editor modal */}
+                {showProfileEditor && (
+                  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-6">
+                    <div className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className="text-sm font-semibold text-white">Editar perfil</div>
+                          <div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div>
+                        </div>
+                        <button type="button" onClick={closeProfileEditor} className="text-white/40 hover:text-white text-lg">✕</button>
+                      </div>
+                      <div className="flex justify-center mb-4">
+                        <div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">
+                          {editedProfile.avatar}
+                        </div>
+                      </div>
+                      <div className="space-y-3 mb-4">
+                        <input
+                          value={editedProfile.name}
+                          onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))}
+                          placeholder="Seu nome"
+                          className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]"
+                        />
+                        <input
+                          value={editedProfile.handle}
+                          onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))}
+                          placeholder="@nick"
+                          className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]"
+                        />
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 mb-4">
+                        {profileEmojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))}
+                            className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-3">
+                        <button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button>
+                        <button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Salvar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* About modal */}
+                {showAboutModal && (
+                  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-6">
+                    <div className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className="text-sm font-semibold text-white">Sobre o TaskMatch</div>
+                          <div className="text-[12px] text-white/40">Informações do app</div>
+                        </div>
+                        <button type="button" onClick={() => setShowAboutModal(false)} className="text-white/40 hover:text-white text-lg">✕</button>
+                      </div>
+                      <div className="space-y-3 text-sm text-white/60 mb-5">
+                        <div>
+                          <div className="text-white font-semibold">TaskMatch</div>
+                          <div className="text-[12px] text-white/35">Versão 0.0.0</div>
+                        </div>
+                        <p>App dark minimalista para tomar decisões rápidas e organizar seu dia com foco em ação.</p>
+                        <p className="text-[12px] text-white/35">Criado para ajudar você a priorizar tarefas, manter ritmo e seguir produtivo sem distrações.</p>
+                      </div>
+                      <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Fechar</button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </div>
+
+          {/* BOTTOM NAV */}
+          <div
+            className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114] pb-safe"
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
+          >
+            {[
+              { id: "home",    label: "Início",   icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+              { id: "explore", label: "Explorar", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
+              { id: "ia",      label: "RAF",       icon: "M13 10V3L4 14h7v7l9-11h-7z" },
+              { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex-1 flex flex-col items-center gap-1 py-3"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"}
+                    strokeWidth={isActive ? 2.2 : 1.8}
+                    className="w-5 h-5"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
+                  </svg>
+                  <span
+                    className="text-[10px] font-medium"
+                    style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}
+                  >
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
