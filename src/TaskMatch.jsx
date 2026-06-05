@@ -1225,324 +1225,487 @@ Quando o usuário não souber o que fazer, sugira algo concreto e curto.`;
 
       {/* DESKTOP LAYOUT (≥ 1024px) */}
       {isDesktop && (
-        <div className="mx-auto w-full h-screen flex p-6 gap-6">
+        <div className="w-full h-screen flex bg-[#111114]">
           {/* LEFT SIDEBAR */}
-          <aside className="w-[280px] flex flex-col gap-6 flex-shrink-0">
+          <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
             {/* Logo */}
-            <div className="rounded-3xl bg-[#18181c] border border-white/6 p-6">
-              <h1 className="text-2xl font-black tracking-tight leading-none text-white">
+            <div className="mb-6 px-2">
+              <h1 className="text-xl font-black tracking-tight leading-none text-white">
                 Task<span style={{ color: "#2563eb" }}>Match</span>
               </h1>
-              <p className="text-xs text-white/30 mt-2">Decida rápido, viva mais.</p>
+              <p className="text-[11px] text-white/30 mt-1">Decida rápido, viva mais.</p>
             </div>
 
-            {/* Profile Card */}
-            <div className="rounded-3xl bg-[#18181c] border border-white/6 p-6">
-              <p className="text-xs uppercase tracking-[0.32em] text-white/40 mb-4">Perfil</p>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-white/40 mb-1">Usuário</div>
-                  <div className="text-lg font-semibold text-white">{profile.name}</div>
-                  <div className="text-xs text-white/50 mt-1">{profile.handle}</div>
-                </div>
-                <div className="rounded-2xl bg-black/20 border border-white/10 p-3">
-                  <div className="text-[10px] uppercase tracking-[0.3em] text-white/40">Nível</div>
-                  <div className="mt-2 text-xl font-semibold text-white">7</div>
-                </div>
-                <div className="rounded-2xl bg-black/20 border border-white/10 p-3">
-                  <div className="flex items-center justify-between text-xs text-white/50 mb-2">
-                    <span>Taxa de aceitação</span>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`acceptance-${total > 0 ? Math.round((stats.accepted / total) * 100) : 0}`}
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="font-semibold text-emerald-300"
-                      >
-                        {total > 0 ? Math.round((stats.accepted / total) * 100) : 0}%
-                      </motion.span>
-                    </AnimatePresence>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/10">
-                    <motion.div
-                      className="h-full rounded-full bg-[#2563eb]"
-                      animate={{ width: `${total > 0 ? Math.round((stats.accepted / total) * 100) : 0}%` }}
-                      transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Nav */}
+            <nav className="flex flex-col gap-0.5">
+              {[
+                { id: "home",    label: "Início",   icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                { id: "explore", label: "Explorar", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
+                { id: "ia",      label: "RAF",       icon: "M13 10V3L4 14h7v7l9-11h-7z" },
+                { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                      isActive
+                        ? "bg-[#2563eb]/15 text-[#93c5fd]"
+                        : "text-white/40 hover:bg-white/5 hover:text-white/60"
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px] flex-shrink-0">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
+                    </svg>
+                    <span className="text-[13px] font-medium">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
 
-            {/* Session Summary */}
-            <div className="rounded-3xl bg-[#18181c] border border-white/6 p-6">
-              <p className="text-xs uppercase tracking-[0.32em] text-white/40 mb-4">Resumo de sessão</p>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">Aceitas</span>
+            {/* Session stats */}
+            <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
+              <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Sessão atual</p>
+              {[
+                { label: "Aceitas",   value: stats.accepted, color: "text-emerald-400" },
+                { label: "Delegadas", value: stats.shared,   color: "text-blue-400"   },
+                { label: "Depois",    value: stats.rejected, color: "text-red-400"    },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-[12px] text-white/40">{label}</span>
                   <AnimatePresence mode="wait">
                     <motion.span
-                      key={`accepted-${stats.accepted}`}
+                      key={value}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
-                      className="font-semibold text-emerald-400"
+                      className={`text-[14px] font-semibold ${color}`}
                     >
-                      {stats.accepted}
+                      {value}
                     </motion.span>
                   </AnimatePresence>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">Delegadas</span>
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={`shared-${stats.shared}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="font-semibold text-blue-400"
-                    >
-                      {stats.shared}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">Restantes</span>
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={`remaining-${remaining}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="font-semibold text-white"
-                    >
-                      {remaining}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* CENTER MAIN AREA */}
-          <main className="flex flex-1 flex-col min-h-0 bg-[#18181c] rounded-[32px] shadow-2xl overflow-hidden">
-            {/* Top Nav */}
-            <div className="flex items-center justify-between px-8 pt-6 pb-4 flex-shrink-0 border-b border-white/6">
-              <div className="flex items-center gap-8">
-                <button className="text-sm text-white/70 hover:text-white transition">Início</button>
-                <button className="text-sm text-white/70 hover:text-white transition">Explorar</button>
-                <button className="text-sm text-white/70 hover:text-white transition">IA</button>
-                <button className="text-sm text-white/70 hover:text-white transition">Perfil</button>
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-sm text-[#2563eb] hover:bg-[#2563eb]/30 transition">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Criar Deck
-              </button>
-            </div>
-
-            {/* Progress Bar */}
-            {remaining > 0 && (
-              <div className="px-8 py-3 flex-shrink-0 border-b border-white/6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white/40 font-medium">Deck pessoal</span>
-                  <span className="text-xs text-white/30">
-                    {remaining} de {total} restantes
-                  </span>
-                </div>
-                <div className="h-[2px] bg-white/6 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-[#2563eb] rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ type: "spring", stiffness: 120, damping: 20 }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Content Area */}
-            <div className="flex flex-1 flex-col min-h-0 px-8 py-8 overflow-y-auto">
-              {activeTab === "home" ? (
-                remaining > 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    {/* Swipe Card Stack */}
-                    <div className="relative mb-8" style={{ height: cardHeight, width: "100%", maxWidth: 500 }}>
-                      {tasks
-                        .slice(-3)
-                        .reverse()
-                        .map((task, i, arr) => {
-                          const isTop = i === 0;
-                          const stackIndex = arr.length - 1 - i;
-                          return (
-                            <SwipeCard
-                              key={task.id}
-                              task={task}
-                              isTop={isTop}
-                              stackIndex={stackIndex}
-                              onSwipe={handleSwipe}
-                            />
-                          );
-                        })}
-                    </div>
-
-                    {/* Direction Labels */}
-                    <div className="flex items-center justify-between w-full max-w-[500px] px-4 mb-6">
-                      <div className="flex items-center gap-2 text-red-400/50">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        <span className="text-xs font-medium tracking-wide uppercase">Depois</span>
-                      </div>
-                      <div className="flex flex-col items-center text-blue-400/50">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 mb-1">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
-                        </svg>
-                        <span className="text-xs font-medium tracking-wide uppercase">Delegar</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-emerald-400/50">
-                        <span className="text-xs font-medium tracking-wide uppercase">Aceitar</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <ActionButtons onAction={(dir) => topTask && handleSwipe(dir, topTask)} disabled={!topTask} />
-                  </div>
-                ) : (
-                  <EmptyState stats={stats} onReset={handleReset} />
-                )
-              ) : (
-                <motion.div
-                  className="flex items-center justify-center h-full"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-                    <div className="text-6xl mb-4">{tabInfo[activeTab]?.emoji || "🔍"}</div>
-                    <h2 className="text-2xl font-bold text-white mb-3">{tabInfo[activeTab]?.title || "Em breve"}</h2>
-                    <p className="text-sm text-white/60 leading-relaxed">{tabInfo[activeTab]?.description || "Esta seção em breve."}</p>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </main>
-
-          {/* RIGHT SIDEBAR */}
-          <aside className="w-[280px] flex flex-col gap-6 flex-shrink-0">
-            {/* Upcoming Tasks */}
-            <div className="rounded-3xl bg-[#18181c] border border-white/6 p-6 flex flex-col flex-1 min-h-0">
-              <p className="text-xs uppercase tracking-[0.32em] text-white/40 mb-4 flex-shrink-0">Próximas tarefas</p>
-              <div className="space-y-3 overflow-y-auto flex-1">
-                {remaining > 0 ? (
-                  tasks.slice(-3).reverse().map((task) => (
-                    <div key={task.id} className="rounded-2xl bg-black/20 border border-white/10 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 mb-1">{task.category}</p>
-                      <p className="font-semibold text-sm text-white leading-tight">{task.title}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-white/40">Nenhuma tarefa pendente</p>
-                )}
-              </div>
-            </div>
-
-            {/* Recent Activities */}
-            <div className="rounded-3xl bg-[#18181c] border border-white/6 p-6 flex flex-col flex-1 min-h-0">
-              <h2 className="text-sm font-semibold text-white mb-4 flex-shrink-0">Atividades recentes</h2>
-              <ul className="space-y-2 text-xs leading-6 text-white/70 flex-1 overflow-y-auto">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-400">●</span>
-                  <span>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`activity-accepted-${stats.accepted}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                      >
-                        {stats.accepted} tarefas aceitas
-                      </motion.span>
-                    </AnimatePresence>
-                  </span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-red-400">●</span>
-                  <span>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`activity-rejected-${stats.rejected}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                      >
-                        {stats.rejected} deixadas para depois
-                      </motion.span>
-                    </AnimatePresence>
-                  </span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-blue-400">●</span>
-                  <span>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`activity-shared-${stats.shared}`}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                      >
-                        {stats.shared} delegadas
-                      </motion.span>
-                    </AnimatePresence>
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Deck Progress */}
-            <div className="rounded-3xl bg-[#18181c] border border-white/6 p-6">
-              <p className="text-xs uppercase tracking-[0.32em] text-white/40 mb-4">Progresso do deck</p>
-              <div className="flex items-center justify-between mb-3 text-xs text-white/70">
-                <span>
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={`progress-count-${remaining}`}
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                    >
-                      {remaining}
-                    </motion.span>
-                  </AnimatePresence>
-                  {" / "}
-                  {total}
-                </span>
-                <span>
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={`progress-percent-${Math.round(progress)}`}
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                    >
-                      {Math.round(progress)}%
-                    </motion.span>
-                  </AnimatePresence>
+              ))}
+              {/* Taxa */}
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[12px] text-white/40">Taxa de aceite</span>
+                <span className="text-[13px] font-semibold text-emerald-400">
+                  {stats.accepted + stats.rejected + stats.shared > 0
+                    ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%`
+                    : "—"}
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-[3px] bg-white/[0.08] rounded-full overflow-hidden mt-0.5">
                 <motion.div
-                  className="h-full rounded-full bg-[#2563eb]"
-                  animate={{ width: `${progress}%` }}
+                  className="h-full bg-[#2563eb] rounded-full"
+                  animate={{
+                    width: stats.accepted + stats.rejected + stats.shared > 0
+                      ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%`
+                      : "0%"
+                  }}
                   transition={{ type: "spring", stiffness: 100, damping: 20 }}
                 />
               </div>
             </div>
           </aside>
+
+          {/* CENTER MAIN AREA */}
+          <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
+
+            {/* ── HOME ── */}
+            {activeTab === "home" && (
+              <>
+                {/* Topbar */}
+                <div className="flex items-center justify-between px-10 pt-6 pb-3 flex-shrink-0 border-b border-white/[0.05]">
+                  <span className="text-[11px] font-semibold tracking-[0.06em] uppercase text-white/30">Deck pessoal</span>
+                  <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">
+                    {remaining} de {total} restantes
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                {remaining > 0 && (
+                  <div className="px-10 pt-3 pb-1 flex-shrink-0">
+                    <div className="h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-[#2563eb] rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Cards area */}
+                <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 min-h-0">
+                  {remaining > 0 ? (
+                    <>
+                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}>
+                        {tasks
+                          .slice(-3)
+                          .reverse()
+                          .map((task, i, arr) => {
+                            const isTop = i === 0;
+                            const stackIndex = arr.length - 1 - i;
+                            return (
+                              <SwipeCard
+                                key={task.id}
+                                task={task}
+                                isTop={isTop}
+                                stackIndex={stackIndex}
+                                onSwipe={handleSwipe}
+                              />
+                            );
+                          })}
+                      </div>
+
+                      {/* Direction hints */}
+                      <div className="flex items-center justify-between w-full max-w-[520px] px-2">
+                        <div className="flex items-center gap-1.5 text-red-400/50">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                          <span className="text-[10px] font-semibold tracking-widest uppercase">Depois</span>
+                        </div>
+                        <div className="flex flex-col items-center text-blue-400/50">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
+                          </svg>
+                          <span className="text-[10px] font-semibold tracking-widest uppercase">Delegar</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-emerald-400/50">
+                          <span className="text-[10px] font-semibold tracking-widest uppercase">Aceitar</span>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      <ActionButtons onAction={(dir) => topTask && handleSwipe(dir, topTask)} disabled={!topTask} />
+                    </>
+                  ) : (
+                    <EmptyState stats={stats} onReset={handleReset} />
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ── EXPLORE ── */}
+            {activeTab === "explore" && (
+              <motion.div
+                className="flex flex-1 flex-col items-center justify-start px-10 py-10 overflow-y-auto"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-full max-w-xl">
+                  <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-2">Explorar</p>
+                  <h2 className="text-xl font-bold text-white mb-1">Delegações recentes</h2>
+                  <p className="text-sm text-white/40 mb-8">Veja para quem suas tarefas foram enviadas e como responderam.</p>
+
+                  {sharedHistory.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-3xl bg-white/[0.03] border border-white/[0.06] p-12 text-center">
+                      <div className="text-4xl mb-4 opacity-30">↑</div>
+                      <p className="text-sm text-white/30">Nada delegado ainda</p>
+                      <p className="text-xs text-white/20 mt-1">Use o gesto de delegar no deck para começar.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sharedHistory.map((item) => {
+                        const acceptedNames = item.recipients.filter((r) => r.accepted).map((r) => r.name);
+                        const refusedNames  = item.recipients.filter((r) => !r.accepted).map((r) => r.name);
+                        return (
+                          <div key={`${item.id}-${item.title}`} className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-5">
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div>
+                                <div className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-1">Delegado</div>
+                                <div className="text-base font-semibold text-white">{item.title}</div>
+                              </div>
+                              <div className="rounded-xl bg-[#111319] px-3 py-1.5 text-[12px] text-[#2563eb] flex-shrink-0">Histórico</div>
+                            </div>
+                            <p className="text-sm text-white/40 mb-3">{item.description}</p>
+                            <p className="text-sm text-white/50">
+                              {acceptedNames.length > 0 && <span className="text-emerald-400">{acceptedNames.join(", ")} aceitaram</span>}
+                              {acceptedNames.length > 0 && refusedNames.length > 0 && <span className="text-white/30"> · </span>}
+                              {refusedNames.length > 0 && <span className="text-red-400">{refusedNames.join(", ")} recusou{refusedNames.length > 1 ? "ram" : ""}</span>}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── RAF (IA) ── */}
+            {activeTab === "ia" && (
+              <motion.div
+                className="flex flex-1 flex-col min-h-0"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {/* Header */}
+                <div className="flex-shrink-0 px-10 pt-7 pb-4 border-b border-white/[0.05]">
+                  <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Assistente</p>
+                  <h2 className="text-lg font-bold text-white">⚡ RAF</h2>
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-10 py-6">
+                  <div className="w-full max-w-xl mx-auto space-y-3">
+                    {chatMessages.map((message, index) => {
+                      const isUser = message.sender === "user";
+                      const previous = chatMessages[index - 1];
+                      const showIcon = !isUser && (!previous || previous.sender !== "raf");
+                      return (
+                        <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                          <div className={`flex items-start gap-2 ${isUser ? "ml-auto" : "mr-auto"}`}>
+                            {!isUser && showIcon && <div className="mt-1 text-[15px] text-white/50 flex-shrink-0">⚡</div>}
+                            {!isUser && !showIcon && <div className="w-[21px] flex-shrink-0" />}
+                            <div
+                              className={`max-w-[480px] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                                isUser
+                                  ? "bg-[#2563eb] text-white rounded-br-[4px]"
+                                  : "bg-white/[0.07] text-white/80 rounded-bl-[4px]"
+                              }`}
+                            >
+                              {message.text}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isChatLoading && (
+                      <div className="flex justify-start">
+                        <div className="flex items-start gap-2">
+                          <div className="mt-1 text-[15px] text-white/50">⚡</div>
+                          <div className="bg-white/[0.07] rounded-2xl rounded-bl-[4px] px-4 py-2.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse" />
+                              <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-150" />
+                              <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-300" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+                </div>
+
+                {/* Quick actions */}
+                <AnimatePresence>
+                  {chatInput.trim() === "" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex-shrink-0 overflow-hidden"
+                    >
+                      <div className="flex items-center gap-2 px-10 pb-3">
+                        {quickActions.map((action) => (
+                          <button
+                            key={action.prompt}
+                            type="button"
+                            onClick={() => handleQuickAction(action.prompt)}
+                            className="whitespace-nowrap rounded-[20px] border border-white/[0.12] bg-transparent px-4 py-2 text-[13px] text-white/50 transition hover:border-white/25 hover:text-white/80"
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Input */}
+                <div className="flex-shrink-0 px-10 pb-8 pt-2">
+                  <div className="w-full max-w-xl mx-auto">
+                    <form
+                      onSubmit={handleSendMessage}
+                      className="flex items-end gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-2"
+                    >
+                      <textarea
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }}}
+                        placeholder="Mensagem..."
+                        disabled={isChatLoading}
+                        rows={1}
+                        className="flex-1 min-h-[44px] max-h-[120px] resize-none bg-transparent px-2 py-2.5 text-sm text-white placeholder:text-white/30 outline-none disabled:opacity-50"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isChatLoading || chatInput.trim() === ""}
+                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition ${
+                          chatInput.trim() === "" ? "bg-white/10 text-white/30" : "bg-[#2563eb] text-white hover:bg-blue-500"
+                        }`}
+                      >
+                        <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h14M13 4l7 6-7 6" />
+                        </svg>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── PROFILE ── */}
+            {activeTab === "profile" && (
+              <motion.div
+                className="flex flex-1 flex-col items-center overflow-y-auto px-10 py-10"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-full max-w-xl flex flex-col gap-5">
+                  {/* Avatar + info */}
+                  <div className="rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6">
+                    <div className="flex items-center gap-4 mb-5">
+                      <button
+                        type="button"
+                        onClick={openProfileEditor}
+                        className="relative w-16 h-16 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center hover:bg-white/10 transition"
+                      >
+                        {profile.avatar}
+                        <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#18181c] border border-white/10 text-[11px] flex items-center justify-center">✏️</span>
+                      </button>
+                      <div>
+                        <div className="text-lg font-semibold text-white">{profile.name}</div>
+                        <div className="text-sm text-white/35">{profile.handle}</div>
+                      </div>
+                      <div className="ml-auto flex gap-2">
+                        <span className="text-[11px] font-semibold bg-[#2563eb]/15 text-[#93c5fd] px-3 py-1 rounded-full">Nível 7</span>
+                        <span className="text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 px-3 py-1 rounded-full">5 dias</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: "Tarefas feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" },
+                        { label: "Sequência",       value: 5,                                              color: "text-amber-400" },
+                        { label: "Taxa",
+                          value: stats.accepted + stats.rejected + stats.shared > 0
+                            ? `${Math.round(((stats.accepted) / (stats.accepted + stats.rejected + stats.shared)) * 100)}%`
+                            : "0%",
+                          color: "text-emerald-400" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="rounded-2xl bg-black/20 border border-white/[0.08] p-3">
+                          <div className={`text-xl font-bold ${color}`}>{value}</div>
+                          <div className="text-[11px] text-white/40 mt-0.5">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Menu */}
+                  <div className="rounded-3xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+                    {[
+                      { label: "Editar perfil",     action: openProfileEditor,                                          icon: "👤" },
+                      { label: "Notificações",       action: () => showToast("Em breve.", "bg-white/10"),               icon: "🔔" },
+                      { label: "Aparência",          action: () => showToast("Em breve.", "bg-white/10"),               icon: "🎨" },
+                      { label: "Sobre o TaskMatch",  action: () => setShowAboutModal(true),                             icon: "ℹ️" },
+                    ].map(({ label, action, icon }, i) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={action}
+                        className={`flex w-full items-center gap-3 px-5 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}
+                      >
+                        <span className="text-[17px] text-white/40">{icon}</span>
+                        <span className="flex-1 text-sm">{label}</span>
+                        <span className="text-white/20">›</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-3 px-5 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"
+                    >
+                      <span className="text-[17px]">🚪</span>
+                      <span className="flex-1 text-sm text-red-300">Sair</span>
+                      <span className="text-red-400/40">›</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Profile editor modal */}
+                {showProfileEditor && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                    <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 p-6 shadow-2xl">
+                      <div className="flex items-center justify-between mb-5">
+                        <div>
+                          <div className="text-sm font-semibold text-white">Editar perfil</div>
+                          <div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div>
+                        </div>
+                        <button type="button" onClick={closeProfileEditor} className="text-white/40 hover:text-white text-lg leading-none">✕</button>
+                      </div>
+                      <div className="flex items-center justify-center mb-5">
+                        <div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">
+                          {editedProfile.avatar}
+                        </div>
+                      </div>
+                      <div className="space-y-3 mb-4">
+                        <input
+                          value={editedProfile.name}
+                          onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))}
+                          placeholder="Seu nome"
+                          className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]"
+                        />
+                        <input
+                          value={editedProfile.handle}
+                          onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))}
+                          placeholder="@nick"
+                          className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]"
+                        />
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 mb-5">
+                        {profileEmojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))}
+                            className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04] hover:bg-white/10"}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-3">
+                        <button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white/70 hover:bg-white/10 transition">Cancelar</button>
+                        <button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition">Salvar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* About modal */}
+                {showAboutModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                    <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 p-6 shadow-2xl">
+                      <div className="flex items-center justify-between mb-5">
+                        <div>
+                          <div className="text-sm font-semibold text-white">Sobre o TaskMatch</div>
+                          <div className="text-[12px] text-white/40">Informações do app</div>
+                        </div>
+                        <button type="button" onClick={() => setShowAboutModal(false)} className="text-white/40 hover:text-white text-lg leading-none">✕</button>
+                      </div>
+                      <div className="space-y-3 text-sm text-white/60 mb-5">
+                        <div>
+                          <div className="text-white font-semibold">TaskMatch</div>
+                          <div className="text-[12px] text-white/35">Versão 0.0.0</div>
+                        </div>
+                        <p>App dark minimalista para tomar decisões rápidas e organizar seu dia com foco em ação.</p>
+                        <p className="text-[12px] text-white/35">Criado para ajudar você a priorizar tarefas, manter ritmo e seguir produtivo sem distrações.</p>
+                      </div>
+                      <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition">Fechar</button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </main>
         </div>
       )}
 
