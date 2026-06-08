@@ -41,11 +41,11 @@ function usePersistedState(key, fallback) {
 }
 
 const INITIAL_TASKS = [
-  { id: 1, title: "Pedir Pizza", description: "Todo mundo tá com fome. Escolher sabores e fazer o pedido até às 19h.", category: "Alimentação", emoji: "🍕", gradient: "from-orange-600 via-red-600 to-rose-700", accent: "#f97316" },
-  { id: 2, title: "Ver Filme", description: "Dune: Parte 2 ou Oppenheimer? Alguém escolhe, a gente vai junto.", category: "Lazer", emoji: "🎬", gradient: "from-violet-700 via-purple-700 to-indigo-800", accent: "#8b5cf6" },
-  { id: 3, title: "Academia", description: "Treino de pernas marcado pra terça às 7h. Confirmar presença.", category: "Saúde", emoji: "💪", gradient: "from-emerald-600 via-teal-600 to-cyan-700", accent: "#10b981" },
-  { id: 4, title: "Estudar IHC", description: "Revisar heurísticas de Nielsen antes da apresentação de quinta.", category: "Estudos", emoji: "📖", gradient: "from-blue-600 via-sky-600 to-cyan-600", accent: "#3b82f6" },
-  { id: 5, title: "Reunião de Equipe", description: "Sprint planning semanal. Preparar card de bloqueios e progresso.", category: "Trabalho", emoji: "🗓️", gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b" },
+  { id: 1, title: "Pedir Pizza", description: "Todo mundo tá com fome. Escolher sabores e fazer o pedido até às 19h.", category: "Alimentação", emoji: "🍕", gradient: "from-orange-600 via-red-600 to-rose-700", accent: "#f97316", priority: null, deadline: null },
+  { id: 2, title: "Ver Filme", description: "Dune: Parte 2 ou Oppenheimer? Alguém escolhe, a gente vai junto.", category: "Lazer", emoji: "🎬", gradient: "from-violet-700 via-purple-700 to-indigo-800", accent: "#8b5cf6", priority: null, deadline: null },
+  { id: 3, title: "Academia", description: "Treino de pernas marcado pra terça às 7h. Confirmar presença.", category: "Saúde", emoji: "💪", gradient: "from-emerald-600 via-teal-600 to-cyan-700", accent: "#10b981", priority: null, deadline: null },
+  { id: 4, title: "Estudar IHC", description: "Revisar heurísticas de Nielsen antes da apresentação de quinta.", category: "Estudos", emoji: "📖", gradient: "from-blue-600 via-sky-600 to-cyan-600", accent: "#3b82f6", priority: null, deadline: null },
+  { id: 5, title: "Reunião de Equipe", description: "Sprint planning semanal. Preparar card de bloqueios e progresso.", category: "Trabalho", emoji: "🗓️", gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b", priority: null, deadline: null },
 ];
 
 const SWIPE_THRESHOLD = 100;
@@ -58,6 +58,36 @@ const ONBOARDING_GRADIENTS = {
   Estudos:     { gradient: "from-blue-600 via-sky-600 to-cyan-600",       accent: "#3b82f6" },
   Trabalho:    { gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b" },
 };
+
+// ── Urgency helpers ──────────────────────────────────────────
+const PRIORITY_ORDER = { high: 3, medium: 2, low: 1 };
+
+function sortByUrgency(tasks) {
+  const now = new Date();
+  return [...tasks].sort((a, b) => {
+    const aOver = a.deadline && new Date(a.deadline + "T23:59:59") < now;
+    const bOver = b.deadline && new Date(b.deadline + "T23:59:59") < now;
+    if (aOver !== bOver) return aOver ? 1 : -1; // overdue → end of array (top of deck)
+    const ap = PRIORITY_ORDER[a.priority] || 0;
+    const bp = PRIORITY_ORDER[b.priority] || 0;
+    if (ap !== bp) return ap - bp; // higher priority → end → top
+    if (a.deadline && b.deadline) return new Date(b.deadline) - new Date(a.deadline); // earlier deadline → end
+    if (a.deadline && !b.deadline) return 1;
+    if (!a.deadline && b.deadline) return -1;
+    return 0;
+  });
+}
+
+function deadlineBadge(deadline) {
+  if (!deadline) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(deadline + "T00:00:00");
+  const diff = Math.round((d - today) / 86400000);
+  if (diff < 0)  return { label: "Atrasado", overdue: true };
+  if (diff === 0) return { label: "Hoje",    overdue: false };
+  if (diff === 1) return { label: "Amanhã",  overdue: false };
+  return { label: `Em ${diff} dias`, overdue: false };
+}
 
 // ── SwipeCard ────────────────────────────────────────────────
 function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
@@ -141,9 +171,19 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
         <div className="absolute top-5 left-5 z-10"><span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span></div>
         <div className="absolute top-5 right-5 z-10 text-4xl filter drop-shadow-lg">{task.emoji}</div>
         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-          <h2 className="text-2xl font-bold text-white tracking-tight mb-2 leading-tight">{task.title}</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight mb-1.5 leading-tight">{task.title}</h2>
+          {task.deadline && (() => { const b = deadlineBadge(task.deadline); return b ? (
+            <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2 ${b.overdue ? "bg-red-500/30 text-red-200 animate-pulse" : "bg-black/25 text-white/70"}`}>{b.overdue ? "⚠️" : "🗓"} {b.label}</span>
+          ) : null; })()}
           <p className="text-sm text-white/70 leading-relaxed">{task.description}</p>
         </div>
+        {task.priority && (
+          <div className="absolute bottom-6 right-6 z-10">
+            <span className="text-[10px] font-semibold bg-black/30 backdrop-blur-sm text-white/80 px-2.5 py-1 rounded-full border border-white/10">
+              {task.priority === "high" ? "🔴 Alta" : task.priority === "medium" ? "🟡 Média" : "🟢 Baixa"}
+            </span>
+          </div>
+        )}
         <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(22,163,74,0.55)", opacity: greenOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[-20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">Aceito!</span></div></motion.div>
         <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(220,38,38,0.55)", opacity: redOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">Depois</span></div></motion.div>
         <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(37,99,235,0.6)", opacity: blueOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2"><span className="text-white font-black text-2xl tracking-widest uppercase">Delegar ↑</span></div></motion.div>
@@ -604,7 +644,7 @@ export default function TaskMatch() {
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
   const [chatInput,         setChatInput]         = useState("");
   const [isChatLoading,     setIsChatLoading]     = useState(false);
-  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨" });
+  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "" });
   const [swipeExit,         setSwipeExit]         = useState({ vx: 0, vy: 0, dir: null });
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
   const [exploreLastSeen,   setExploreLastSeen]   = useState(() => load("tm_explore_last_seen", null));
@@ -616,7 +656,8 @@ export default function TaskMatch() {
   const total = Math.max(INITIAL_TASKS.length, load(SK.nextId, INITIAL_TASKS.length + 1) - 1);
   const remaining = tasks.length;
   const progress = total > 0 ? ((total - remaining) / total) * 100 : 0;
-  const topTask = tasks[tasks.length - 1];
+  const sortedTasks = sortByUrgency(tasks);
+  const topTask = sortedTasks[sortedTasks.length - 1];
   const cardHeight = isDesktop ? 420 : 360;
 
   const quickActions = [
@@ -936,12 +977,14 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             description: newTaskData.description.trim(),
             category: newTaskData.category,
             emoji: newTaskData.emoji || "✨",
-            gradient: "from-sky-600 via-cyan-600 to-emerald-600",
-            accent: "#22c55e",
+            gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600",
+            accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e",
+            priority: newTaskData.priority,
+            deadline: newTaskData.deadline || null,
           };
           setTasks((prev) => [...prev, newTask]);
           setNextTaskId((id) => id + 1);
-          setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨" });
+          setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "" });
           showToast("Tarefa criada!", "bg-emerald-600/90");
           setActiveTab("home");
         }} className={`${isMobile ? "flex flex-col gap-4" : "rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5"}`}>
@@ -950,6 +993,18 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <div className="grid grid-cols-2 gap-3">
             <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label><select value={newTaskData.category} onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60">{["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (<option key={c} value={c} className="bg-[#111114]">{c}</option>))}</select></div>
             <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label><input value={newTaskData.emoji} onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="✨" /></div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prioridade</label>
+            <div className="flex gap-2">
+              {[{ value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Média" }, { value: "low", label: "🟢 Baixa" }].map(({ value, label }) => (
+                <button key={value} type="button" onClick={() => setNewTaskData((p) => ({ ...p, priority: p.priority === value ? null : value }))} className={`flex-1 py-2.5 rounded-2xl text-sm font-medium transition border ${newTaskData.priority === value ? "bg-white/[0.12] border-white/25 text-white" : "bg-white/[0.03] border-white/[0.07] text-white/40 hover:text-white/60 hover:border-white/15"}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prazo <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
+            <input type="date" value={newTaskData.deadline} onChange={(e) => setNewTaskData((p) => ({ ...p, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition [color-scheme:dark]" />
           </div>
           <div className="flex gap-3 pt-1"><button type="button" onClick={() => setActiveTab("home")} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button><button type="submit" className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Adicionar tarefa</button></div>
         </form>
@@ -984,7 +1039,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               <div className="flex flex-col h-full">
                 {remaining > 0 ? (
                   <>
-                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{tasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div></div>
+                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div></div>
                     <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
                       <div className="flex items-center gap-1.5 text-red-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Depois</span></div>
                       <div className="flex flex-col items-center text-blue-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Delegar</span></div>
@@ -1041,7 +1096,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 min-h-0">
                   {remaining > 0 ? (
                     <>
-                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{tasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div>
+                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div>
                       <div className="flex items-center justify-between w-full max-w-[520px] px-2">
                         <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Depois</span></div>
                         <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Delegar</span></div>
