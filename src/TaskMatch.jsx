@@ -1,5 +1,43 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+
+// ── Storage keys ─────────────────────────────────────────────
+const SK = {
+  tasks:     "tm_tasks",
+  stats:     "tm_stats",
+  invites:   "tm_invites",
+  profile:   "tm_profile",
+  nextId:    "tm_next_id",
+  raf:       "taskmatch_raf_history",
+  decisions: "tm_decisions",  // histórico imutável de swipes
+};
+
+// ── Helpers de storage ────────────────────────────────────────
+function load(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+function usePersistedState(key, fallback) {
+  const [state, setState] = useState(() => load(key, fallback));
+  const set = useCallback((valueOrUpdater) => {
+    setState((prev) => {
+      const next = typeof valueOrUpdater === "function" ? valueOrUpdater(prev) : valueOrUpdater;
+      save(key, next);
+      return next;
+    });
+  }, [key]);
+  return [state, set];
+}
 
 const INITIAL_TASKS = [
   { id: 1, title: "Pedir Pizza", description: "Todo mundo tá com fome. Escolher sabores e fazer o pedido até às 19h.", category: "Alimentação", emoji: "🍕", gradient: "from-orange-600 via-red-600 to-rose-700", accent: "#f97316" },
@@ -9,35 +47,8 @@ const INITIAL_TASKS = [
   { id: 5, title: "Reunião de Equipe", description: "Sprint planning semanal. Preparar card de bloqueios e progresso.", category: "Trabalho", emoji: "🗓️", gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b" },
 ];
 
-// Chama a API de chat. Em produção substitua pela URL de um backend próprio
-// para não expor a chave no bundle do cliente.
-async function fetchRafReply(apiKey, systemPrompt, messages, deckContext, userText) {
-  const body = {
-    model: "gpt-3.5-turbo",
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages.map((m) => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text })),
-      { role: "user", content: `[Deck: ${deckContext}]\n${userText}` },
-    ],
-    max_tokens: 120,
-    temperature: 0.75,
-  };
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const result = await response.json();
-  const answer = result?.choices?.[0]?.message?.content?.trim();
-  if (!answer) throw new Error("Resposta vazia");
-  return answer;
-}
-
 const SWIPE_THRESHOLD = 100;
 const SWIPE_UP_THRESHOLD = -80;
-const STORAGE_KEY = "taskmatch_raf_history";
-const PROFILE_EMOJIS = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
 
 // ── SwipeCard ────────────────────────────────────────────────
 function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
@@ -276,67 +287,188 @@ function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite,
   );
 }
 
-// ── ProfileEditorModal ───────────────────────────────────────
-function ProfileEditorModal({ editedProfile, setEditedProfile, closeProfileEditor, saveProfileEdits, isMobile }) {
-  return (
-    <div className={`fixed inset-0 z-50 flex bg-black/70 backdrop-blur-sm px-4 ${isMobile ? "items-end pb-6" : "items-center justify-center"}`}>
-      <motion.div
-        initial={{ opacity: 0, y: isMobile ? 40 : 0, scale: isMobile ? 1 : 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-6 shadow-2xl"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="text-base font-bold text-white">Editar perfil</div>
-            <div className="text-[12px] text-white/40 mt-0.5">Personalize como você aparece no app.</div>
-          </div>
-          <button type="button" onClick={closeProfileEditor} className="w-8 h-8 rounded-xl bg-white/[0.06] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition">✕</button>
+// ── Main ─────────────────────────────────────────────────────
+export default function TaskMatch() {
+  // Estados persistidos — sobrevivem ao reload
+  const [tasks,     setTasks]     = usePersistedState(SK.tasks,   [...INITIAL_TASKS]);
+  const [stats,     setStats]     = usePersistedState(SK.stats,   { accepted: 0, rejected: 0, shared: 0 });
+  const [invites,   setInvites]   = usePersistedState(SK.invites, []);
+  const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@taskmatch", avatar: "👤" });
+  const [nextTaskId, setNextTaskId] = usePersistedState(SK.nextId, INITIAL_TASKS.length + 1);
+  const [decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
+  const [chatMessages, setChatMessages] = usePersistedState(SK.raf, [{ id: 1, sender: "raf", text: "RAF online. Fala o que precisa." }]);
+
+  // Estados voláteis — resetam no reload (intencionalmente)
+  const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
+  const [activeTab,         setActiveTab]         = useState("home");
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showAboutModal,    setShowAboutModal]    = useState(false);
+  const [editedProfile,     setEditedProfile]     = useState(profile);
+  const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
+  const [chatInput,         setChatInput]         = useState("");
+  const [isChatLoading,     setIsChatLoading]     = useState(false);
+  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨" });
+
+  const chatEndRef = useRef(null);
+  const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
+
+  // total dinâmico — conta tasks iniciais + criadas pelo usuário
+  const total = Math.max(INITIAL_TASKS.length, load(SK.nextId, INITIAL_TASKS.length + 1) - 1);
+  const remaining = tasks.length;
+  const progress = total > 0 ? ((total - remaining) / total) * 100 : 0;
+  const topTask = tasks[tasks.length - 1];
+  const cardHeight = isDesktop ? 420 : 360;
+
+  const quickActions = [
+    { label: "Priorizar tarefas", prompt: "Me ajuda a priorizar minhas tarefas de hoje" },
+    { label: "O que fazer agora?", prompt: "O que eu devo fazer agora?" },
+    { label: "Criar tarefa", prompt: "Quero criar uma nova tarefa" },
+  ];
+
+  const rafSystemPrompt = `Você é o RAF (Rapid Action Filter), assistente de produtividade do app TaskMatch.
+O app funciona com swipe de tarefas estilo Tinder: swipe right = fazer, swipe left = ignorar.
+Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, sem bajulação, sem emojis, nunca comece com "Claro!" ou "Ótimo!".`;
+
+  useEffect(() => { if (activeTab === "ia") chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages, activeTab]);
+  useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+
+  function showToast(message, color) { setToast({ visible: true, message, color }); setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1800); }
+
+  function openProfileEditor() { setEditedProfile(profile); setShowProfileEditor(true); }
+  function closeProfileEditor() { setShowProfileEditor(false); }
+  function saveProfileEdits() {
+    const name = editedProfile.name.trim() || profile.name;
+    const rawHandle = editedProfile.handle.trim().replace(/^@+/, "");
+    const handle = rawHandle ? `@${rawHandle}` : profile.handle;
+    const updated = { ...profile, name, handle, avatar: editedProfile.avatar.trim() || profile.avatar };
+    setProfile(updated);   // usePersistedState já persiste automaticamente
+    setShowProfileEditor(false);
+  }
+  function handleLogout() { if (window.confirm("Deseja sair do TaskMatch?")) showToast("Logout não implementado.", "bg-red-600/90"); }
+
+  function clearAllData() {
+    if (!window.confirm("Apagar todos os dados? Tasks, histórico e convites serão removidos.")) return;
+    Object.values(SK).forEach((key) => { try { localStorage.removeItem(key); } catch {} });
+    setTasks([...INITIAL_TASKS]);
+    setStats({ accepted: 0, rejected: 0, shared: 0 });
+    setInvites([]);
+    setDecisions([]);
+    setNextTaskId(INITIAL_TASKS.length + 1);
+    setChatMessages([{ id: 1, sender: "raf", text: "RAF online. Fala o que precisa." }]);
+    showToast("Dados apagados.", "bg-red-600/90");
+  }
+
+  // ── Invite helpers ───────────────────────────────────────
+  function addRecipient(inviteId, name) {
+    if (!name.trim()) return;
+    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: [...inv.recipients, { id: Date.now(), name: name.trim(), status: "pending" }] } : inv));
+  }
+  function updateRecipientStatus(inviteId, recipientId, status) {
+    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status } : r) } : inv));
+  }
+  function shareInvite(invite) {
+    const text = `Você foi convidado para: "${invite.title}"\n${invite.description}\n\nAbra o TaskMatch para responder.`;
+    if (navigator.share) { navigator.share({ title: `TaskMatch: ${invite.title}`, text, url: window.location.href }).catch(() => {}); }
+    else { navigator.clipboard?.writeText(text); showToast("Texto copiado!", "bg-emerald-600/90"); }
+  }
+
+  // ── Swipe ────────────────────────────────────────────────
+  async function handleSwipe(direction, task) {
+    const decision = {
+      id: Date.now(),
+      taskId: task.id,
+      title: task.title,
+      emoji: task.emoji,
+      category: task.category,
+      direction,
+      decidedAt: new Date().toISOString(),
+    };
+
+    if (direction === "right") {
+      setStats((s) => ({ ...s, accepted: s.accepted + 1 }));
+      setDecisions((prev) => [{ ...decision, label: "Aceito" }, ...prev].slice(0, 200));
+      showToast("✓  Aceito!", "bg-emerald-600/90 backdrop-blur-md");
+    } else if (direction === "left") {
+      setStats((s) => ({ ...s, rejected: s.rejected + 1 }));
+      setDecisions((prev) => [{ ...decision, label: "Depois" }, ...prev].slice(0, 200));
+      showToast("×  Deixado pra depois", "bg-red-600/90 backdrop-blur-md");
+    } else if (direction === "up") {
+      setStats((s) => ({ ...s, shared: s.shared + 1 }));
+      setDecisions((prev) => [{ ...decision, label: "Delegado" }, ...prev].slice(0, 200));
+      const newInvite = {
+        id: `inv-${Date.now()}`,
+        taskId: task.id,
+        title: task.title,
+        description: task.description,
+        emoji: task.emoji,
+        category: task.category,
+        gradient: task.gradient,
+        sentAt: new Date().toISOString(),
+        recipients: [],
+      };
+      setInvites((prev) => [newInvite, ...prev]);
+      showToast("↑  Convite criado!", "bg-blue-600/90 backdrop-blur-md");
+      setActiveTab("explore");
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+  }
+
+  function handleReset() {
+    setTasks([...INITIAL_TASKS]);
+    setStats({ accepted: 0, rejected: 0, shared: 0 });
+    setNextTaskId(INITIAL_TASKS.length + 1);
+    // invites e decisions são preservados intencionalmente no reset
+  }
+
+  // ── RAF ──────────────────────────────────────────────────
+  async function sendUserMessage(text) {
+    if (!text || isChatLoading) return;
+    const userMessage = { id: Date.now(), sender: "user", text };
+    const nextMessages = [...chatMessages, userMessage].slice(-50);
+    setChatMessages(nextMessages); setChatInput(""); setIsChatLoading(true);
+    if (!tasks.length) { setChatMessages((p) => [...p, { id: Date.now() + 1, sender: "raf", text: "Deck vazio. Cria alguma coisa pra fazer sentido usar o app." }].slice(-50)); setIsChatLoading(false); return; }
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey) { setChatMessages((p) => [...p, { id: Date.now() + 1, sender: "raf", text: "API key não configurada. Configure VITE_OPENAI_API_KEY." }].slice(-50)); setIsChatLoading(false); return; }
+    try {
+      const deckContext = tasks.map((t) => `"${t.title}"`).join(", ");
+      const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: "gpt-3.5-turbo", messages: [{ role: "system", content: rafSystemPrompt }, ...nextMessages.map((m) => ({ role: m.sender === "user" ? "user" : "assistant", content: m.text })), { role: "user", content: `[Deck: ${deckContext}]\n${text}` }], max_tokens: 120, temperature: 0.75 }) });
+      const result = await response.json();
+      const answer = result?.choices?.[0]?.message?.content?.trim();
+      if (!answer) throw new Error("Resposta inválida");
+      setChatMessages((p) => [...p, { id: Date.now() + 2, sender: "raf", text: answer }].slice(-50));
+    } catch { setChatMessages((p) => [...p, { id: Date.now() + 2, sender: "raf", text: "Não foi possível conectar ao RAF agora. Tente novamente." }].slice(-50)); }
+    finally { setIsChatLoading(false); }
+  }
+  function handleSendMessage(e) { e.preventDefault(); sendUserMessage(chatInput.trim()); }
+  function handleQuickAction(prompt) { sendUserMessage(prompt); }
+
+  // ── Shared sub-sections ──────────────────────────────────
+  const showQuickActions = chatInput.trim() === "";
+
+  const NavItems = [
+    { id: "home",    label: "Início",   icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+    { id: "explore", label: "Explorar", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
+    { id: "ia",      label: "RAF",       icon: "M13 10V3L4 14h7v7l9-11h-7z" },
+    { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+  ];
+
+  // ── Modals (shared) ──────────────────────────────────────
+  const ProfileEditorModal = ({ isMobile }) => (
+    <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${isMobile ? "items-end pb-6" : "items-center justify-center"}`}>
+      <div className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+        <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Editar perfil</div><div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div></div><button type="button" onClick={closeProfileEditor} className="text-white/40 hover:text-white text-lg">✕</button></div>
+        <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">{editedProfile.avatar}</div></div>
+        <div className="space-y-3 mb-4">
+          <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
+          <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
         </div>
-        <div className="flex flex-col items-center mb-5">
-          <div className="w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/10 text-5xl flex items-center justify-center shadow-xl mb-2">
-            {editedProfile.avatar || "👤"}
-          </div>
-          <p className="text-[11px] text-white/25">Pré-visualização</p>
-        </div>
-        <div className="mb-4">
-          <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Avatar — qualquer emoji</label>
-          <input
-            value={editedProfile.avatar}
-            onChange={(e) => setEditedProfile((p) => ({ ...p, avatar: e.target.value }))}
-            placeholder="Cole ou escreva um emoji aqui…"
-            className="w-full rounded-xl bg-white/[0.06] px-4 py-3 text-2xl text-white placeholder:text-sm placeholder:text-white/20 outline-none border border-white/[0.08] focus:border-[#2563eb] transition"
-          />
-        </div>
-        <div className="mb-5">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-2">Sugestões rápidas</p>
-          <div className="grid grid-cols-5 gap-2">
-            {PROFILE_EMOJIS.map((emoji) => (
-              <button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition-all duration-150 ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20 scale-105" : "bg-white/[0.04] hover:bg-white/[0.09]"}`}>{emoji}</button>
-            ))}
-          </div>
-        </div>
-        <div className="space-y-3 mb-6">
-          <div>
-            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Nome</label>
-            <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-white/[0.08] focus:border-[#2563eb] transition" />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Apelido</label>
-            <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-white/[0.08] focus:border-[#2563eb] transition" />
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-3 text-sm text-white/60 hover:bg-white/[0.07] transition">Cancelar</button>
-          <button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] py-3 text-sm font-bold text-white hover:bg-blue-500 transition">Salvar</button>
-        </div>
-      </motion.div>
+        <div className="grid grid-cols-5 gap-2 mb-4">{profileEmojis.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
+        <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Salvar</button></div>
+      </div>
     </div>
   );
-}
 
-// ── AboutModal ───────────────────────────────────────────────
-function AboutModal({ setShowAboutModal, isMobile }) {
-  return (
+  const AboutModal = ({ isMobile }) => (
     <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${isMobile ? "items-end pb-6" : "items-center justify-center"}`}>
       <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
         <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Sobre o TaskMatch</div><div className="text-[12px] text-white/40">Informações do app</div></div><button type="button" onClick={() => setShowAboutModal(false)} className="text-white/40 hover:text-white text-lg">✕</button></div>
@@ -345,76 +477,39 @@ function AboutModal({ setShowAboutModal, isMobile }) {
       </div>
     </div>
   );
-}
 
-// ── ProfileContent ───────────────────────────────────────────
-function ProfileContent({ profile, stats, openProfileEditor, showToast, setShowAboutModal, handleLogout, showProfileEditor, showAboutModal, editedProfile, setEditedProfile, closeProfileEditor, saveProfileEdits, isMobile }) {
-  const done = stats.accepted + stats.rejected + stats.shared;
-  const rate = done > 0 ? Math.round((stats.accepted / done) * 100) : 0;
-  return (
+  // ── Profile section (shared content) ────────────────────
+  const ProfileContent = ({ isMobile }) => (
     <>
-      <div className="flex flex-col items-center gap-3 mb-8">
-        <button type="button" onClick={openProfileEditor} className="relative group">
-          <div className="w-24 h-24 rounded-full bg-white/[0.06] border-2 border-white/10 text-6xl flex items-center justify-center group-hover:bg-white/[0.09] transition shadow-2xl">
-            {profile.avatar}
-          </div>
-          <span className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-[#2563eb] border-2 border-[#111114] text-sm flex items-center justify-center shadow-lg">✏️</span>
+      <div className="flex flex-col items-center gap-2 mb-6">
+        <button type="button" onClick={openProfileEditor} className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition">
+          {profile.avatar}
+          <span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span>
         </button>
-        <div className="text-center">
-          <div className="text-xl font-bold text-white">{profile.name}</div>
-          <div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div>
-        </div>
-        <div className="flex gap-2">
-          <span className="text-[11px] font-semibold bg-[#2563eb]/15 text-[#93c5fd] px-3 py-1 rounded-full border border-[#2563eb]/20">Nível 7</span>
-          <span className="text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/20">5 dias seguidos</span>
-        </div>
+        <div className="text-center"><div className="text-lg font-semibold text-white">{profile.name}</div><div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div></div>
+        {!isMobile && <div className="flex gap-2"><span className="text-[11px] font-semibold bg-[#2563eb]/15 text-[#93c5fd] px-3 py-1 rounded-full">Nível 7</span><span className="text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 px-3 py-1 rounded-full">5 dias</span></div>}
       </div>
-      <div className="grid grid-cols-3 gap-2 mb-6">
-        {[
-          { label: "Feitas", value: done, color: "text-[#3b82f6]", bg: "bg-[#2563eb]/10" },
-          { label: "Sequência", value: 5, color: "text-amber-400", bg: "bg-amber-400/10" },
-          { label: "Taxa", value: `${rate}%`, color: "text-emerald-400", bg: "bg-emerald-400/10" },
-        ].map(({ label, value, color, bg }) => (
-          <div key={label} className={`rounded-2xl ${bg} border border-white/[0.06] p-4 flex flex-col items-center`}>
-            <div className={`text-2xl font-black ${color}`}>{value}</div>
-            <div className="text-[11px] text-white/35 mt-1">{label}</div>
-          </div>
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        {[{ label: "Feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" }, { label: "Sequência", value: 5, color: "text-amber-400" }, { label: "Taxa", value: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%", color: "text-emerald-400" }].map(({ label, value, color }) => (
+          <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
         ))}
       </div>
-      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
-        {[
-          { label: "Editar perfil", desc: "Nome, apelido e avatar", action: openProfileEditor, icon: "👤" },
-          { label: "Notificações", desc: "Em breve", action: () => showToast("Em breve.", "bg-white/10"), icon: "🔔" },
-          { label: "Aparência", desc: "Em breve", action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨" },
-          { label: "Sobre o TaskMatch", desc: "Versão 0.0.0", action: () => setShowAboutModal(true), icon: "ℹ️" },
-        ].map(({ label, desc, action, icon }, i) => (
-          <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
-            <span className="text-xl w-8 text-center">{icon}</span>
-            <div className="flex-1">
-              <div className="text-sm text-white">{label}</div>
-              <div className="text-[11px] text-white/30 mt-0.5">{desc}</div>
-            </div>
-            <span className="text-white/20 text-lg">›</span>
-          </button>
+      <div className={`rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden ${isMobile ? "" : "rounded-3xl"}`}>
+        {[{ label: "Editar perfil", action: openProfileEditor, icon: "👤" }, { label: "Notificações", action: () => showToast("Em breve.", "bg-white/10"), icon: "🔔" }, { label: "Aparência", action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨" }, { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true), icon: "ℹ️" }].map(({ label, action, icon }, i) => (
+          <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}><span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span><span className="text-white/20 text-lg">›</span></button>
         ))}
-        <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3.5 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition">
-          <span className="text-xl w-8 text-center">🚪</span>
-          <div className="flex-1">
-            <div className="text-sm text-red-300">Sair</div>
-            <div className="text-[11px] text-white/30 mt-0.5">Encerrar sessão</div>
-          </div>
-          <span className="text-red-400/40 text-lg">›</span>
+        <button type="button" onClick={clearAllData} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-amber-500/10 transition">
+          <span className="text-[17px]">🗑️</span><span className="flex-1 text-sm text-amber-300">Limpar todos os dados</span><span className="text-amber-400/40 text-lg">›</span>
         </button>
+        <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"><span className="text-[17px]">🚪</span><span className="flex-1 text-sm text-red-300">Sair</span><span className="text-red-400/40 text-lg">›</span></button>
       </div>
-      {showProfileEditor && <ProfileEditorModal editedProfile={editedProfile} setEditedProfile={setEditedProfile} closeProfileEditor={closeProfileEditor} saveProfileEdits={saveProfileEdits} isMobile={isMobile} />}
-      {showAboutModal && <AboutModal setShowAboutModal={setShowAboutModal} isMobile={isMobile} />}
+      {showProfileEditor && <ProfileEditorModal isMobile={isMobile} />}
+      {showAboutModal && <AboutModal isMobile={isMobile} />}
     </>
   );
-}
 
-// ── RafContent ───────────────────────────────────────────────
-function RafContent({ chatMessages, isChatLoading, chatEndRef, quickActions, showQuickActions, chatInput, setChatInput, handleQuickAction, handleSendMessage, isMobile }) {
-  return (
+  // ── RAF content (shared) ─────────────────────────────────
+  const RafContent = ({ isMobile }) => (
     <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <div className={`flex-shrink-0 border-b border-white/[0.05] ${isMobile ? "px-5 pt-4 pb-3" : "px-10 pt-7 pb-4"}`}>
         <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Assistente</p>
@@ -461,11 +556,8 @@ function RafContent({ chatMessages, isChatLoading, chatEndRef, quickActions, sho
       </div>
     </motion.div>
   );
-}
 
-// ── CreateContent ────────────────────────────────────────────
-function CreateContent({ newTaskData, setNewTaskData, setActiveTab, showToast, setTasks, nextTaskId, setNextTaskId, isMobile }) {
-  return (
+  const CreateContent = ({ isMobile }) => (
     <motion.div className={`h-full overflow-y-auto ${isMobile ? "px-5 pt-4 pb-6" : "px-10 py-10"}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <div className={isMobile ? "" : "max-w-xl mx-auto"}>
         <div className={`flex items-center justify-between ${isMobile ? "mb-5" : "mb-6"}`}>
@@ -475,7 +567,15 @@ function CreateContent({ newTaskData, setNewTaskData, setActiveTab, showToast, s
         <form onSubmit={(e) => {
           e.preventDefault();
           if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
-          const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: "from-sky-600 via-cyan-600 to-emerald-600", accent: "#22c55e" };
+          const newTask = {
+            id: nextTaskId,
+            title: newTaskData.title.trim(),
+            description: newTaskData.description.trim(),
+            category: newTaskData.category,
+            emoji: newTaskData.emoji || "✨",
+            gradient: "from-sky-600 via-cyan-600 to-emerald-600",
+            accent: "#22c55e",
+          };
           setTasks((prev) => [...prev, newTask]);
           setNextTaskId((id) => id + 1);
           setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨" });
@@ -493,150 +593,6 @@ function CreateContent({ newTaskData, setNewTaskData, setActiveTab, showToast, s
       </div>
     </motion.div>
   );
-}
-
-// ── Main ─────────────────────────────────────────────────────
-export default function TaskMatch() {
-  const [tasks, setTasks] = useState([...INITIAL_TASKS]);
-  const [stats, setStats] = useState({ accepted: 0, rejected: 0, shared: 0 });
-  const [invites, setInvites] = useState([]);
-  const [toast, setToast] = useState({ visible: false, message: "", color: "" });
-  const [activeTab, setActiveTab] = useState("home");
-  const [profile, setProfile] = useState({ name: "Seu Nome", handle: "@taskmatch", avatar: "👤" });
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
-  const [showAboutModal, setShowAboutModal] = useState(false);
-  const [editedProfile, setEditedProfile] = useState(profile);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
-  const [chatMessages, setChatMessages] = useState([{ id: 1, sender: "raf", text: "RAF online. Fala o que precisa." }]);
-  const [chatInput, setChatInput] = useState("");
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const chatEndRef = useRef(null);
-  const [newTaskData, setNewTaskData] = useState({ title: "", description: "", category: "Alimentação", emoji: "✨" });
-  const [nextTaskId, setNextTaskId] = useState(INITIAL_TASKS.length + 1);
-
-  const total = tasks.length + stats.accepted + stats.rejected + stats.shared;
-  const remaining = tasks.length;
-  const progress = total > 0 ? ((total - remaining) / total) * 100 : 0;
-  const topTask = tasks[tasks.length - 1];
-  const cardHeight = isDesktop ? 420 : 360;
-
-  const quickActions = [
-    { label: "Priorizar tarefas", prompt: "Me ajuda a priorizar minhas tarefas de hoje" },
-    { label: "O que fazer agora?", prompt: "O que eu devo fazer agora?" },
-    { label: "Criar tarefa", prompt: "Quero criar uma nova tarefa" },
-  ];
-
-  const rafSystemPrompt = `Você é o RAF (Rapid Action Filter), assistente de produtividade do app TaskMatch.
-O app funciona com swipe de tarefas estilo Tinder: swipe right = fazer, swipe left = ignorar.
-Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, sem bajulação, sem emojis, nunca comece com "Claro!" ou "Ótimo!".`;
-
-  useEffect(() => { if (activeTab === "ia") chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages, activeTab]);
-  useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
-  useEffect(() => { try { const s = localStorage.getItem(STORAGE_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length) setChatMessages(p.slice(-50)); } } catch {} }, []);
-  useEffect(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(chatMessages.slice(-50))); } catch {} }, [chatMessages]);
-
-  function showToast(message, color) { setToast({ visible: true, message, color }); setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1800); }
-
-  function openProfileEditor() { setEditedProfile(profile); setShowProfileEditor(true); }
-  function closeProfileEditor() { setShowProfileEditor(false); }
-  function saveProfileEdits() {
-    const name = editedProfile.name.trim() || profile.name;
-    const rawHandle = editedProfile.handle.trim().replace(/^@+/, "");
-    const handle = rawHandle ? `@${rawHandle}` : profile.handle;
-    setProfile({ ...profile, name, handle, avatar: editedProfile.avatar.trim() || profile.avatar });
-    setShowProfileEditor(false);
-  }
-  function handleLogout() { if (window.confirm("Deseja sair do TaskMatch?")) showToast("Logout não implementado.", "bg-red-600/90"); }
-
-  // ── Invite helpers ───────────────────────────────────────
-  function addRecipient(inviteId, name) {
-    if (!name.trim()) return;
-    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: [...inv.recipients, { id: Date.now(), name: name.trim(), status: "pending" }] } : inv));
-  }
-  function updateRecipientStatus(inviteId, recipientId, status) {
-    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status } : r) } : inv));
-  }
-  function shareInvite(invite) {
-    const text = `Você foi convidado para: "${invite.title}"\n${invite.description}\n\nAbra o TaskMatch para responder.`;
-    if (navigator.share) { navigator.share({ title: `TaskMatch: ${invite.title}`, text, url: window.location.href }).catch(() => {}); }
-    else { navigator.clipboard?.writeText(text); showToast("Texto copiado!", "bg-emerald-600/90"); }
-  }
-
-  // ── Swipe ────────────────────────────────────────────────
-  async function handleSwipe(direction, task) {
-    if (direction === "right") {
-      setStats((s) => ({ ...s, accepted: s.accepted + 1 }));
-      showToast("✓  Aceito!", "bg-emerald-600/90 backdrop-blur-md");
-    } else if (direction === "left") {
-      setStats((s) => ({ ...s, rejected: s.rejected + 1 }));
-      showToast("×  Deixado pra depois", "bg-red-600/90 backdrop-blur-md");
-    } else if (direction === "up") {
-      setStats((s) => ({ ...s, shared: s.shared + 1 }));
-      const newInvite = {
-        id: `inv-${Date.now()}`,
-        taskId: task.id,
-        title: task.title,
-        description: task.description,
-        emoji: task.emoji,
-        category: task.category,
-        gradient: task.gradient,
-        sentAt: new Date(),
-        recipients: [],
-      };
-      setInvites((prev) => [newInvite, ...prev]);
-      showToast("↑  Convite criado!", "bg-blue-600/90 backdrop-blur-md");
-      setActiveTab("explore");
-    }
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
-  }
-
-  function handleReset() { setTasks([...INITIAL_TASKS]); setStats({ accepted: 0, rejected: 0, shared: 0 }); }
-
-  // ── RAF ──────────────────────────────────────────────────
-  async function sendUserMessage(text) {
-    if (!text || isChatLoading) return;
-    const userMessage = { id: Date.now(), sender: "user", text };
-    const nextMessages = [...chatMessages, userMessage].slice(-50);
-    setChatMessages(nextMessages);
-    setChatInput("");
-    setIsChatLoading(true);
-    if (!tasks.length) {
-      setChatMessages((p) => [...p, { id: Date.now() + 1, sender: "raf", text: "Deck vazio. Cria alguma coisa pra fazer sentido usar o app." }].slice(-50));
-      setIsChatLoading(false);
-      return;
-    }
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      setChatMessages((p) => [...p, { id: Date.now() + 1, sender: "raf", text: "API key não configurada. Defina VITE_OPENAI_API_KEY no .env." }].slice(-50));
-      setIsChatLoading(false);
-      return;
-    }
-    try {
-      const deckContext = tasks.map((t) => `"${t.title}"`).join(", ");
-      const answer = await fetchRafReply(apiKey, rafSystemPrompt, nextMessages, deckContext, text);
-      setChatMessages((p) => [...p, { id: Date.now() + 2, sender: "raf", text: answer }].slice(-50));
-    } catch {
-      setChatMessages((p) => [...p, { id: Date.now() + 2, sender: "raf", text: "Não foi possível conectar ao RAF agora. Tente novamente." }].slice(-50));
-    } finally {
-      setIsChatLoading(false);
-    }
-  }
-  function handleSendMessage(e) { e.preventDefault(); sendUserMessage(chatInput.trim()); }
-  function handleQuickAction(prompt) { sendUserMessage(prompt); }
-
-  // ── Shared sub-sections ──────────────────────────────────
-  const showQuickActions = chatInput.trim() === "";
-
-  const NavItems = [
-    { id: "home",    label: "Início",   icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-    { id: "explore", label: "Explorar", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
-    { id: "ia",      label: "RAF",       icon: "M13 10V3L4 14h7v7l9-11h-7z" },
-    { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
-  ];
-
-  const profileProps = { profile, stats, openProfileEditor, showToast, setShowAboutModal, handleLogout, showProfileEditor, showAboutModal, editedProfile, setEditedProfile, closeProfileEditor, saveProfileEdits };
-  const rafProps = { chatMessages, isChatLoading, chatEndRef, quickActions, showQuickActions, chatInput, setChatInput, handleQuickAction, handleSendMessage };
-  const createProps = { newTaskData, setNewTaskData, setActiveTab, showToast, setTasks, nextTaskId, setNextTaskId };
 
   // ════════════════════════════════════════════════════════
   return (
@@ -648,7 +604,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <div className="flex-shrink-0 flex items-center justify-between px-5 pt-4 pb-3 bg-[#111114]">
             <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-0.5">Decida rápido, viva mais.</p></div>
             <div className="flex gap-2">
-              <button onClick={() => showToast("Em breve.", "bg-white/10")} className="w-9 h-9 rounded-2xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/40"><path strokeLinecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></button>
+              <button className="w-9 h-9 rounded-2xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/40"><path strokeLinecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></button>
               <button onClick={() => setActiveTab("create")} className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
             </div>
           </div>
@@ -677,11 +633,11 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               </div>
             )}
             {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} />}
-            {activeTab === "ia" && <RafContent {...rafProps} isMobile={true} />}
-            {activeTab === "create" && <CreateContent {...createProps} isMobile={true} />}
+            {activeTab === "ia" && <RafContent isMobile={true} />}
+            {activeTab === "create" && <CreateContent isMobile={true} />}
             {activeTab === "profile" && (
               <motion.div className="h-full overflow-y-auto px-5 pt-4 pb-6" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-                <ProfileContent {...profileProps} isMobile={true} />
+                <ProfileContent isMobile={true} />
               </motion.div>
             )}
           </div>
@@ -735,11 +691,11 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               </>
             )}
             {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} />}
-            {activeTab === "ia" && <RafContent {...rafProps} isMobile={false} />}
-            {activeTab === "create" && <CreateContent {...createProps} isMobile={false} />}
+            {activeTab === "ia" && <RafContent isMobile={false} />}
+            {activeTab === "create" && <CreateContent isMobile={false} />}
             {activeTab === "profile" && (
               <motion.div className="flex flex-1 flex-col items-center overflow-y-auto px-10 py-10" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="w-full max-w-xl"><ProfileContent {...profileProps} isMobile={false} /></div>
+                <div className="w-full max-w-xl"><ProfileContent isMobile={false} /></div>
               </motion.div>
             )}
           </main>
