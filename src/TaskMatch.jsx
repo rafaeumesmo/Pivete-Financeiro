@@ -1275,9 +1275,20 @@ Quando o usuário não souber o que fazer, sugira algo concreto e curto.`;
                 {/* Topbar */}
                 <div className="flex items-center justify-between px-10 pt-6 pb-3 flex-shrink-0 border-b border-white/[0.05]">
                   <span className="text-[11px] font-semibold tracking-[0.06em] uppercase text-white/30">Deck pessoal</span>
-                  <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">
-                    {remaining} de {total} restantes
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">
+                      {remaining} de {total} restantes
+                    </span>
+                    <button
+                      onClick={() => setActiveTab("create")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Criar card
+                    </button>
+                  </div>
                 </div>
 
                 {/* Progress bar */}
@@ -1661,6 +1672,121 @@ Quando o usuário não souber o que fazer, sugira algo concreto e curto.`;
                 )}
               </motion.div>
             )}
+
+            {/* ── CREATE ── */}
+            {activeTab === "create" && (
+              <motion.div
+                className="flex flex-1 flex-col items-center overflow-y-auto px-10 py-10"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-full max-w-xl flex flex-col gap-5">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Nova tarefa</p>
+                      <h2 className="text-xl font-bold text-white">Criar card</h2>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab("home")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Voltar
+                    </button>
+                  </div>
+ 
+                  {/* Form */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newTaskData.title.trim() || !newTaskData.description.trim()) {
+                        showToast("Preencha título e descrição.", "bg-red-600/90");
+                        return;
+                      }
+                      const newTask = {
+                        id: nextTaskId,
+                        title: newTaskData.title.trim(),
+                        description: newTaskData.description.trim(),
+                        category: newTaskData.category,
+                        emoji: newTaskData.emoji || "✨",
+                        gradient: "from-sky-600 via-cyan-600 to-emerald-600",
+                        accent: "#22c55e",
+                      };
+                      setTasks((prev) => [...prev, newTask]);
+                      setNextTaskId((id) => id + 1);
+                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨" });
+                      showToast("Tarefa criada!", "bg-emerald-600/90");
+                      setActiveTab("home");
+                    }}
+                    className="rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5"
+                  >
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label>
+                      <input
+                        value={newTaskData.title}
+                        onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))}
+                        className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition"
+                        placeholder="Ex: Comprar mantimentos"
+                      />
+                    </div>
+ 
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label>
+                      <textarea
+                        value={newTaskData.description}
+                        onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))}
+                        className="w-full min-h-[120px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition"
+                        placeholder="Detalhes da tarefa..."
+                      />
+                    </div>
+ 
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label>
+                        <select
+                          value={newTaskData.category}
+                          onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))}
+                          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition"
+                        >
+                          {["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (
+                            <option key={c} value={c} className="bg-[#111114]">{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label>
+                        <input
+                          value={newTaskData.emoji}
+                          onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))}
+                          className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition"
+                          placeholder="✨"
+                        />
+                      </div>
+                    </div>
+ 
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("home")}
+                        className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition"
+                      >
+                        Adicionar tarefa
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+ 
           </main>
         </div>
       )}
