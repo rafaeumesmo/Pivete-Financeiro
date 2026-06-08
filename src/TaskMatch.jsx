@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 
 // ── Storage keys ─────────────────────────────────────────────
 const SK = {
@@ -50,6 +51,14 @@ const INITIAL_TASKS = [
 const SWIPE_THRESHOLD = 100;
 const SWIPE_UP_THRESHOLD = -80;
 
+const ONBOARDING_GRADIENTS = {
+  Alimentação: { gradient: "from-orange-600 via-red-600 to-rose-700",    accent: "#f97316" },
+  Lazer:       { gradient: "from-violet-700 via-purple-700 to-indigo-800", accent: "#8b5cf6" },
+  Saúde:       { gradient: "from-emerald-600 via-teal-600 to-cyan-700",   accent: "#10b981" },
+  Estudos:     { gradient: "from-blue-600 via-sky-600 to-cyan-600",       accent: "#3b82f6" },
+  Trabalho:    { gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b" },
+};
+
 // ── SwipeCard ────────────────────────────────────────────────
 function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
   const x = useMotionValue(0);
@@ -58,28 +67,74 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
   const greenOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
   const redOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
   const blueOpacity = useTransform(y, [SWIPE_UP_THRESHOLD, 0], [1, 0]);
-  const scale = isTop ? 1 : 1 - stackIndex * 0.04;
-  const translateY = isTop ? 0 : stackIndex * 12;
-  const opacity = isTop ? 1 : 1 - stackIndex * 0.15;
 
   function handleDragEnd(_, info) {
     const { velocity: { x: vx, y: vy }, offset: { x: ox, y: oy } } = info;
-    if (oy < SWIPE_UP_THRESHOLD || vy < -500) onSwipe("up", task);
-    else if (ox > SWIPE_THRESHOLD || vx > 600) onSwipe("right", task);
-    else if (ox < -SWIPE_THRESHOLD || vx < -600) onSwipe("left", task);
-    else { animate(x, 0, { type: "spring", stiffness: 300, damping: 20 }); animate(y, 0, { type: "spring", stiffness: 300, damping: 20 }); }
+    if (oy < SWIPE_UP_THRESHOLD || vy < -500) onSwipe("up", task, { vx: 0, vy });
+    else if (ox > SWIPE_THRESHOLD || vx > 600) onSwipe("right", task, { vx, vy: 0 });
+    else if (ox < -SWIPE_THRESHOLD || vx < -600) onSwipe("left", task, { vx, vy: 0 });
+    else {
+      animate(x, 0, { type: "spring", stiffness: 300, damping: 20 });
+      animate(y, 0, { type: "spring", stiffness: 300, damping: 20 });
+    }
   }
 
+  // ── Cards da pilha (não-topo) ─────────────────────────────
   if (!isTop) {
+    const ts = 1 - stackIndex * 0.04;
+    const ty = stackIndex * 12;
+    const to = 1 - stackIndex * 0.15;
     return (
-      <motion.div className="absolute inset-0 mx-auto" style={{ scale, y: translateY, opacity, zIndex: 10 - stackIndex, width: "100%", originY: 1 }} transition={{ type: "spring", stiffness: 200, damping: 25 }}>
+      <motion.div
+        className="absolute inset-0 mx-auto"
+        initial={{ scale: ts, y: ty, opacity: to }}
+        animate={{ scale: ts, y: ty, opacity: to }}
+        transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.8 }}
+        style={{ zIndex: 10 - stackIndex, width: "100%", originY: 1 }}
+      >
         <div className={`w-full h-full rounded-3xl bg-gradient-to-br ${task.gradient} shadow-2xl`} />
       </motion.div>
     );
   }
 
+  // ── Card do topo ──────────────────────────────────────────
   return (
-    <motion.div className="absolute inset-0 mx-auto cursor-grab active:cursor-grabbing" style={{ x, y, rotateZ, zIndex: 20, width: "100%" }} drag dragConstraints={{ top: -300, bottom: 150, left: -300, right: 300 }} dragElastic={0.12} onDragEnd={handleDragEnd} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ x: x.get() > 0 ? 500 : x.get() < 0 ? -500 : 0, y: y.get() < 0 ? -500 : 0, opacity: 0, transition: { duration: 0.28, ease: "easeOut" } }} whileTap={{ scale: 0.98 }}>
+    <motion.div
+      className="absolute inset-0 mx-auto cursor-grab active:cursor-grabbing"
+      style={{ x, y, rotateZ, zIndex: 20, width: "100%" }}
+      drag
+      dragConstraints={{ top: -300, bottom: 150, left: -300, right: 300 }}
+      dragElastic={0.12}
+      onDragEnd={handleDragEnd}
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1, filter: "drop-shadow(0 0px 0px rgba(0,0,0,0))" }}
+      whileDrag={{ scale: 0.97, filter: "drop-shadow(0 24px 52px rgba(0,0,0,0.6))" }}
+      variants={{
+        exit: ({ vx = 0, vy = 0, dir } = {}) => {
+          const cx = x.get();
+          const cy = y.get();
+          if (dir === "up") {
+            return {
+              y: -700, x: cx * 1.5, rotate: cx * 0.05, opacity: 0,
+              transition: { duration: 0.42, ease: [0.4, 0, 1, 1] },
+            };
+          }
+          const sign = dir === "right" ? 1 : -1;
+          // rotação extra baseada na velocidade: quanto mais rápido, mais gira
+          const velRotate = sign * Math.min(Math.abs(vx) / 160, 20);
+          // duração menor para swipes mais rápidos
+          const exitDur = Math.max(0.26, 0.38 - Math.min(Math.abs(vx), 1200) / 5000);
+          return {
+            x: sign * 720,
+            y: cy + 80, // arco natural: card cai levemente ao sair
+            rotate: velRotate,
+            opacity: 0,
+            transition: { duration: exitDur, ease: [0.4, 0, 1, 1] },
+          };
+        },
+      }}
+      exit="exit"
+    >
       <div className={`w-full h-full rounded-3xl bg-gradient-to-br ${task.gradient} overflow-hidden shadow-2xl relative select-none`}>
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -143,6 +198,160 @@ function EmptyState({ stats, onReset }) {
 }
 
 // ── ExploreTab ───────────────────────────────────────────────
+// ── Onboarding ────────────────────────────────────────────────
+
+function OBMiniCard({ cardX, cardY }) {
+  const rotateZ = useTransform(cardX, [-180, 180], [-20, 20]);
+  const greenOp = useTransform(cardX, [0, 90], [0, 1]);
+  const redOp   = useTransform(cardX, [-90, 0], [1, 0]);
+  const blueOp  = useTransform(cardY, [-90, 0], [1, 0]);
+  return (
+    <motion.div className="rounded-2xl overflow-hidden shadow-2xl relative flex-shrink-0" style={{ x: cardX, y: cardY, rotate: rotateZ, width: 192, height: 256 }}>
+      <div className="w-full h-full bg-gradient-to-br from-blue-600 via-sky-600 to-cyan-600 relative">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <div className="absolute top-3 left-3 z-10"><span className="text-[8px] font-semibold tracking-widest uppercase bg-white/20 text-white/90 px-2 py-0.5 rounded-full border border-white/20">Estudos</span></div>
+        <div className="absolute top-3 right-3 z-10 text-2xl">📖</div>
+        <div className="absolute bottom-0 left-0 right-0 p-3.5 z-10">
+          <p className="text-sm font-bold text-white">Estudar IHC</p>
+          <p className="text-[11px] text-white/55 mt-0.5 line-clamp-2">Revisar heurísticas de Nielsen.</p>
+        </div>
+      </div>
+      <motion.div className="absolute inset-0 rounded-2xl flex items-center justify-center z-20 pointer-events-none" style={{ background: "rgba(22,163,74,0.55)", opacity: greenOp }}><div className="border-2 border-white/90 rounded-lg px-3 py-1 -rotate-[20deg]"><span className="text-white font-black text-sm tracking-widest uppercase">Aceito!</span></div></motion.div>
+      <motion.div className="absolute inset-0 rounded-2xl flex items-center justify-center z-20 pointer-events-none" style={{ background: "rgba(220,38,38,0.55)", opacity: redOp }}><div className="border-2 border-white/90 rounded-lg px-3 py-1 rotate-[20deg]"><span className="text-white font-black text-sm tracking-widest uppercase">Depois</span></div></motion.div>
+      <motion.div className="absolute inset-0 rounded-2xl flex items-center justify-center z-20 pointer-events-none" style={{ background: "rgba(37,99,235,0.6)", opacity: blueOp }}><div className="border-2 border-white/90 rounded-lg px-3 py-1"><span className="text-white font-black text-sm tracking-widest uppercase">Delegar ↑</span></div></motion.div>
+    </motion.div>
+  );
+}
+
+function OBStep1() {
+  const cardX = useMotionValue(0);
+  const cardY = useMotionValue(0);
+  useEffect(() => {
+    let dead = false;
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+    (async () => {
+      while (!dead) {
+        await wait(550); if (dead) return;
+        await animate(cardX, 152, { duration: 0.42, ease: "easeOut" });
+        await wait(620); if (dead) return;
+        await animate(cardX, 0, { type: "spring", stiffness: 300, damping: 22 });
+        await wait(500); if (dead) return;
+        await animate(cardX, -152, { duration: 0.42, ease: "easeOut" });
+        await wait(620); if (dead) return;
+        await animate(cardX, 0, { type: "spring", stiffness: 300, damping: 22 });
+      }
+    })();
+    return () => { dead = true; };
+  }, []);
+  return (
+    <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }} transition={{ duration: 0.22 }} className="flex flex-col items-center gap-5">
+      <div className="flex justify-center" style={{ height: 256 }}><OBMiniCard cardX={cardX} cardY={cardY} /></div>
+      <div className="text-center">
+        <h3 className="text-white font-bold text-[17px] mb-2">Aceite ou recuse</h3>
+        <p className="text-white/45 text-sm leading-relaxed">
+          Arraste para a <span className="text-emerald-400 font-medium">direita</span> para aceitar.
+          Para a <span className="text-red-400 font-medium">esquerda</span> para deixar pra depois.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function OBStep2() {
+  const cardX = useMotionValue(0);
+  const cardY = useMotionValue(0);
+  useEffect(() => {
+    let dead = false;
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+    (async () => {
+      while (!dead) {
+        await wait(500); if (dead) return;
+        await animate(cardY, -152, { duration: 0.42, ease: "easeOut" });
+        await wait(650); if (dead) return;
+        await animate(cardY, 0, { type: "spring", stiffness: 280, damping: 22 });
+      }
+    })();
+    return () => { dead = true; };
+  }, []);
+  return (
+    <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }} transition={{ duration: 0.22 }} className="flex flex-col items-center gap-5">
+      <div className="flex justify-center" style={{ height: 256 }}><OBMiniCard cardX={cardX} cardY={cardY} /></div>
+      <div className="text-center">
+        <h3 className="text-white font-bold text-[17px] mb-2">Delegar tarefas</h3>
+        <p className="text-white/45 text-sm leading-relaxed">
+          Arraste para <span className="text-blue-400 font-medium">cima</span> para delegar. Um link de convite é gerado para você compartilhar com quem quiser.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function OBStep3({ onBack, onFinish }) {
+  const [data, setData] = useState({ title: "", description: "", category: "Alimentação", emoji: "✨" });
+  const titleRef = useRef(null);
+  useEffect(() => { titleRef.current?.focus(); }, []);
+  return (
+    <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }} transition={{ duration: 0.22 }} className="flex flex-col gap-3.5">
+      <div><h3 className="text-white font-bold text-[17px] mb-1">Crie sua primeira tarefa</h3><p className="text-white/40 text-sm">Adicione algo que precisa decidir hoje.</p></div>
+      <input ref={titleRef} value={data.title} onChange={e => setData(p => ({ ...p, title: e.target.value }))} placeholder="Título da tarefa..." className="w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition" />
+      <textarea value={data.description} onChange={e => setData(p => ({ ...p, description: e.target.value }))} placeholder="Descrição (opcional)..." rows={2} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 resize-none transition" />
+      <div className="grid grid-cols-2 gap-2">
+        <select value={data.category} onChange={e => setData(p => ({ ...p, category: e.target.value }))} className="rounded-xl border border-white/[0.08] bg-[#18191f] px-3 py-2.5 text-sm text-white outline-none focus:border-[#2563eb]/60">
+          {Object.keys(ONBOARDING_GRADIENTS).map(c => (<option key={c} value={c} className="bg-[#18191f]">{c}</option>))}
+        </select>
+        <input value={data.emoji} onChange={e => setData(p => ({ ...p, emoji: e.target.value }))} placeholder="Emoji" className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition text-center" />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={onBack} className="px-3.5 py-2.5 rounded-xl text-sm text-white/40 bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition">← Voltar</motion.button>
+        <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={() => onFinish(null)} className="flex-1 py-2.5 rounded-xl text-sm text-white/40 bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition">Pular</motion.button>
+        <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={() => onFinish(data.title.trim() ? data : null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#2563eb] hover:bg-blue-500 transition">
+          {data.title.trim() ? "Criar →" : "Entrar →"}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+function Onboarding({ onFinish, onCreateTask }) {
+  const [step, setStep] = useState(0);
+  const TOTAL = 3;
+  function complete(taskData) { if (taskData?.title?.trim()) onCreateTask(taskData); onFinish(); }
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center px-5 bg-black/60 backdrop-blur-[2px]">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/[0.09] shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-6 pt-5 pb-4 border-b border-white/[0.06] flex items-center justify-between">
+          <div><p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-0.5">Bem-vindo ao</p><h2 className="text-[20px] font-black text-white leading-none">Task<span style={{ color: "#2563eb" }}>Match</span></h2></div>
+          <span className="text-[11px] text-white/25">{step + 1} / {TOTAL}</span>
+        </div>
+        {/* Content */}
+        <div className="px-6 pt-5 pb-4" style={{ minHeight: 348 }}>
+          <AnimatePresence mode="wait">
+            {step === 0 && <OBStep1 key="ob0" />}
+            {step === 1 && <OBStep2 key="ob1" />}
+            {step === 2 && <OBStep3 key="ob2" onBack={() => setStep(1)} onFinish={complete} />}
+          </AnimatePresence>
+        </div>
+        {/* Footer: dots + nav (steps 0-1) or dots only (step 2) */}
+        <div className="px-6 pb-5 flex items-center justify-between">
+          <div className="flex gap-1.5">
+            {Array.from({ length: TOTAL }).map((_, i) => (
+              <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? "w-5 bg-[#2563eb]" : "w-1.5 bg-white/15"}`} />
+            ))}
+          </div>
+          {step < 2 && (
+            <div className="flex gap-2">
+              {step > 0 && <motion.button whileTap={{ scale: 0.96 }} onClick={() => setStep(s => s - 1)} className="px-4 py-2 rounded-xl text-sm text-white/40 bg-white/[0.05] border border-white/[0.07] hover:bg-white/[0.08] transition">Voltar</motion.button>}
+              <motion.button whileTap={{ scale: 0.96 }} onClick={() => setStep(s => s + 1)} className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-[#2563eb] hover:bg-blue-500 transition">Próximo</motion.button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── ExploreTab ─────────────────────────────────────────────────
 function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile }) {
   const [expandedId, setExpandedId] = useState(null);
   const [inputValues, setInputValues] = useState({});
@@ -308,6 +517,8 @@ export default function TaskMatch() {
   const [chatInput,         setChatInput]         = useState("");
   const [isChatLoading,     setIsChatLoading]     = useState(false);
   const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨" });
+  const [swipeExit,         setSwipeExit]         = useState({ vx: 0, vy: 0, dir: null });
+  const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
 
   const chatEndRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
@@ -358,6 +569,20 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     showToast("Dados apagados.", "bg-red-600/90");
   }
 
+  function createTaskFromOnboarding(formData) {
+    const cat = ONBOARDING_GRADIENTS[formData.category] || { gradient: "from-sky-600 via-cyan-600 to-emerald-600", accent: "#22c55e" };
+    setTasks(prev => [...prev, {
+      id: nextTaskId,
+      title: formData.title.trim(),
+      description: formData.description?.trim() || "Sem descrição.",
+      category: formData.category,
+      emoji: formData.emoji?.trim() || "✨",
+      gradient: cat.gradient,
+      accent: cat.accent,
+    }]);
+    setNextTaskId(n => n + 1);
+  }
+
   // ── Invite helpers ───────────────────────────────────────
   function addRecipient(inviteId, name) {
     if (!name.trim()) return;
@@ -367,13 +592,35 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status } : r) } : inv));
   }
   function shareInvite(invite) {
-    const text = `Você foi convidado para: "${invite.title}"\n${invite.description}\n\nAbra o TaskMatch para responder.`;
-    if (navigator.share) { navigator.share({ title: `TaskMatch: ${invite.title}`, text, url: window.location.href }).catch(() => {}); }
-    else { navigator.clipboard?.writeText(text); showToast("Texto copiado!", "bg-emerald-600/90"); }
+    const payload = {
+      title: invite.title,
+      description: invite.description,
+      emoji: invite.emoji,
+      category: invite.category,
+      gradient: invite.gradient,
+      accent: invite.accent || "#2563eb",
+    };
+    const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+    const url = `${window.location.origin}${window.location.pathname}#/invite/${encoded}`;
+    if (navigator.share) {
+      navigator.share({ title: `TaskMatch: ${invite.title}`, text: `Você foi convidado: "${invite.title}"`, url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(url);
+      showToast("Link copiado!", "bg-emerald-600/90");
+    }
   }
 
   // ── Swipe ────────────────────────────────────────────────
-  async function handleSwipe(direction, task) {
+  async function handleSwipe(direction, task, vel = {}) {
+    setSwipeExit({ vx: 0, vy: 0, ...vel, dir: direction });
+
+    try { if (navigator.vibrate) {
+      if (direction === "left")  navigator.vibrate(30);
+      else if (direction === "right") navigator.vibrate([30, 50, 30]);
+      else if (direction === "up")    navigator.vibrate(80);
+    }} catch {}
+
+    const deckWillEmpty = tasks.length === 1;
     const decision = {
       id: Date.now(),
       taskId: task.id,
@@ -403,6 +650,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
         emoji: task.emoji,
         category: task.category,
         gradient: task.gradient,
+        accent: task.accent || "#2563eb",
         sentAt: new Date().toISOString(),
         recipients: [],
       };
@@ -411,6 +659,18 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       setActiveTab("explore");
     }
     setTasks((prev) => prev.filter((t) => t.id !== task.id));
+
+    if (deckWillEmpty) {
+      try {
+        const colors = ["#2563eb", "#34d399", "#f59e0b"];
+        const end = Date.now() + 2500;
+        (function shoot() {
+          confetti({ particleCount: 5, spread: 70, origin: { x: 0.3, y: 0.6 }, colors });
+          confetti({ particleCount: 5, spread: 70, origin: { x: 0.7, y: 0.6 }, colors });
+          if (Date.now() < end) requestAnimationFrame(shoot);
+        })();
+      } catch {}
+    }
   }
 
   function handleReset() {
@@ -621,7 +881,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               <div className="flex flex-col h-full">
                 {remaining > 0 ? (
                   <>
-                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full">{tasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</div></div>
+                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{tasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div></div>
                     <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
                       <div className="flex items-center gap-1.5 text-red-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Depois</span></div>
                       <div className="flex flex-col items-center text-blue-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Delegar</span></div>
@@ -678,7 +938,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 min-h-0">
                   {remaining > 0 ? (
                     <>
-                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}>{tasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</div>
+                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{tasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div>
                       <div className="flex items-center justify-between w-full max-w-[520px] px-2">
                         <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Depois</span></div>
                         <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Delegar</span></div>
@@ -700,6 +960,13 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             )}
           </main>
         </div>
+      )}
+
+      {showOnboarding && (
+        <Onboarding
+          onFinish={() => { save("tm_onboarded", true); setShowOnboarding(false); }}
+          onCreateTask={createTaskFromOnboarding}
+        />
       )}
 
       <Toast visible={toast.visible} message={toast.message} color={toast.color} />
