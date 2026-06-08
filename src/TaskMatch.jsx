@@ -198,6 +198,26 @@ function EmptyState({ stats, onReset }) {
 }
 
 // ── ExploreTab ───────────────────────────────────────────────
+// ── NavBadge ──────────────────────────────────────────────────
+function NavBadge({ count }) {
+  return (
+    <AnimatePresence>
+      {count > 0 && (
+        <motion.span
+          key="nb"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 420, damping: 18 }}
+          className="absolute -top-1 -right-1.5 min-w-[15px] h-[15px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-[3px] leading-none pointer-events-none"
+        >
+          {count > 9 ? "9+" : count}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ── Onboarding ────────────────────────────────────────────────
 
 function OBMiniCard({ cardX, cardY }) {
@@ -496,6 +516,74 @@ function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite,
   );
 }
 
+// ── HistorySection ───────────────────────────────────────────
+function DecisionItem({ d, i, badgeStyle, formatDate }) {
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
+      <span className="text-2xl flex-shrink-0 leading-none">{d.emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white/80 truncate leading-snug">{d.title}</p>
+        <p className="text-[11px] text-white/30 mt-0.5">{d.category} · {formatDate(d.decidedAt)}</p>
+      </div>
+      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${badgeStyle(d.label)}`}>{d.label}</span>
+    </div>
+  );
+}
+
+function HistorySection({ decisions }) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...decisions].reverse();
+  const capped = sorted.slice(0, 50);
+  const preview = capped.slice(0, 5);
+  const extra = capped.slice(5);
+
+  const badgeStyle = (label) => {
+    if (label === "Aceito") return "bg-emerald-500/15 text-emerald-300";
+    if (label === "Depois") return "bg-red-500/15 text-red-300";
+    return "bg-[#2563eb]/15 text-[#93c5fd]";
+  };
+
+  const formatDate = (iso) => {
+    try {
+      return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    } catch { return ""; }
+  };
+
+  return (
+    <div className="mb-5">
+      <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-3">
+        Histórico <span className="text-white/20 normal-case tracking-normal font-normal">({decisions.length})</span>
+      </h3>
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+        {capped.length === 0 ? (
+          <p className="text-center text-white/25 text-[13px] py-7">Nenhuma decisão ainda</p>
+        ) : (
+          <>
+            {preview.map((d, i) => (
+              <DecisionItem key={d.id} d={d} i={i} badgeStyle={badgeStyle} formatDate={formatDate} />
+            ))}
+            <AnimatePresence>
+              {expanded && extra.map((d, i) => (
+                <motion.div key={d.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.15, delay: Math.min(i * 0.025, 0.22) }} style={{ overflow: "hidden" }}>
+                  <DecisionItem d={d} i={preview.length + i} badgeStyle={badgeStyle} formatDate={formatDate} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {extra.length > 0 && (
+              <button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-center gap-1.5 py-3 border-t border-white/[0.05] text-[12px] text-white/35 hover:text-white/55 transition">
+                {expanded ? "Recolher" : `Ver tudo (${capped.length})`}
+                <motion.svg animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </motion.svg>
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main ─────────────────────────────────────────────────────
 export default function TaskMatch() {
   // Estados persistidos — sobrevivem ao reload
@@ -519,6 +607,7 @@ export default function TaskMatch() {
   const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨" });
   const [swipeExit,         setSwipeExit]         = useState({ vx: 0, vy: 0, dir: null });
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
+  const [exploreLastSeen,   setExploreLastSeen]   = useState(() => load("tm_explore_last_seen", null));
 
   const chatEndRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
@@ -542,6 +631,19 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
 
   useEffect(() => { if (activeTab === "ia") chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages, activeTab]);
   useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  useEffect(() => {
+    if (activeTab === "explore") {
+      const now = new Date().toISOString();
+      save("tm_explore_last_seen", now);
+      setExploreLastSeen(now);
+    }
+  }, [activeTab]);
+
+  const exploreBadgeCount = invites.reduce((acc, inv) =>
+    acc + inv.recipients.filter(r =>
+      (r.status === "accepted" || r.status === "declined") &&
+      r.updatedAt && r.updatedAt > (exploreLastSeen || "")
+    ).length, 0);
 
   function showToast(message, color) { setToast({ visible: true, message, color }); setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1800); }
 
@@ -589,7 +691,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: [...inv.recipients, { id: Date.now(), name: name.trim(), status: "pending" }] } : inv));
   }
   function updateRecipientStatus(inviteId, recipientId, status) {
-    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status } : r) } : inv));
+    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status, updatedAt: new Date().toISOString() } : r) } : inv));
   }
   function shareInvite(invite) {
     const payload = {
@@ -754,6 +856,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
         ))}
       </div>
+      <HistorySection decisions={decisions} />
       <div className={`rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden ${isMobile ? "" : "rounded-3xl"}`}>
         {[{ label: "Editar perfil", action: openProfileEditor, icon: "👤" }, { label: "Notificações", action: () => showToast("Em breve.", "bg-white/10"), icon: "🔔" }, { label: "Aparência", action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨" }, { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true), icon: "ℹ️" }].map(({ label, action, icon }, i) => (
           <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}><span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span><span className="text-white/20 text-lg">›</span></button>
@@ -903,7 +1006,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           </div>
 
           <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
+            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={exploreBadgeCount} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
           </div>
         </div>
       )}
@@ -914,7 +1017,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
             <div className="mb-6 px-2"><h1 className="text-xl font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-1">Decida rápido, viva mais.</p></div>
             <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px] flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
+              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={exploreBadgeCount} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
               <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Sessão atual</p>
