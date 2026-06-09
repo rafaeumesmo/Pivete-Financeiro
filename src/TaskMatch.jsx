@@ -99,11 +99,11 @@ function computeUnreadCount(invites, lastSeenAt) {
 }
 
 const INITIAL_TASKS = [
-  { id: 1, title: "Pedir Pizza", description: "Todo mundo tá com fome. Escolher sabores e fazer o pedido até às 19h.", category: "Alimentação", emoji: "🍕", gradient: "from-orange-600 via-red-600 to-rose-700", accent: "#f97316", priority: null, deadline: null },
-  { id: 2, title: "Ver Filme", description: "Dune: Parte 2 ou Oppenheimer? Alguém escolhe, a gente vai junto.", category: "Lazer", emoji: "🎬", gradient: "from-violet-700 via-purple-700 to-indigo-800", accent: "#8b5cf6", priority: null, deadline: null },
-  { id: 3, title: "Academia", description: "Treino de pernas marcado pra terça às 7h. Confirmar presença.", category: "Saúde", emoji: "💪", gradient: "from-emerald-600 via-teal-600 to-cyan-700", accent: "#10b981", priority: null, deadline: null },
-  { id: 4, title: "Estudar IHC", description: "Revisar heurísticas de Nielsen antes da apresentação de quinta.", category: "Estudos", emoji: "📖", gradient: "from-blue-600 via-sky-600 to-cyan-600", accent: "#3b82f6", priority: null, deadline: null },
-  { id: 5, title: "Reunião de Equipe", description: "Sprint planning semanal. Preparar card de bloqueios e progresso.", category: "Trabalho", emoji: "🗓️", gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b", priority: null, deadline: null },
+  { id: 1, title: "Pedir Pizza", description: "Todo mundo tá com fome. Escolher sabores e fazer o pedido até às 19h.", category: "Alimentação", emoji: "🍕", gradient: "from-orange-600 via-red-600 to-rose-700", accent: "#f97316", priority: null, deadline: null, image: null },
+  { id: 2, title: "Ver Filme", description: "Dune: Parte 2 ou Oppenheimer? Alguém escolhe, a gente vai junto.", category: "Lazer", emoji: "🎬", gradient: "from-violet-700 via-purple-700 to-indigo-800", accent: "#8b5cf6", priority: null, deadline: null, image: null },
+  { id: 3, title: "Academia", description: "Treino de pernas marcado pra terça às 7h. Confirmar presença.", category: "Saúde", emoji: "💪", gradient: "from-emerald-600 via-teal-600 to-cyan-700", accent: "#10b981", priority: null, deadline: null, image: null },
+  { id: 4, title: "Estudar IHC", description: "Revisar heurísticas de Nielsen antes da apresentação de quinta.", category: "Estudos", emoji: "📖", gradient: "from-blue-600 via-sky-600 to-cyan-600", accent: "#3b82f6", priority: null, deadline: null, image: null },
+  { id: 5, title: "Reunião de Equipe", description: "Sprint planning semanal. Preparar card de bloqueios e progresso.", category: "Trabalho", emoji: "🗓️", gradient: "from-amber-600 via-yellow-600 to-orange-500", accent: "#f59e0b", priority: null, deadline: null, image: null },
 ];
 
 const SWIPE_THRESHOLD = 100;
@@ -257,6 +257,27 @@ function decisionToShareTask(d) {
   const g = ONBOARDING_GRADIENTS[d.category] || { gradient: "from-blue-600 via-sky-600 to-cyan-600", accent: "#2563eb" };
   return { title: d.title, description: "", category: d.category, emoji: d.emoji, gradient: g.gradient, accent: g.accent };
 }
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read"));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode"));
+      img.onload = () => {
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+        const c = document.createElement("canvas");
+        c.width = width; c.height = height;
+        c.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(c.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 // ── SwipeCard ────────────────────────────────────────────────
 function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare }) {
@@ -334,9 +355,16 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare }) {
       }}
       exit="exit"
     >
-      <div className={`w-full h-full rounded-3xl bg-gradient-to-br ${task.gradient} overflow-hidden shadow-2xl relative select-none`}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      <div className={`w-full h-full rounded-3xl overflow-hidden shadow-2xl relative select-none ${task.image ? "bg-black" : `bg-gradient-to-br ${task.gradient}`}`}>
+        {task.image ? (
+          <>
+            <img src={task.image} className="absolute inset-0 w-full h-full object-cover" alt="" draggable={false} />
+            <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${task.gradient} z-20 opacity-80`} />
+          </>
+        ) : (
+          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
+        )}
+        <div className={`absolute inset-0 bg-gradient-to-t ${task.image ? "from-black/85 via-black/15 to-transparent" : "from-black/60 via-transparent to-transparent"}`} />
         <div className="absolute top-5 left-5 z-10"><span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span></div>
         <div className="absolute top-5 right-5 z-10 text-4xl filter drop-shadow-lg">{task.emoji}</div>
         {onShare && (
@@ -1473,7 +1501,7 @@ export default function TaskMatch() {
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
   const [chatInput,         setChatInput]         = useState("");
   const [isChatLoading,     setIsChatLoading]     = useState(false);
-  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "" });
+  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
   const [swipeExit,         setSwipeExit]         = useState({ vx: 0, vy: 0, dir: null });
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
   const [exploreSeenAt,     setExploreSeenAt]     = usePersistedState(SK.exploreSeenAt, null);
@@ -1490,7 +1518,8 @@ export default function TaskMatch() {
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [shareTask,            setShareTask]            = useState(null);
 
-  const chatEndRef = useRef(null);
+  const chatEndRef    = useRef(null);
+  const imageInputRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
 
   // total dinâmico — conta tasks iniciais + criadas pelo usuário
@@ -1891,26 +1920,83 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <div><p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Nova tarefa</p><h2 className={`font-bold text-white ${isMobile ? "text-lg" : "text-xl"}`}>Criar card</h2></div>
           <button onClick={() => setActiveTab("home")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>Voltar</button>
         </div>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
-          const newTask = {
-            id: nextTaskId,
-            title: newTaskData.title.trim(),
-            description: newTaskData.description.trim(),
-            category: newTaskData.category,
-            emoji: newTaskData.emoji || "✨",
-            gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600",
-            accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e",
-            priority: newTaskData.priority,
-            deadline: newTaskData.deadline || null,
-          };
-          setTasks((prev) => [...prev, newTask]);
-          setNextTaskId((id) => id + 1);
-          setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "" });
-          showToast("Tarefa criada!", "bg-emerald-600/90");
-          setActiveTab("home");
-        }} className={`${isMobile ? "flex flex-col gap-4" : "rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5"}`}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
+            const newTask = {
+              id: nextTaskId,
+              title: newTaskData.title.trim(),
+              description: newTaskData.description.trim(),
+              category: newTaskData.category,
+              emoji: newTaskData.emoji || "✨",
+              gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600",
+              accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e",
+              priority: newTaskData.priority,
+              deadline: newTaskData.deadline || null,
+              image: newTaskData.image || null,
+            };
+            setTasks((prev) => [...prev, newTask]);
+            setNextTaskId((id) => id + 1);
+            setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
+            showToast("Tarefa criada!", "bg-emerald-600/90");
+            setActiveTab("home");
+          }}
+          onPaste={async (e) => {
+            const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith("image/"));
+            if (!file) return;
+            e.preventDefault();
+            try {
+              const url = await compressImage(file);
+              if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; }
+              setNewTaskData(p => ({ ...p, image: url }));
+              showToast("Imagem colada!", "bg-emerald-600/90");
+            } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
+          }}
+          className={`${isMobile ? "flex flex-col gap-4" : "rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5"}`}
+        >
+          {/* Image upload */}
+          <div>
+            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Imagem <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
+            {newTaskData.image ? (
+              <div className="relative w-full rounded-2xl overflow-hidden border border-white/[0.08]" style={{ aspectRatio: "16/9" }}>
+                <img src={newTaskData.image} className="w-full h-full object-cover" alt="" />
+                <button type="button" onClick={() => setNewTaskData(p => ({ ...p, image: null }))} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/85 transition text-sm">✕</button>
+              </div>
+            ) : (
+              <div
+                className="w-full rounded-2xl border-2 border-dashed border-white/[0.11] bg-white/[0.02] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/25 hover:bg-white/[0.04] transition py-8"
+                onClick={() => imageInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (!file?.type.startsWith("image/")) return;
+                  try {
+                    const url = await compressImage(file);
+                    if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; }
+                    setNewTaskData(p => ({ ...p, image: url }));
+                  } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} className="w-9 h-9 text-white/20">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <p className="text-[13px] text-white/30 font-medium">Clique, cole ou arraste</p>
+                <p className="text-[11px] text-white/20">No celular, abre a câmera 📷</p>
+              </div>
+            )}
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                const url = await compressImage(file);
+                if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; }
+                setNewTaskData(p => ({ ...p, image: url }));
+              } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
+              e.target.value = "";
+            }} />
+          </div>
           <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label><input value={newTaskData.title} onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="Ex: Comprar mantimentos" /></div>
           <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
           <div className="grid grid-cols-2 gap-3">
