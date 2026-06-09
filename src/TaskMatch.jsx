@@ -147,8 +147,119 @@ function deadlineBadge(deadline) {
   return { label: `Em ${diff} dias`, overdue: false };
 }
 
+// ── Canvas / share helpers ────────────────────────────────────
+const TW_COLORS = {
+  "slate-400":"#94a3b8","slate-500":"#64748b","slate-600":"#475569","slate-700":"#334155",
+  "gray-500":"#6b7280","gray-600":"#4b5563","gray-700":"#374151",
+  "zinc-600":"#52525b","zinc-700":"#3f3f46",
+  "red-500":"#ef4444","red-600":"#dc2626","red-700":"#b91c1c",
+  "orange-500":"#f97316","orange-600":"#ea580c","orange-700":"#c2410c",
+  "amber-500":"#f59e0b","amber-600":"#d97706","amber-700":"#b45309",
+  "yellow-500":"#eab308","yellow-600":"#ca8a04",
+  "rose-500":"#f43f5e","rose-600":"#e11d48","rose-700":"#be123c",
+  "pink-500":"#ec4899","pink-600":"#db2777","pink-700":"#be185d",
+  "emerald-500":"#10b981","emerald-600":"#059669","emerald-700":"#047857",
+  "teal-500":"#14b8a6","teal-600":"#0d9488","teal-700":"#0f766e",
+  "cyan-500":"#06b6d4","cyan-600":"#0891b2","cyan-700":"#0e7490",
+  "sky-500":"#0ea5e9","sky-600":"#0284c7","sky-700":"#0369a1",
+  "blue-500":"#3b82f6","blue-600":"#2563eb","blue-700":"#1d4ed8",
+  "indigo-600":"#4f46e5","indigo-700":"#4338ca","indigo-800":"#3730a3",
+  "violet-600":"#7c3aed","violet-700":"#6d28d9",
+  "purple-500":"#a855f7","purple-600":"#9333ea","purple-700":"#7e22ce",
+  "fuchsia-600":"#c026d3","fuchsia-700":"#a21caf",
+  "lime-600":"#65a30d","lime-700":"#4d7c0f",
+  "green-500":"#22c55e","green-600":"#16a34a","green-700":"#15803d",
+};
+function parseTailwindGradient(str) {
+  const from = (str.match(/from-([^\s]+)/) || [])[1];
+  const via  = (str.match(/via-([^\s]+)/)  || [])[1];
+  const to   = (str.match(/to-([^\s]+)/)   || [])[1];
+  const c0 = TW_COLORS[from] || "#2563eb";
+  const c2 = TW_COLORS[to]   || "#1e3a8a";
+  const c1 = TW_COLORS[via];
+  return c1 ? [c0, c1, c2] : [c0, c2];
+}
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+function wrapText(ctx, text, x, y, maxWidth, lineH, maxLines = 8) {
+  const words = text.split(" ");
+  let line = "", lines = [];
+  for (const word of words) {
+    const test = line + word + " ";
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line.trim()); line = word + " ";
+      if (lines.length >= maxLines - 1) break;
+    } else { line = test; }
+  }
+  if (line.trim()) lines.push(line.trim());
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineH));
+  return lines.length;
+}
+async function drawTaskCard(canvas, task, format = "square", handle = "") {
+  const isStory = format === "story";
+  const W = 1080, H = isStory ? 1920 : 1080;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.save();
+  roundRectPath(ctx, 0, 0, W, H, 80);
+  ctx.clip();
+  const stops = parseTailwindGradient(task.gradient || "");
+  const bg = ctx.createLinearGradient(0, 0, W * 0.7, H);
+  bg.addColorStop(0, stops[0]);
+  if (stops[2]) { bg.addColorStop(0.5, stops[1]); bg.addColorStop(1, stops[2]); }
+  else { bg.addColorStop(1, stops[1] || stops[0]); }
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const scrim = ctx.createLinearGradient(0, H * 0.3, 0, H);
+  scrim.addColorStop(0, "rgba(0,0,0,0)"); scrim.addColorStop(1, "rgba(0,0,0,0.68)");
+  ctx.fillStyle = scrim; ctx.fillRect(0, H * 0.3, W, H * 0.7);
+  ctx.restore();
+  const pad = 80;
+  const cat = (task.category || "").toUpperCase();
+  ctx.font = "600 30px system-ui,-apple-system,sans-serif";
+  ctx.textAlign = "left";
+  const bw = Math.min(ctx.measureText(cat).width + 56, W - pad * 2);
+  ctx.save();
+  roundRectPath(ctx, pad, pad, bw, 58, 29);
+  ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = "rgba(255,255,255,0.88)"; ctx.fillText(cat, pad + 28, pad + 38);
+  const emojiSz = isStory ? 180 : 160;
+  ctx.font = `${emojiSz}px serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(task.emoji || "✨", W / 2, isStory ? H * 0.31 : H * 0.36);
+  const titleSz = isStory ? 92 : 80;
+  ctx.font = `800 ${titleSz}px system-ui,-apple-system,sans-serif`;
+  ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 18;
+  const titleY = isStory ? H * 0.49 : H * 0.55;
+  const nLines = wrapText(ctx, task.title || "", W / 2, titleY, W - pad * 2.4, titleSz * 1.22, 3);
+  ctx.shadowBlur = 0;
+  if (task.description) {
+    const descSz = isStory ? 50 : 44;
+    ctx.font = `400 ${descSz}px system-ui,-apple-system,sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 6;
+    wrapText(ctx, task.description, W / 2, titleY + nLines * titleSz * 1.22 + (isStory ? 60 : 50), W - pad * 3.2, descSz * 1.42, 4);
+    ctx.shadowBlur = 0;
+  }
+  ctx.font = `500 ${isStory ? 42 : 36}px system-ui,-apple-system,sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.28)"; ctx.textAlign = "center";
+  ctx.fillText(handle ? `TaskMatch  ·  ${handle}` : "TaskMatch", W / 2, H - (isStory ? 90 : 70));
+}
+function decisionToShareTask(d) {
+  const g = ONBOARDING_GRADIENTS[d.category] || { gradient: "from-blue-600 via-sky-600 to-cyan-600", accent: "#2563eb" };
+  return { title: d.title, description: "", category: d.category, emoji: d.emoji, gradient: g.gradient, accent: g.accent };
+}
+
 // ── SwipeCard ────────────────────────────────────────────────
-function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
+function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateZ = useTransform(x, [-200, 200], [-18, 18]);
@@ -228,6 +339,11 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <div className="absolute top-5 left-5 z-10"><span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span></div>
         <div className="absolute top-5 right-5 z-10 text-4xl filter drop-shadow-lg">{task.emoji}</div>
+        {onShare && (
+          <button className="absolute top-[60px] right-5 z-40 w-8 h-8 rounded-full bg-black/35 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/55 transition" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onShare(task); }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+          </button>
+        )}
         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
           <h2 className="text-2xl font-bold text-white tracking-tight mb-1.5 leading-tight">{task.title}</h2>
           {task.deadline && (() => { const b = deadlineBadge(task.deadline); return b ? (
@@ -859,7 +975,7 @@ function GroupResultsScreen({ deck, myVotes, nick, avatar, onClose }) {
 }
 
 // ── ExploreTab ─────────────────────────────────────────────────
-function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile, unreadCount, onCreateGroup }) {
+function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile, unreadCount, onCreateGroup, onShareTask }) {
   const [expandedId, setExpandedId] = useState(null);
   const [inputValues, setInputValues] = useState({});
 
@@ -948,6 +1064,17 @@ function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite,
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
                       </button>
+                      {onShareTask && (
+                        <button
+                          onClick={() => onShareTask({ title: invite.title, description: invite.description, category: invite.category, emoji: invite.emoji, gradient: invite.gradient, accent: invite.accent })}
+                          className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition"
+                          title="Compartilhar como imagem"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5 text-white/50">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
 
                     {/* Status pills */}
@@ -1024,7 +1151,7 @@ function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite,
 }
 
 // ── HistorySection ───────────────────────────────────────────
-function DecisionItem({ d, i, badgeStyle, formatDate }) {
+function DecisionItem({ d, i, badgeStyle, formatDate, onShare }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
       <span className="text-2xl flex-shrink-0 leading-none">{d.emoji}</span>
@@ -1033,11 +1160,16 @@ function DecisionItem({ d, i, badgeStyle, formatDate }) {
         <p className="text-[11px] text-white/30 mt-0.5">{d.category} · {formatDate(d.decidedAt)}</p>
       </div>
       <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${badgeStyle(d.label)}`}>{d.label}</span>
+      {onShare && (
+        <button onClick={() => onShare(decisionToShareTask(d))} className="w-7 h-7 rounded-xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center text-white/30 hover:text-white/60 transition flex-shrink-0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+        </button>
+      )}
     </div>
   );
 }
 
-function HistorySection({ decisions }) {
+function HistorySection({ decisions, onShare }) {
   const [expanded, setExpanded] = useState(false);
   const sorted = [...decisions].reverse();
   const capped = sorted.slice(0, 50);
@@ -1067,12 +1199,12 @@ function HistorySection({ decisions }) {
         ) : (
           <>
             {preview.map((d, i) => (
-              <DecisionItem key={d.id} d={d} i={i} badgeStyle={badgeStyle} formatDate={formatDate} />
+              <DecisionItem key={d.id} d={d} i={i} badgeStyle={badgeStyle} formatDate={formatDate} onShare={onShare} />
             ))}
             <AnimatePresence>
               {expanded && extra.map((d, i) => (
                 <motion.div key={d.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.15, delay: Math.min(i * 0.025, 0.22) }} style={{ overflow: "hidden" }}>
-                  <DecisionItem d={d} i={preview.length + i} badgeStyle={badgeStyle} formatDate={formatDate} />
+                  <DecisionItem d={d} i={preview.length + i} badgeStyle={badgeStyle} formatDate={formatDate} onShare={onShare} />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -1240,6 +1372,86 @@ function StreakBrokenModal({ oldCount, best, hasFreeze, onUseFreeze, onLetBreak 
   );
 }
 
+// ── TaskShareModal ────────────────────────────────────────────
+function TaskShareModal({ task, handle, onClose }) {
+  const canvasRef = useRef(null);
+  const [format, setFormat] = useState("square");
+  const [rendering, setRendering] = useState(true);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    setRendering(true);
+    drawTaskCard(canvasRef.current, task, format, handle)
+      .then(() => setRendering(false))
+      .catch(() => setRendering(false));
+  }, [format]);
+
+  function download() {
+    if (!canvasRef.current) return;
+    canvasRef.current.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url;
+      a.download = `taskmatch-${(task.title || "card").toLowerCase().replace(/\s+/g, "-").slice(0, 30)}.png`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  }
+
+  function share() {
+    if (!canvasRef.current) return;
+    canvasRef.current.toBlob(async (blob) => {
+      if (!blob) { download(); return; }
+      const fname = `taskmatch-${(task.title || "card").toLowerCase().replace(/\s+/g, "-").slice(0, 30)}.png`;
+      const file = new File([blob], fname, { type: "image/png" });
+      try {
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], text: "Bora decidir isso? 👀", title: `TaskMatch: ${task.title}` });
+        } else { download(); }
+      } catch (e) { if (e?.name !== "AbortError") download(); }
+    }, "image/png");
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm px-4 pb-6 sm:pb-0">
+      <motion.div initial={{ opacity: 0, y: 40, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 30 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
+          <div>
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mb-0.5">Compartilhar card</p>
+            <h2 className="text-base font-bold text-white truncate max-w-[220px]">{task.title}</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div className="flex rounded-xl bg-white/[0.04] p-1 gap-1">
+            {[["square", "⬜ Quadrado"], ["story", "📱 Story"]].map(([id, lbl]) => (
+              <button key={id} onClick={() => setFormat(id)} className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition ${format === id ? "bg-white/[0.12] text-white" : "text-white/40 hover:text-white/60"}`}>{lbl}</button>
+            ))}
+          </div>
+          <div className={`w-full relative rounded-2xl overflow-hidden bg-white/[0.04] border border-white/[0.07] ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`}>
+            <canvas ref={canvasRef} className="w-full h-full" style={{ display: rendering ? "none" : "block" }} />
+            {rendering && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <motion.button whileTap={{ scale: 0.97 }} onClick={download} className="flex-1 py-3 rounded-2xl bg-white/[0.05] border border-white/[0.08] text-sm text-white/60 hover:text-white hover:bg-white/[0.08] transition flex items-center justify-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Baixar
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={share} className="flex-1 py-3 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition flex items-center justify-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+              Compartilhar
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main ─────────────────────────────────────────────────────
 export default function TaskMatch() {
   // Estados persistidos — sobrevivem ao reload
@@ -1276,6 +1488,7 @@ export default function TaskMatch() {
   const [groupAvatar,         setGroupAvatar]         = useState(GROUP_AVATARS[0]);
   const [groupVotes,          setGroupVotes]          = useState([]);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [shareTask,            setShareTask]            = useState(null);
 
   const chatEndRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
@@ -1607,7 +1820,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           </div>
         )}
       </div>
-      <HistorySection decisions={decisions} />
+      <HistorySection decisions={decisions} onShare={setShareTask} />
       <div className={`rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden ${isMobile ? "" : "rounded-3xl"}`}>
         {[{ label: "Editar perfil", action: openProfileEditor, icon: "👤" }, { label: "Notificações", action: () => showToast("Em breve.", "bg-white/10"), icon: "🔔" }, { label: "Aparência", action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨" }, { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true), icon: "ℹ️" }].map(({ label, action, icon }, i) => (
           <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}><span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span><span className="text-white/20 text-lg">›</span></button>
@@ -1763,7 +1976,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               <div className="flex flex-col h-full">
                 {remaining > 0 ? (
                   <>
-                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div></div>
+                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop ? setShareTask : undefined} />); })}</AnimatePresence></div></div>
                     <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
                       <div className="flex items-center gap-1.5 text-red-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Depois</span></div>
                       <div className="flex flex-col items-center text-blue-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Delegar</span></div>
@@ -1774,7 +1987,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 ) : (<EmptyState stats={stats} onReset={handleReset} />)}
               </div>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} />}
+            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} />}
             {activeTab === "ia" && <RafContent isMobile={true} />}
             {activeTab === "create" && <CreateContent isMobile={true} />}
             {activeTab === "profile" && (
@@ -1833,7 +2046,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 min-h-0">
                   {remaining > 0 ? (
                     <>
-                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} />); })}</AnimatePresence></div>
+                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop ? setShareTask : undefined} />); })}</AnimatePresence></div>
                       <div className="flex items-center justify-between w-full max-w-[520px] px-2">
                         <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Depois</span></div>
                         <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Delegar</span></div>
@@ -1845,7 +2058,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 </div>
               </>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} />}
+            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} />}
             {activeTab === "ia" && <RafContent isMobile={false} />}
             {activeTab === "create" && <CreateContent isMobile={false} />}
             {activeTab === "profile" && (
@@ -1880,6 +2093,9 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             onUseFreeze={handleUseFreeze}
             onLetBreak={handleLetStreakBreak}
           />
+        )}
+        {shareTask && (
+          <TaskShareModal key="tsm" task={shareTask} handle={profile.handle} onClose={() => setShareTask(null)} />
         )}
       </AnimatePresence>
 
