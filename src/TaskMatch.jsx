@@ -2366,8 +2366,8 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
 
       {/* ── MOBILE ── */}
       {!isDesktop && (
-        <div className="flex flex-col w-full h-screen bg-[#111114] overflow-hidden">
-          <div className="flex-shrink-0 flex items-center justify-between px-5 pt-4 pb-3 bg-[#111114]">
+        <div className="flex flex-col w-full bg-[#111114] overflow-hidden" style={{ height: "100dvh" }}>
+          <div className="flex-shrink-0 flex items-center justify-between px-5 pb-3 bg-[#111114]" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
             <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-0.5">Decida rápido, viva mais.</p></div>
             <div className="flex items-center gap-1">
               <StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} />
