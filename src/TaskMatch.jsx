@@ -1574,7 +1574,7 @@ function ProfileTab({
   profile, auth, stats, streak, decisions, social, notifSettings,
   openProfileEditor, showToast, setShowNotifSettings, setShowAboutModal,
   setShareTask, handleLogout, setShowAuthModal, showFriendsPanel, setShowFriendsPanel,
-  friendsPendingBadge, clearAllData,
+  friendsPendingBadge, clearAllData, isDesktop = false,
 }) {
   const [showAllDecisions, setShowAllDecisions] = useState(false);
   const [showDanger, setShowDanger] = useState(false);
@@ -1621,6 +1621,206 @@ function ProfileTab({
     </svg>
   );
   const IconChevron = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-white/20 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
+
+  // ── Section builders (px removed when desktop — parent provides it) ──
+
+  const statsSection = (
+    <div className={`${isDesktop ? "" : "px-5"} grid grid-cols-3 gap-2 mb-5`}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className={isDesktop ? "w-[18px] h-[18px] flex-shrink-0" : "w-4.5 h-4.5"}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div className={`${isDesktop ? "text-[32px]" : "text-[22px]"} font-bold text-[#3b82f6] leading-none`}>{totalDecisions}</div>
+        <div className="text-[10px] text-white/30 font-medium">Decididas</div>
+      </motion.div>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.8} className={isDesktop ? "w-[18px] h-[18px] flex-shrink-0" : "w-4.5 h-4.5"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" /></svg>
+        <div className={`${isDesktop ? "text-[32px]" : "text-[22px]"} font-bold text-amber-400 leading-none`}>{streak.count}</div>
+        <div className="text-[10px] text-white/30 font-medium">Dias seguidos</div>
+      </motion.div>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex flex-col gap-1.5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={1.8} className={isDesktop ? "w-[18px] h-[18px] flex-shrink-0" : "w-4.5 h-4.5"}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+        <div className={`${isDesktop ? "text-[32px]" : "text-[22px]"} font-bold text-emerald-400 leading-none`}>
+          {totalDecisions > 0 ? `${Math.round((stats.accepted / totalDecisions) * 100)}%` : "—"}
+        </div>
+        <div className="text-[10px] text-white/30 font-medium">Aceite</div>
+      </motion.div>
+    </div>
+  );
+
+  const socialSection = (
+    <div className={`${isDesktop ? "" : "px-5"} mb-5`}>
+      {auth.isLoggedIn ? (
+        <div>
+          <button
+            onClick={() => setShowFriendsPanel(p => !p)}
+            className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] transition"
+          >
+            <div className="w-8 h-8 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-sm font-medium text-white">Amigos</p>
+              <p className="text-[11px] text-white/30 truncate">
+                {social.friends.length} amigo{social.friends.length !== 1 ? "s" : ""}
+                {social.friends.filter(f => f.isCloseFriend).length > 0 && ` · ${social.friends.filter(f => f.isCloseFriend).length} close`}
+              </p>
+            </div>
+            {friendsPendingBadge > 0 && <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full flex-shrink-0">{friendsPendingBadge}</span>}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-4 h-4 text-white/20 flex-shrink-0 transition-transform ${showFriendsPanel ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </button>
+          <AnimatePresence>
+            {showFriendsPanel && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden mt-2 rounded-2xl border border-white/[0.07]"
+              >
+                <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                  <FriendsTab social={social} showToast={showToast} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.1) 0%, rgba(124,58,237,0.1) 50%, rgba(8,145,178,0.08) 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-[#2563eb]/20 flex items-center justify-center flex-shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+            </div>
+            <p className="text-sm font-semibold text-white">Conecte com amigos</p>
+          </div>
+          <p className="text-[12px] text-white/40 leading-relaxed mb-4">
+            Entre para ver as tasks dos seus amigos no deck, reagir e compartilhar as suas.
+          </p>
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-500 transition"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+            Entrar com email
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const activitySection = (
+    <div className={`${isDesktop ? "" : "px-5"} mb-5`}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25">Atividade recente</h3>
+        {decisions.length > 6 && (
+          <button onClick={() => setShowAllDecisions(v => !v)} className="text-[11px] text-[#3b82f6]/60 hover:text-[#3b82f6] transition">
+            {showAllDecisions ? "Ver menos" : "Ver tudo"}
+          </button>
+        )}
+      </div>
+      {decisions.length === 0 ? (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] py-8 text-center">
+          <p className="text-sm text-white/20">Nenhuma decisão ainda</p>
+          <p className="text-[11px] text-white/12 mt-1">Swipe em tasks no Início pra começar</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {recentDecisions.map((d, idx) => {
+            const g = ONBOARDING_GRADIENTS[d.category] || { gradient: "from-blue-600 to-cyan-600" };
+            return (
+              <motion.div
+                key={d.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(idx * 0.04, 0.3) }}
+                className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl px-3 py-2.5"
+              >
+                <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${g.gradient} flex items-center justify-center text-[18px] flex-shrink-0 shadow`}>
+                  {d.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] text-white/85 truncate font-medium leading-snug">{d.title}</p>
+                  <p className="text-[10px] text-white/25 mt-0.5">{d.category} · {timeAgo(d.decidedAt)}</p>
+                </div>
+                <span className={`text-[9px] font-semibold px-2 py-1 rounded-xl flex-shrink-0 ${badgeStyle(d.label)}`}>{d.label}</span>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const settingsSection = (
+    <div className={isDesktop ? "" : "px-5"}>
+      <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-3">Configurações</h3>
+      <div className="flex flex-col">
+        {[
+          { label: "Notificações", icon: IconBell,     action: () => setShowNotifSettings(true), badge: notifSettings.enabled ? "On" : null, color: "#10b981" },
+          { label: "Aparência",    icon: IconSettings, action: () => showToast("Em breve.", "bg-white/10"), badge: null, color: "#8b5cf6" },
+          { label: "Sobre",        icon: IconInfo,     action: () => setShowAboutModal(true), badge: null, color: "#3b82f6" },
+        ].map(({ label, icon, action, badge, color }, i) => (
+          <button
+            key={label}
+            type="button"
+            onClick={action}
+            className={`flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-white/[0.04] transition rounded-xl ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
+          >
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
+              <div style={{ color }}>{icon}</div>
+            </div>
+            <span className="flex-1 text-[13px] text-white/70">{label}</span>
+            {badge && <span className="text-[9px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full mr-1">{badge}</span>}
+            {IconChevron}
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t border-white/[0.05] mt-1 pt-1">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-red-500/[0.06] transition rounded-xl w-full"
+        >
+          <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
+          </div>
+          <span className="flex-1 text-[13px] text-red-400/75">Sair</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={2} className="w-4 h-4 opacity-30 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setShowDanger(v => !v)}
+          className="flex items-center gap-1.5 text-[11px] text-white/15 hover:text-white/30 transition pl-4"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+          Zona perigosa
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-3 h-3 transition-transform ${showDanger ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </button>
+        <AnimatePresence>
+          {showDanger && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={clearAllData}
+                className="mt-2 flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-500/10 transition rounded-xl w-full border border-amber-500/15"
+              >
+                <span className="text-[15px]">🗑️</span>
+                <span className="text-[12px] text-amber-400/70">Limpar todos os dados locais</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full pb-8">
@@ -1683,200 +1883,28 @@ function ProfileTab({
         </div>
       </div>
 
-      {/* ── Stats ─────────────────────────────────────────────── */}
-      <div className="px-5 grid grid-cols-3 gap-2 mb-5">
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className="w-4.5 h-4.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <div className="text-[22px] font-bold text-[#3b82f6] leading-none">{totalDecisions}</div>
-          <div className="text-[10px] text-white/30 font-medium">Decididas</div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.8} className="w-4.5 h-4.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" /></svg>
-          <div className="text-[22px] font-bold text-amber-400 leading-none">{streak.count}</div>
-          <div className="text-[10px] text-white/30 font-medium">Dias seguidos</div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex flex-col gap-1.5">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={1.8} className="w-4.5 h-4.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-          <div className="text-[22px] font-bold text-emerald-400 leading-none">
-            {totalDecisions > 0 ? `${Math.round((stats.accepted / totalDecisions) * 100)}%` : "—"}
+      {/* ── Content — dois layouts ─────────────────────────────── */}
+      {isDesktop ? (
+        <div className="flex gap-6 px-5 pb-4 items-start">
+          {/* Coluna esquerda ~40% — stats + social */}
+          <div className="w-[42%] min-w-0 flex flex-col">
+            {statsSection}
+            {socialSection}
           </div>
-          <div className="text-[10px] text-white/30 font-medium">Aceite</div>
-        </motion.div>
-      </div>
-
-      {/* ── Social / Amigos ───────────────────────────────────── */}
-      <div className="px-5 mb-5">
-        {auth.isLoggedIn ? (
-          <div>
-            <button
-              onClick={() => setShowFriendsPanel(p => !p)}
-              className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] transition"
-            >
-              <div className="w-8 h-8 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-medium text-white">Amigos</p>
-                <p className="text-[11px] text-white/30 truncate">
-                  {social.friends.length} amigo{social.friends.length !== 1 ? "s" : ""}
-                  {social.friends.filter(f => f.isCloseFriend).length > 0 && ` · ${social.friends.filter(f => f.isCloseFriend).length} close`}
-                </p>
-              </div>
-              {friendsPendingBadge > 0 && <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full flex-shrink-0">{friendsPendingBadge}</span>}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-4 h-4 text-white/20 flex-shrink-0 transition-transform ${showFriendsPanel ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-            </button>
-            <AnimatePresence>
-              {showFriendsPanel && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.22 }}
-                  className="overflow-hidden mt-2 rounded-2xl border border-white/[0.07]"
-                >
-                  <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-                    <FriendsTab social={social} showToast={showToast} />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+          {/* Coluna direita ~58% — histórico + configurações */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {activitySection}
+            {settingsSection}
           </div>
-        ) : (
-          <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.1) 0%, rgba(124,58,237,0.1) 50%, rgba(8,145,178,0.08) 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-[#2563eb]/20 flex items-center justify-center flex-shrink-0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-              </div>
-              <p className="text-sm font-semibold text-white">Conecte com amigos</p>
-            </div>
-            <p className="text-[12px] text-white/40 leading-relaxed mb-4">
-              Entre para ver as tasks dos seus amigos no deck, reagir e compartilhar as suas.
-            </p>
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-500 transition"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-              Entrar com email
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Atividade recente ─────────────────────────────────── */}
-      <div className="px-5 mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25">Atividade recente</h3>
-          {decisions.length > 6 && (
-            <button onClick={() => setShowAllDecisions(v => !v)} className="text-[11px] text-[#3b82f6]/60 hover:text-[#3b82f6] transition">
-              {showAllDecisions ? "Ver menos" : "Ver tudo"}
-            </button>
-          )}
         </div>
-        {decisions.length === 0 ? (
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] py-8 text-center">
-            <p className="text-sm text-white/20">Nenhuma decisão ainda</p>
-            <p className="text-[11px] text-white/12 mt-1">Swipe em tasks no Início pra começar</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {recentDecisions.map((d, idx) => {
-              const g = ONBOARDING_GRADIENTS[d.category] || { gradient: "from-blue-600 to-cyan-600" };
-              return (
-                <motion.div
-                  key={d.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(idx * 0.04, 0.3) }}
-                  className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl px-3 py-2.5"
-                >
-                  <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${g.gradient} flex items-center justify-center text-[18px] flex-shrink-0 shadow`}>
-                    {d.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-white/85 truncate font-medium leading-snug">{d.title}</p>
-                    <p className="text-[10px] text-white/25 mt-0.5">{d.category} · {timeAgo(d.decidedAt)}</p>
-                  </div>
-                  <span className={`text-[9px] font-semibold px-2 py-1 rounded-xl flex-shrink-0 ${badgeStyle(d.label)}`}>{d.label}</span>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── Menu de configurações ─────────────────────────────── */}
-      <div className="px-5">
-        <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-3">Configurações</h3>
-        <div className="flex flex-col">
-          {[
-            { label: "Notificações", icon: IconBell,     action: () => setShowNotifSettings(true), badge: notifSettings.enabled ? "On" : null, color: "#10b981" },
-            { label: "Aparência",    icon: IconSettings, action: () => showToast("Em breve.", "bg-white/10"), badge: null, color: "#8b5cf6" },
-            { label: "Sobre",        icon: IconInfo,     action: () => setShowAboutModal(true), badge: null, color: "#3b82f6" },
-          ].map(({ label, icon, action, badge, color }, i) => (
-            <button
-              key={label}
-              type="button"
-              onClick={action}
-              className={`flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-white/[0.04] transition rounded-xl ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
-            >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
-                <div style={{ color }}>{icon}</div>
-              </div>
-              <span className="flex-1 text-[13px] text-white/70">{label}</span>
-              {badge && <span className="text-[9px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full mr-1">{badge}</span>}
-              {IconChevron}
-            </button>
-          ))}
-        </div>
-
-        <div className="border-t border-white/[0.05] mt-1 pt-1">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-red-500/[0.06] transition rounded-xl w-full"
-          >
-            <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
-            </div>
-            <span className="flex-1 text-[13px] text-red-400/75">Sair</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={2} className="w-4 h-4 opacity-30 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-          </button>
-        </div>
-
-        {/* Zona de perigo colapsável */}
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setShowDanger(v => !v)}
-            className="flex items-center gap-1.5 text-[11px] text-white/15 hover:text-white/30 transition pl-4"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-            Zona perigosa
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-3 h-3 transition-transform ${showDanger ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-          </button>
-          <AnimatePresence>
-            {showDanger && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-              >
-                <button
-                  type="button"
-                  onClick={clearAllData}
-                  className="mt-2 flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-500/10 transition rounded-xl w-full border border-amber-500/15"
-                >
-                  <span className="text-[15px]">🗑️</span>
-                  <span className="text-[12px] text-amber-400/70">Limpar todos os dados locais</span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
+      ) : (
+        <>
+          {statsSection}
+          {socialSection}
+          {activitySection}
+          {settingsSection}
+        </>
+      )}
     </motion.div>
   );
 }
@@ -2698,7 +2726,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             )}
             {activeTab === "profile" && (
               <div className="flex flex-1 flex-col items-center overflow-y-auto">
-                <div className="w-full max-w-[520px]">
+                <div className="w-full max-w-[900px]">
                   <ProfileTab
                     profile={profile} auth={auth} stats={stats} streak={streak}
                     decisions={decisions} social={social} notifSettings={notifSettings}
@@ -2707,7 +2735,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                     setShareTask={setShareTask} handleLogout={handleLogout}
                     setShowAuthModal={setShowAuthModal} showFriendsPanel={showFriendsPanel}
                     setShowFriendsPanel={setShowFriendsPanel} friendsPendingBadge={friendsPendingBadge}
-                    clearAllData={clearAllData}
+                    clearAllData={clearAllData} isDesktop={true}
                   />
                 </div>
               </div>
