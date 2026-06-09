@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
+import { useAuth } from "./hooks/useAuth.js";
+import { useSocial } from "./hooks/useSocial.js";
+import { FriendsTab } from "./components/FriendsTab.jsx";
+import { AuthScreen } from "./components/AuthScreen.jsx";
+import { SetupProfile } from "./components/SetupProfile.jsx";
+import { ShareToFeedModal } from "./components/ShareToFeedModal.jsx";
 
 // ── Storage keys ─────────────────────────────────────────────
 const SK = {
@@ -326,7 +332,7 @@ function compressImage(file) {
 }
 
 // ── SwipeCard ────────────────────────────────────────────────
-function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare }) {
+function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare, onShareToFeed }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateZ = useTransform(x, [-200, 200], [-18, 18]);
@@ -411,11 +417,39 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare }) {
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
         )}
         <div className={`absolute inset-0 bg-gradient-to-t ${task.image ? "from-black/85 via-black/15 to-transparent" : "from-black/60 via-transparent to-transparent"}`} />
-        <div className="absolute top-5 left-5 z-10"><span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span></div>
-        <div className="absolute top-5 right-5 z-10 text-4xl filter drop-shadow-lg">{task.emoji}</div>
+
+        {/* Author header for friend tasks */}
+        {task._source === "friend" && task._author && (
+          <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2.5 px-4 py-3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-base flex-shrink-0 border-2 ${task._closeFriend ? "border-emerald-400" : "border-white/30"}`} style={{ background: "rgba(255,255,255,0.12)" }}>
+              {task._author.avatar_emoji}
+            </div>
+            <span className="text-[12px] font-semibold text-white/90 truncate">@{task._author.username}</span>
+            {task._closeFriend && <span className="text-[9px] font-semibold text-emerald-300 bg-emerald-500/25 border border-emerald-500/40 px-1.5 py-0.5 rounded-full flex-shrink-0">close</span>}
+          </div>
+        )}
+
+        {/* Login prompt special content */}
+        {task._source === "login_prompt" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center z-10 pointer-events-none">
+            <div className="w-16 h-16 rounded-full bg-[#2563eb]/20 border-2 border-[#2563eb]/40 flex items-center justify-center text-3xl mb-4">👋</div>
+            <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-[#93c5fd]/60 mb-2">Rede social</p>
+            <h2 className="text-xl font-bold text-white mb-2 leading-tight">Tasks dos seus amigos</h2>
+            <p className="text-sm text-white/50 leading-relaxed">Entre para ver o que seus amigos estão decidindo e reagir às tasks deles.</p>
+            <div className="mt-5 px-5 py-2 rounded-xl bg-[#2563eb] text-white text-sm font-semibold pointer-events-auto">Entrar com email →</div>
+          </div>
+        )}
+
+        <div className={`absolute top-5 left-5 z-10 ${task._source === "friend" ? "top-12" : ""}`}><span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span></div>
+        <div className={`absolute right-5 z-10 text-4xl filter drop-shadow-lg ${task._source === "friend" ? "top-11" : "top-5"}`}>{task.emoji}</div>
         {onShare && (
           <button className="absolute top-[60px] right-5 z-40 w-8 h-8 rounded-full bg-black/35 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/55 transition" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onShare(task); }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+          </button>
+        )}
+        {onShareToFeed && (
+          <button className="absolute top-[100px] right-5 z-40 w-8 h-8 rounded-full bg-black/35 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/55 transition" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onShareToFeed(task); }} title="Compartilhar no feed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" /></svg>
           </button>
         )}
         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
@@ -432,9 +466,9 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare }) {
             </span>
           </div>
         )}
-        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(22,163,74,0.55)", opacity: greenOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[-20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">Aceito!</span></div></motion.div>
-        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(220,38,38,0.55)", opacity: redOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">Depois</span></div></motion.div>
-        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(37,99,235,0.6)", opacity: blueOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2"><span className="text-white font-black text-2xl tracking-widest uppercase">Delegar ↑</span></div></motion.div>
+        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(22,163,74,0.55)", opacity: greenOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[-20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">{task._source === "friend" ? "Aprovei!" : "Aceito!"}</span></div></motion.div>
+        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(220,38,38,0.55)", opacity: redOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">{task._source === "friend" ? "Passei" : "Depois"}</span></div></motion.div>
+        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(37,99,235,0.6)", opacity: blueOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2"><span className="text-white font-black text-2xl tracking-widest uppercase">{task._source === "friend" ? "Reshare ↑" : "Delegar ↑"}</span></div></motion.div>
       </div>
     </motion.div>
   );
@@ -1535,6 +1569,318 @@ function TaskShareModal({ task, handle, onClose }) {
   );
 }
 
+// ── ProfileTab ───────────────────────────────────────────────
+function ProfileTab({
+  profile, auth, stats, streak, decisions, social, notifSettings,
+  openProfileEditor, showToast, setShowNotifSettings, setShowAboutModal,
+  setShareTask, handleLogout, setShowAuthModal, showFriendsPanel, setShowFriendsPanel,
+  friendsPendingBadge, clearAllData,
+}) {
+  const [showAllDecisions, setShowAllDecisions] = useState(false);
+  const [showDanger, setShowDanger] = useState(false);
+
+  const totalDecisions = stats.accepted + stats.rejected + stats.shared;
+  const totalXP        = totalDecisions * 10;
+  const level          = Math.floor(totalXP / 1000) + 1;
+  const xpInLevel      = totalXP % 1000;
+  const xpProgress     = (xpInLevel / 1000) * 100;
+
+  const recentDecisions = [...decisions].slice(0, showAllDecisions ? 50 : 6);
+
+  function badgeStyle(label) {
+    if (label === "Aceito")  return "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20";
+    if (label === "Depois")  return "bg-red-500/15 text-red-300 border border-red-500/20";
+    return "bg-[#2563eb]/15 text-[#93c5fd] border border-[#2563eb]/20";
+  }
+
+  function timeAgo(iso) {
+    try {
+      const diffH = Math.floor((Date.now() - new Date(iso)) / 3600000);
+      if (diffH < 1)  return "agora";
+      if (diffH < 24) return `${diffH}h atrás`;
+      const d = Math.floor(diffH / 24);
+      if (d < 7) return `${d}d atrás`;
+      return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    } catch { return ""; }
+  }
+
+  const IconSettings = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+  const IconBell = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  );
+  const IconInfo = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+    </svg>
+  );
+  const IconChevron = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-white/20 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full pb-8">
+
+      {/* ── Capa + Avatar ─────────────────────────────────────── */}
+      <div className="relative mb-14">
+        <div className="h-24 relative overflow-hidden bg-gradient-to-br from-[#1d4ed8] via-[#7c3aed] to-[#0891b2]">
+          <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
+        </div>
+        <button
+          type="button"
+          onClick={openProfileEditor}
+          className="absolute left-5 -bottom-10 group"
+        >
+          <div className="w-[84px] h-[84px] rounded-3xl bg-gradient-to-br from-[#1d4ed8] to-[#7c3aed] border-[3px] border-[#0d0d0f] flex items-center justify-center text-[42px] shadow-2xl group-hover:brightness-110 transition select-none">
+            {profile.avatar}
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#2563eb] border-2 border-[#0d0d0f] flex items-center justify-center text-[10px] shadow">✏️</div>
+        </button>
+        <button
+          type="button"
+          onClick={openProfileEditor}
+          className="absolute right-5 bottom-3 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-black/30 border border-white/20 text-[12px] font-medium text-white/80 hover:bg-black/50 hover:text-white transition backdrop-blur-sm"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+          Editar perfil
+        </button>
+      </div>
+
+      {/* ── Identidade ────────────────────────────────────────── */}
+      <div className="px-5 mb-5">
+        <div className="flex items-baseline gap-2.5 flex-wrap mb-0.5">
+          <h2 className="text-[20px] font-[500] text-white leading-tight">{profile.name}</h2>
+          {streak.count > 0 && (
+            <span className="flex items-center gap-1 text-[12px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+              🔥 {streak.count} {streak.count === 1 ? "dia" : "dias"}
+            </span>
+          )}
+        </div>
+        <p className="text-[13px] text-white/35">
+          {profile.handle} · Nível {level}
+          {auth.profile && <span className="text-[#3b82f6]/55"> · @{auth.profile.username}</span>}
+        </p>
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/20">Nível {level}</span>
+            <span className="text-[10px] text-white/20">{xpInLevel} / 1000 XP</span>
+          </div>
+          <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${xpProgress}%` }}
+              transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
+              className="h-full rounded-full bg-gradient-to-r from-[#1d4ed8] to-[#7c3aed]"
+            />
+          </div>
+          {streak.best > 0 && streak.best > streak.count && (
+            <p className="text-[11px] text-white/20 mt-1.5">Recorde: 🔥 {streak.best} dias</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Stats ─────────────────────────────────────────────── */}
+      <div className="px-5 grid grid-cols-3 gap-2 mb-5">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className="w-4.5 h-4.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div className="text-[22px] font-bold text-[#3b82f6] leading-none">{totalDecisions}</div>
+          <div className="text-[10px] text-white/30 font-medium">Decididas</div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.8} className="w-4.5 h-4.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" /></svg>
+          <div className="text-[22px] font-bold text-amber-400 leading-none">{streak.count}</div>
+          <div className="text-[10px] text-white/30 font-medium">Dias seguidos</div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex flex-col gap-1.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={1.8} className="w-4.5 h-4.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+          <div className="text-[22px] font-bold text-emerald-400 leading-none">
+            {totalDecisions > 0 ? `${Math.round((stats.accepted / totalDecisions) * 100)}%` : "—"}
+          </div>
+          <div className="text-[10px] text-white/30 font-medium">Aceite</div>
+        </motion.div>
+      </div>
+
+      {/* ── Social / Amigos ───────────────────────────────────── */}
+      <div className="px-5 mb-5">
+        {auth.isLoggedIn ? (
+          <div>
+            <button
+              onClick={() => setShowFriendsPanel(p => !p)}
+              className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] transition"
+            >
+              <div className="w-8 h-8 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-medium text-white">Amigos</p>
+                <p className="text-[11px] text-white/30 truncate">
+                  {social.friends.length} amigo{social.friends.length !== 1 ? "s" : ""}
+                  {social.friends.filter(f => f.isCloseFriend).length > 0 && ` · ${social.friends.filter(f => f.isCloseFriend).length} close`}
+                </p>
+              </div>
+              {friendsPendingBadge > 0 && <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full flex-shrink-0">{friendsPendingBadge}</span>}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-4 h-4 text-white/20 flex-shrink-0 transition-transform ${showFriendsPanel ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+            <AnimatePresence>
+              {showFriendsPanel && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22 }}
+                  className="overflow-hidden mt-2 rounded-2xl border border-white/[0.07]"
+                >
+                  <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
+                    <FriendsTab social={social} showToast={showToast} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.1) 0%, rgba(124,58,237,0.1) 50%, rgba(8,145,178,0.08) 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-[#2563eb]/20 flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+              </div>
+              <p className="text-sm font-semibold text-white">Conecte com amigos</p>
+            </div>
+            <p className="text-[12px] text-white/40 leading-relaxed mb-4">
+              Entre para ver as tasks dos seus amigos no deck, reagir e compartilhar as suas.
+            </p>
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-500 transition"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+              Entrar com email
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Atividade recente ─────────────────────────────────── */}
+      <div className="px-5 mb-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25">Atividade recente</h3>
+          {decisions.length > 6 && (
+            <button onClick={() => setShowAllDecisions(v => !v)} className="text-[11px] text-[#3b82f6]/60 hover:text-[#3b82f6] transition">
+              {showAllDecisions ? "Ver menos" : "Ver tudo"}
+            </button>
+          )}
+        </div>
+        {decisions.length === 0 ? (
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] py-8 text-center">
+            <p className="text-sm text-white/20">Nenhuma decisão ainda</p>
+            <p className="text-[11px] text-white/12 mt-1">Swipe em tasks no Início pra começar</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {recentDecisions.map((d, idx) => {
+              const g = ONBOARDING_GRADIENTS[d.category] || { gradient: "from-blue-600 to-cyan-600" };
+              return (
+                <motion.div
+                  key={d.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(idx * 0.04, 0.3) }}
+                  className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl px-3 py-2.5"
+                >
+                  <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${g.gradient} flex items-center justify-center text-[18px] flex-shrink-0 shadow`}>
+                    {d.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] text-white/85 truncate font-medium leading-snug">{d.title}</p>
+                    <p className="text-[10px] text-white/25 mt-0.5">{d.category} · {timeAgo(d.decidedAt)}</p>
+                  </div>
+                  <span className={`text-[9px] font-semibold px-2 py-1 rounded-xl flex-shrink-0 ${badgeStyle(d.label)}`}>{d.label}</span>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Menu de configurações ─────────────────────────────── */}
+      <div className="px-5">
+        <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-3">Configurações</h3>
+        <div className="flex flex-col">
+          {[
+            { label: "Notificações", icon: IconBell,     action: () => setShowNotifSettings(true), badge: notifSettings.enabled ? "On" : null, color: "#10b981" },
+            { label: "Aparência",    icon: IconSettings, action: () => showToast("Em breve.", "bg-white/10"), badge: null, color: "#8b5cf6" },
+            { label: "Sobre",        icon: IconInfo,     action: () => setShowAboutModal(true), badge: null, color: "#3b82f6" },
+          ].map(({ label, icon, action, badge, color }, i) => (
+            <button
+              key={label}
+              type="button"
+              onClick={action}
+              className={`flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-white/[0.04] transition rounded-xl ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
+            >
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
+                <div style={{ color }}>{icon}</div>
+              </div>
+              <span className="flex-1 text-[13px] text-white/70">{label}</span>
+              {badge && <span className="text-[9px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full mr-1">{badge}</span>}
+              {IconChevron}
+            </button>
+          ))}
+        </div>
+
+        <div className="border-t border-white/[0.05] mt-1 pt-1">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-red-500/[0.06] transition rounded-xl w-full"
+          >
+            <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
+            </div>
+            <span className="flex-1 text-[13px] text-red-400/75">Sair</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={2} className="w-4 h-4 opacity-30 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
+        {/* Zona de perigo colapsável */}
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowDanger(v => !v)}
+            className="flex items-center gap-1.5 text-[11px] text-white/15 hover:text-white/30 transition pl-4"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            Zona perigosa
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-3 h-3 transition-transform ${showDanger ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </button>
+          <AnimatePresence>
+            {showDanger && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={clearAllData}
+                  className="mt-2 flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-500/10 transition rounded-xl w-full border border-amber-500/15"
+                >
+                  <span className="text-[15px]">🗑️</span>
+                  <span className="text-[12px] text-amber-400/70">Limpar todos os dados locais</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Main ─────────────────────────────────────────────────────
 export default function TaskMatch() {
   // Estados persistidos — sobrevivem ao reload
@@ -1547,6 +1893,14 @@ export default function TaskMatch() {
   const [chatMessages, setChatMessages] = usePersistedState(SK.raf, [{ id: 1, sender: "raf", text: "RAF online. Fala o que precisa." }]);
   const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
   const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
+
+  // ── Camada social (Supabase) ──────────────────────────────
+  const auth   = useAuth();
+  const social = useSocial(auth.user?.id);
+  const [shareToFeedTask,    setShareToFeedTask]    = useState(null);
+  const [showAuthModal,      setShowAuthModal]      = useState(false);
+  const [showFriendsPanel,   setShowFriendsPanel]   = useState(false);
+  const [respondedSocialIds, setRespondedSocialIds] = useState(() => new Set());
 
   // Estados voláteis — resetam no reload (intencionalmente)
   const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
@@ -1585,6 +1939,55 @@ export default function TaskMatch() {
   const progress = total > 0 ? ((total - remaining) / total) * 100 : 0;
   const sortedTasks = sortByUrgency(tasks);
   const topTask = sortedTasks[sortedTasks.length - 1];
+
+  // ── Mixed deck: personal + friend tasks ──────────────────
+  const socialDeckItems = auth.isLoggedIn
+    ? (social.feed || [])
+        .filter(t => !t.myResponse && !respondedSocialIds.has(t.id))
+        .slice(0, 8)
+        .map(t => ({
+          id: `social-${t.id}`,
+          _socialId: t.id,
+          _source: "friend",
+          _author: t.author,
+          _closeFriend: t.author?.isCloseFriend,
+          title: t.title,
+          description: t.description || "",
+          category: t.category || "Social",
+          emoji: t.emoji || "✨",
+          gradient: t.gradient || "from-violet-700 via-purple-700 to-indigo-800",
+          accent: "#8b5cf6",
+          image: t.image_url || null,
+          priority: null,
+          deadline: null,
+        }))
+    : [];
+
+  const loginPromptCard = !auth.isLoggedIn ? {
+    id: "login-prompt",
+    _source: "login_prompt",
+    title: "Tasks dos seus amigos",
+    description: "Entre para ver e reagir às tasks que seus amigos estão decidindo.",
+    emoji: "👋",
+    gradient: "from-[#1a1a2e] via-[#16213e] to-[#0f3460]",
+    category: "Social",
+    accent: "#2563eb",
+    priority: null,
+    deadline: null,
+  } : null;
+
+  const mixedDeck = (() => {
+    const personal = sortedTasks.map(t => ({ ...t, _source: "self" }));
+    const result = [...personal, ...socialDeckItems];
+    if (loginPromptCard && result.length > 0) {
+      result.splice(Math.max(0, personal.length - 1), 0, loginPromptCard);
+    } else if (loginPromptCard) {
+      result.push(loginPromptCard);
+    }
+    return result;
+  })();
+  const mixedTopTask    = mixedDeck[mixedDeck.length - 1];
+  const mixedRemaining  = mixedDeck.length;
   const cardHeight = isDesktop ? 420 : 360;
 
   const quickActions = [
@@ -1703,7 +2106,11 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     setProfile(updated);   // usePersistedState já persiste automaticamente
     setShowProfileEditor(false);
   }
-  function handleLogout() { if (window.confirm("Deseja sair do TaskMatch?")) showToast("Logout não implementado.", "bg-red-600/90"); }
+  function handleLogout() {
+    if (!window.confirm("Deseja sair do TaskMatch?")) return;
+    if (auth.isLoggedIn) { auth.signOut(); showToast("Sessão encerrada.", "bg-white/10"); }
+    else showToast("Não há sessão ativa.", "bg-white/10");
+  }
 
   function clearAllData() {
     if (!window.confirm("Apagar todos os dados? Tasks, histórico e convites serão removidos.")) return;
@@ -1795,6 +2202,28 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
 
   // ── Swipe ────────────────────────────────────────────────
   async function handleSwipe(direction, task, vel = {}) {
+    // Login prompt card — abrir modal de auth
+    if (task._source === "login_prompt") {
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Task de amigo — responder no Supabase, não altera deck local
+    if (task._source === "friend") {
+      try { if (navigator.vibrate) navigator.vibrate(direction === "up" ? 80 : direction === "right" ? [30, 50, 30] : 30); } catch {}
+      setSwipeExit({ vx: 0, vy: 0, ...vel, dir: direction });
+      setRespondedSocialIds(prev => new Set([...prev, task._socialId]));
+      const responseMap = { right: "approved", left: "rejected", up: "reshared" };
+      const toastMap = {
+        right: ["✓ Aprovado!", "bg-emerald-600/90 backdrop-blur-md"],
+        left:  ["× Passei", "bg-red-600/90 backdrop-blur-md"],
+        up:    ["↑ Recompartilhado!", "bg-[#2563eb]/90 backdrop-blur-md"],
+      };
+      showToast(...(toastMap[direction] || toastMap.left));
+      try { await social.respondToTask(task._socialId, responseMap[direction] || "rejected"); } catch {}
+      return;
+    }
+
     registerActivity();
     setRiskDismissed(true); // banner some após primeira decisão do dia
     setSwipeExit({ vx: 0, vy: 0, ...vel, dir: direction });
@@ -1896,6 +2325,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     { id: "ia",      label: "RAF",       icon: "M13 10V3L4 14h7v7l9-11h-7z" },
     { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
+  const friendsPendingBadge = social.pendingIncoming.length;
 
 
 
@@ -1913,6 +2343,9 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-0.5">Decida rápido, viva mais.</p></div>
             <div className="flex items-center gap-1">
               <StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} />
+              {!auth.isLoggedIn && (
+                <button onClick={() => setShowAuthModal(true)} className="px-2.5 h-9 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[11px] font-semibold text-[#93c5fd] hover:bg-[#2563eb]/25 transition">Entrar</button>
+              )}
               <button onClick={() => setShowCreateGroupModal(true)} className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center" title="Criar deck em grupo"><span className="text-base leading-none">👥</span></button>
               <button onClick={() => setActiveTab("create")} className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
             </div>
@@ -1931,9 +2364,15 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             )}
           </AnimatePresence>
 
-          {activeTab === "home" && remaining > 0 && (
+          {activeTab === "home" && mixedRemaining > 0 && (
             <div className="flex-shrink-0 px-5 pb-3">
-              <div className="flex items-center justify-between mb-1.5"><span className="text-[11px] text-white/30 font-medium">Deck pessoal</span><span className="text-[11px] text-white/20 bg-white/[0.05] px-2.5 py-0.5 rounded-full">{remaining} de {total} restantes</span></div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] text-white/30 font-medium flex items-center gap-1.5">
+                  Deck
+                  {socialDeckItems.length > 0 && <span className="text-[9px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">{socialDeckItems.length} de amigos</span>}
+                </span>
+                <span className="text-[11px] text-white/20 bg-white/[0.05] px-2.5 py-0.5 rounded-full">{remaining} de {total} pessoais</span>
+              </div>
               <div className="h-[2px] bg-white/[0.06] rounded-full overflow-hidden"><motion.div className="h-full bg-[#2563eb] rounded-full" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} /></div>
             </div>
           )}
@@ -1941,15 +2380,15 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <div className="flex-1 min-h-0 overflow-hidden relative">
             {activeTab === "home" && (
               <div className="flex flex-col h-full">
-                {remaining > 0 ? (
+                {mixedRemaining > 0 ? (
                   <>
-                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop ? setShareTask : undefined} />); })}</AnimatePresence></div></div>
+                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{mixedDeck.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; const isSelf = task._source === "self"; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop && isSelf ? setShareTask : undefined} onShareToFeed={isTop && isSelf && auth.isLoggedIn ? setShareToFeedTask : undefined} />); })}</AnimatePresence></div></div>
                     <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
-                      <div className="flex items-center gap-1.5 text-red-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Depois</span></div>
-                      <div className="flex flex-col items-center text-blue-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">Delegar</span></div>
-                      <div className="flex items-center gap-1.5 text-emerald-400/45"><span className="text-[9px] font-semibold tracking-widest uppercase">Aceitar</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
+                      <div className="flex items-center gap-1.5 text-red-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Passei" : "Depois"}</span></div>
+                      <div className="flex flex-col items-center text-blue-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Reshare" : "Delegar"}</span></div>
+                      <div className="flex items-center gap-1.5 text-emerald-400/45"><span className="text-[9px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Aprovei" : "Aceitar"}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
                     </div>
-                    <div className="flex-shrink-0 flex items-center justify-center pb-4"><ActionButtons onAction={(dir) => topTask && handleSwipe(dir, topTask)} disabled={!topTask} /></div>
+                    <div className="flex-shrink-0 flex items-center justify-center pb-4"><ActionButtons onAction={(dir) => mixedTopTask && handleSwipe(dir, mixedTopTask)} disabled={!mixedTopTask} /></div>
                   </>
                 ) : (<EmptyState stats={stats} onReset={handleReset} />)}
               </div>
@@ -2057,45 +2496,31 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                       <input type="date" value={newTaskData.deadline} onChange={(e) => setNewTaskData((p) => ({ ...p, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition [color-scheme:dark]" />
                     </div>
                     <div className="flex gap-3 pt-1"><button type="button" onClick={() => setActiveTab("home")} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button><button type="submit" className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Adicionar tarefa</button></div>
+                    {auth.isLoggedIn && newTaskData.title.trim() && (
+                      <button type="button" onClick={() => setShareToFeedTask({ title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-blue-600 via-sky-600 to-cyan-600", image: newTaskData.image })} className="w-full py-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-sm font-medium hover:bg-emerald-500/25 transition">🌐 Compartilhar no feed</button>
+                    )}
                   </form>
                 </div>
               </motion.div>
             )}
             {activeTab === "profile" && (
-              <motion.div className="h-full overflow-y-auto px-5 pt-4 pb-6" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="flex flex-col items-center gap-2 mb-6">
-                  <button type="button" onClick={openProfileEditor} className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition">{profile.avatar}<span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span></button>
-                  <div className="text-center"><div className="text-lg font-semibold text-white">{profile.name}</div><div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div></div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 mb-5">
-                  {[{ label: "Feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" }, { label: "Sequência", value: streak.count, color: "text-amber-400" }, { label: "Taxa", value: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%", color: "text-emerald-400" }].map(({ label, value, color }) => (
-                    <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
-                  ))}
-                  {streak.best > 0 && streak.best > streak.count && (<div className="col-span-3 flex items-center justify-center gap-1.5 py-0.5"><span className="text-[11px] text-white/25">Recorde pessoal:</span><span className="text-[11px] font-semibold text-amber-400">🔥 {streak.best} dias</span></div>)}
-                </div>
-                <HistorySection decisions={decisions} onShare={setShareTask} />
-                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
-                  {[
-                    { label: "Editar perfil",     action: openProfileEditor,                icon: "👤", badge: null },
-                    { label: "Notificações",      action: () => setShowNotifSettings(true), icon: "🔔", badge: notifSettings.enabled ? "on" : null },
-                    { label: "Aparência",         action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨", badge: null },
-                    { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true),    icon: "ℹ️", badge: null },
-                  ].map(({ label, action, icon, badge }, i) => (
-                    <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
-                      <span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span>
-                      {badge === "on" && <span className="text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full mr-1">On</span>}
-                      <span className="text-white/20 text-lg">›</span>
-                    </button>
-                  ))}
-                  <button type="button" onClick={clearAllData} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-amber-500/10 transition"><span className="text-[17px]">🗑️</span><span className="flex-1 text-sm text-amber-300">Limpar todos os dados</span><span className="text-amber-400/40 text-lg">›</span></button>
-                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"><span className="text-[17px]">🚪</span><span className="flex-1 text-sm text-red-300">Sair</span><span className="text-red-400/40 text-lg">›</span></button>
-                </div>
-              </motion.div>
+              <div className="h-full overflow-y-auto">
+                <ProfileTab
+                  profile={profile} auth={auth} stats={stats} streak={streak}
+                  decisions={decisions} social={social} notifSettings={notifSettings}
+                  openProfileEditor={openProfileEditor} showToast={showToast}
+                  setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
+                  setShareTask={setShareTask} handleLogout={handleLogout}
+                  setShowAuthModal={setShowAuthModal} showFriendsPanel={showFriendsPanel}
+                  setShowFriendsPanel={setShowFriendsPanel} friendsPendingBadge={friendsPendingBadge}
+                  clearAllData={clearAllData}
+                />
+              </div>
             )}
           </div>
 
           <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
+            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}{tab.id === "profile" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
           </div>
         </div>
       )}
@@ -2106,7 +2531,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
             <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-1">Decida rápido, viva mais.</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
             <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
+              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}{tab.id === "profile" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
               <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Sessão atual</p>
@@ -2132,24 +2557,28 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                   )}
                 </AnimatePresence>
                 <div className="flex items-center justify-between px-10 pt-6 pb-3 flex-shrink-0 border-b border-white/[0.05]">
-                  <span className="text-[11px] font-semibold tracking-[0.06em] uppercase text-white/30">Deck pessoal</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold tracking-[0.06em] uppercase text-white/30">Deck</span>
+                    {socialDeckItems.length > 0 && <span className="text-[9px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30 px-2 py-0.5 rounded-full">{socialDeckItems.length} de amigos</span>}
+                  </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">{remaining} de {total} restantes</span>
+                    {!auth.isLoggedIn && <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/25 text-[12px] font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition">Entrar</button>}
+                    <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">{remaining} de {total} pessoais</span>
                     <button onClick={() => setShowCreateGroupModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">👥 Deck em grupo</button>
                     <button onClick={() => setActiveTab("create")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Criar card</button>
                   </div>
                 </div>
                 {remaining > 0 && (<div className="px-10 pt-3 pb-1 flex-shrink-0"><div className="h-[2px] bg-white/[0.06] rounded-full overflow-hidden"><motion.div className="h-full bg-[#2563eb] rounded-full" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} /></div></div>)}
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 min-h-0">
-                  {remaining > 0 ? (
+                  {mixedRemaining > 0 ? (
                     <>
-                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{sortedTasks.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop ? setShareTask : undefined} />); })}</AnimatePresence></div>
+                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{mixedDeck.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; const isSelf = task._source === "self"; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop && isSelf ? setShareTask : undefined} onShareToFeed={isTop && isSelf && auth.isLoggedIn ? setShareToFeedTask : undefined} />); })}</AnimatePresence></div>
                       <div className="flex items-center justify-between w-full max-w-[520px] px-2">
-                        <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Depois</span></div>
-                        <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">Delegar</span></div>
-                        <div className="flex items-center gap-1.5 text-emerald-400/50"><span className="text-[10px] font-semibold tracking-widest uppercase">Aceitar</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
+                        <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Passei" : "Depois"}</span></div>
+                        <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Reshare" : "Delegar"}</span></div>
+                        <div className="flex items-center gap-1.5 text-emerald-400/50"><span className="text-[10px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Aprovei" : "Aceitar"}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
                       </div>
-                      <ActionButtons onAction={(dir) => topTask && handleSwipe(dir, topTask)} disabled={!topTask} />
+                      <ActionButtons onAction={(dir) => mixedTopTask && handleSwipe(dir, mixedTopTask)} disabled={!mixedTopTask} />
                     </>
                   ) : (<EmptyState stats={stats} onReset={handleReset} />)}
                 </div>
@@ -2260,43 +2689,28 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                       <input type="date" value={newTaskData.deadline} onChange={(e) => setNewTaskData((p) => ({ ...p, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition [color-scheme:dark]" />
                     </div>
                     <div className="flex gap-3 pt-1"><button type="button" onClick={() => setActiveTab("home")} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button><button type="submit" className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Adicionar tarefa</button></div>
+                    {auth.isLoggedIn && newTaskData.title.trim() && (
+                      <button type="button" onClick={() => setShareToFeedTask({ title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-blue-600 via-sky-600 to-cyan-600", image: newTaskData.image })} className="w-full py-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-sm font-medium hover:bg-emerald-500/25 transition">🌐 Compartilhar no feed</button>
+                    )}
                   </form>
                 </div>
               </motion.div>
             )}
             {activeTab === "profile" && (
-              <motion.div className="flex flex-1 flex-col items-center overflow-y-auto px-10 py-10" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="w-full max-w-xl">
-                  <div className="flex flex-col items-center gap-2 mb-6">
-                    <button type="button" onClick={openProfileEditor} className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition">{profile.avatar}<span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span></button>
-                    <div className="text-center"><div className="text-lg font-semibold text-white">{profile.name}</div><div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div></div>
-                    <div className="flex gap-2"><span className="text-[11px] font-semibold bg-[#2563eb]/15 text-[#93c5fd] px-3 py-1 rounded-full">Nível 7</span>{streak.count > 0 && <span className="text-[11px] font-semibold bg-amber-500/15 text-amber-300 px-3 py-1 rounded-full">🔥 {streak.count} {streak.count === 1 ? "dia" : "dias"}</span>}</div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mb-5">
-                    {[{ label: "Feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" }, { label: "Sequência", value: streak.count, color: "text-amber-400" }, { label: "Taxa", value: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%", color: "text-emerald-400" }].map(({ label, value, color }) => (
-                      <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
-                    ))}
-                    {streak.best > 0 && streak.best > streak.count && (<div className="col-span-3 flex items-center justify-center gap-1.5 py-0.5"><span className="text-[11px] text-white/25">Recorde pessoal:</span><span className="text-[11px] font-semibold text-amber-400">🔥 {streak.best} dias</span></div>)}
-                  </div>
-                  <HistorySection decisions={decisions} onShare={setShareTask} />
-                  <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden rounded-3xl">
-                    {[
-                      { label: "Editar perfil",     action: openProfileEditor,                icon: "👤", badge: null },
-                      { label: "Notificações",      action: () => setShowNotifSettings(true), icon: "🔔", badge: notifSettings.enabled ? "on" : null },
-                      { label: "Aparência",         action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨", badge: null },
-                      { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true),    icon: "ℹ️", badge: null },
-                    ].map(({ label, action, icon, badge }, i) => (
-                      <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
-                        <span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span>
-                        {badge === "on" && <span className="text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full mr-1">On</span>}
-                        <span className="text-white/20 text-lg">›</span>
-                      </button>
-                    ))}
-                    <button type="button" onClick={clearAllData} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-amber-500/10 transition"><span className="text-[17px]">🗑️</span><span className="flex-1 text-sm text-amber-300">Limpar todos os dados</span><span className="text-amber-400/40 text-lg">›</span></button>
-                    <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"><span className="text-[17px]">🚪</span><span className="flex-1 text-sm text-red-300">Sair</span><span className="text-red-400/40 text-lg">›</span></button>
-                  </div>
+              <div className="flex flex-1 flex-col items-center overflow-y-auto">
+                <div className="w-full max-w-[520px]">
+                  <ProfileTab
+                    profile={profile} auth={auth} stats={stats} streak={streak}
+                    decisions={decisions} social={social} notifSettings={notifSettings}
+                    openProfileEditor={openProfileEditor} showToast={showToast}
+                    setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
+                    setShareTask={setShareTask} handleLogout={handleLogout}
+                    setShowAuthModal={setShowAuthModal} showFriendsPanel={showFriendsPanel}
+                    setShowFriendsPanel={setShowFriendsPanel} friendsPendingBadge={friendsPendingBadge}
+                    clearAllData={clearAllData}
+                  />
                 </div>
-              </motion.div>
+              </div>
             )}
           </main>
         </div>
@@ -2307,6 +2721,10 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           onFinish={() => { save("tm_onboarded", true); setShowOnboarding(false); }}
           onCreateTask={createTaskFromOnboarding}
         />
+      )}
+
+      {auth.needsProfile && (
+        <SetupProfile onCreate={auth.createProfile} localProfile={profile} />
       )}
 
       <AnimatePresence>
@@ -2328,6 +2746,39 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
         )}
         {shareTask && (
           <TaskShareModal key="tsm" task={shareTask} handle={profile.handle} onClose={() => setShareTask(null)} />
+        )}
+        {shareToFeedTask && (
+          <ShareToFeedModal
+            key="stfm"
+            task={shareToFeedTask}
+            onShare={social.shareTask}
+            onClose={() => setShareToFeedTask(null)}
+          />
+        )}
+        {showAuthModal && !auth.isLoggedIn && (
+          <motion.div
+            key="auth-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+            onClick={() => setShowAuthModal(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="bg-[#18181c] rounded-3xl w-full max-w-sm border border-white/10 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 pt-5 pb-2">
+                <h3 className="font-bold text-white text-base">Entrar no TaskMatch</h3>
+                <button onClick={() => setShowAuthModal(false)} className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-white/40 hover:text-white transition text-sm">✕</button>
+              </div>
+              <AuthScreen onSendLink={auth.sendMagicLink} />
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
