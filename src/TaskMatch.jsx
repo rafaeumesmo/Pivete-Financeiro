@@ -13,6 +13,29 @@ const SK = {
   decisions:     "tm_decisions",  // histórico imutável de swipes
   exploreSeenAt: "tm_explore_seen_at",
 };
+const SK_GROUP_NICK = "tm_group_nick";
+
+// ── Group deck helpers ────────────────────────────────────────
+const GROUP_AVATARS = ["😎","🚀","🎯","🔥","💡","🎉","🌟","🎸","🦊","🐼","🍕","🎮","⚡","🏆","🎪","🌈"];
+
+const GROUP_GRADIENT_OPTIONS = [
+  { gradient: "from-violet-600 via-purple-700 to-indigo-800", accent: "#8b5cf6" },
+  { gradient: "from-rose-600 via-pink-600 to-red-700",        accent: "#f43f5e" },
+  { gradient: "from-amber-500 via-orange-600 to-red-600",     accent: "#f59e0b" },
+  { gradient: "from-emerald-600 via-teal-600 to-cyan-700",    accent: "#10b981" },
+  { gradient: "from-blue-600 via-sky-500 to-cyan-600",        accent: "#3b82f6" },
+  { gradient: "from-slate-500 via-gray-600 to-zinc-700",      accent: "#94a3b8" },
+];
+
+function encodeGroupDeck(deck) {
+  return btoa(encodeURIComponent(JSON.stringify(deck)));
+}
+function decodeGroupDeck(b64) {
+  try { return JSON.parse(decodeURIComponent(atob(b64))); } catch { return null; }
+}
+function buildGroupUrl(deck) {
+  return `${window.location.origin}${window.location.pathname}?d=${encodeGroupDeck(deck)}`;
+}
 
 // ── Helpers de storage ────────────────────────────────────────
 function load(key, fallback) {
@@ -423,8 +446,397 @@ function Onboarding({ onFinish, onCreateTask }) {
   );
 }
 
+// ── GroupTaskCard ─────────────────────────────────────────────
+function GroupTaskCard({ task, onSwipe, isTop, stackIndex }) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const rotateZ = useTransform(x, [-200, 200], [-18, 18]);
+  const greenOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
+  const redOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
+  const blueOpacity = useTransform(y, [SWIPE_UP_THRESHOLD, 0], [1, 0]);
+
+  function handleDragEnd(_, info) {
+    const { velocity: { x: vx, y: vy }, offset: { x: ox, y: oy } } = info;
+    if (oy < SWIPE_UP_THRESHOLD || vy < -500) onSwipe("up", task, { vx: 0, vy });
+    else if (ox > SWIPE_THRESHOLD || vx > 600) onSwipe("right", task, { vx, vy: 0 });
+    else if (ox < -SWIPE_THRESHOLD || vx < -600) onSwipe("left", task, { vx, vy: 0 });
+    else {
+      animate(x, 0, { type: "spring", stiffness: 300, damping: 20 });
+      animate(y, 0, { type: "spring", stiffness: 300, damping: 20 });
+    }
+  }
+
+  if (!isTop) {
+    const ts = 1 - stackIndex * 0.04;
+    const ty = stackIndex * 12;
+    const to = 1 - stackIndex * 0.15;
+    return (
+      <motion.div className="absolute inset-0 mx-auto" initial={{ scale: ts, y: ty, opacity: to }} animate={{ scale: ts, y: ty, opacity: to }} transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.8 }} style={{ zIndex: 10 - stackIndex, width: "100%", originY: 1 }}>
+        <div className={`w-full h-full rounded-3xl bg-gradient-to-br ${task.gradient} shadow-2xl`} />
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div className="absolute inset-0 mx-auto cursor-grab active:cursor-grabbing" style={{ x, y, rotateZ, zIndex: 20, width: "100%" }} drag dragConstraints={{ top: -300, bottom: 150, left: -300, right: 300 }} dragElastic={0.12} onDragEnd={handleDragEnd} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} whileDrag={{ scale: 0.97, filter: "drop-shadow(0 24px 52px rgba(0,0,0,0.6))" }} variants={{ exit: ({ vx = 0, vy = 0, dir } = {}) => { const cx = x.get(); const cy = y.get(); if (dir === "up") return { y: -700, x: cx * 1.5, rotate: cx * 0.05, opacity: 0, transition: { duration: 0.42, ease: [0.4, 0, 1, 1] } }; const sign = dir === "right" ? 1 : -1; const exitDur = Math.max(0.26, 0.38 - Math.min(Math.abs(vx), 1200) / 5000); return { x: sign * 720, y: cy + 80, rotate: sign * Math.min(Math.abs(vx) / 160, 20), opacity: 0, transition: { duration: exitDur, ease: [0.4, 0, 1, 1] } }; } }} exit="exit">
+      <div className={`w-full h-full rounded-3xl bg-gradient-to-br ${task.gradient} overflow-hidden shadow-2xl relative select-none`}>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        <div className="absolute top-6 right-6 z-10 text-6xl filter drop-shadow-lg">{task.emoji}</div>
+        <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
+          <h2 className="text-3xl font-black text-white tracking-tight leading-tight">{task.title}</h2>
+        </div>
+        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(22,163,74,0.55)", opacity: greenOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[-20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">Topo!</span></div></motion.div>
+        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(220,38,38,0.55)", opacity: redOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">Passo</span></div></motion.div>
+        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(168,85,247,0.6)", opacity: blueOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2"><span className="text-white font-black text-2xl tracking-widest uppercase">Amo essa ↑</span></div></motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── CreateGroupModal ──────────────────────────────────────────
+function CreateGroupModal({ onClose, createdBy }) {
+  const [deckName, setDeckName] = useState("");
+  const [options, setOptions] = useState([
+    { id: 1, title: "", emoji: "🎯", gIdx: 0 },
+    { id: 2, title: "", emoji: "🎬", gIdx: 1 },
+  ]);
+  const [step, setStep] = useState("form");
+  const [generatedLink, setGeneratedLink] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function addOption() {
+    setOptions(p => [...p, { id: Date.now(), title: "", emoji: "✨", gIdx: p.length % GROUP_GRADIENT_OPTIONS.length }]);
+  }
+  function removeOption(id) {
+    setOptions(p => p.length > 1 ? p.filter(o => o.id !== id) : p);
+  }
+  function updateOption(id, field, value) {
+    setOptions(p => p.map(o => o.id === id ? { ...o, [field]: value } : o));
+  }
+
+  function generate() {
+    const valid = options.filter(o => o.title.trim());
+    if (!deckName.trim() || valid.length < 2) return;
+    const deck = {
+      id: `gd-${Date.now()}`,
+      name: deckName.trim(),
+      createdBy: createdBy || "Anônimo",
+      tasks: valid.map(o => ({
+        id: `gt-${o.id}`,
+        title: o.title.trim(),
+        emoji: o.emoji || "✨",
+        gradient: GROUP_GRADIENT_OPTIONS[o.gIdx].gradient,
+        accent: GROUP_GRADIENT_OPTIONS[o.gIdx].accent,
+      })),
+      votes: [],
+    };
+    const link = buildGroupUrl(deck);
+    setGeneratedLink(link);
+    setStep("link");
+    navigator.clipboard?.writeText(link).catch(() => {});
+    setCopied(true);
+  }
+
+  function copyAgain() {
+    navigator.clipboard?.writeText(generatedLink).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const canGenerate = deckName.trim() && options.filter(o => o.title.trim()).length >= 2;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm px-4 pb-6 sm:pb-0">
+      <motion.div initial={{ opacity: 0, y: 40, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.96 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
+          <div><p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Novo</p><h2 className="text-base font-bold text-white">Deck em grupo</h2></div>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
+        </div>
+        <div className="px-5 py-5 max-h-[75vh] overflow-y-auto">
+          {step === "form" ? (
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-[10px] font-semibold tracking-widest uppercase text-white/35 mb-2">Nome do deck</label>
+                <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder='Ex: "Rolê de sexta"' className="w-full rounded-xl bg-white/[0.05] border border-white/[0.08] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition" autoFocus />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-semibold tracking-widest uppercase text-white/35">Opções (mín. 2)</label>
+                  <button onClick={addOption} className="text-[11px] text-[#3b82f6] font-medium hover:text-blue-300 transition">+ Adicionar</button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {options.map(opt => (
+                    <div key={opt.id} className="flex items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.07] p-2.5">
+                      <div className="grid grid-cols-3 gap-1 flex-shrink-0">
+                        {GROUP_GRADIENT_OPTIONS.map((g, idx) => (
+                          <button key={idx} onClick={() => updateOption(opt.id, "gIdx", idx)} className={`w-4 h-4 rounded-full bg-gradient-to-br ${g.gradient} transition ${opt.gIdx === idx ? "ring-2 ring-white/60 ring-offset-1 ring-offset-[#18191f]" : ""}`} />
+                        ))}
+                      </div>
+                      <input value={opt.emoji} onChange={e => updateOption(opt.id, "emoji", e.target.value)} className="w-8 rounded-lg bg-white/[0.05] border border-white/[0.07] py-1.5 text-sm text-center text-white outline-none flex-shrink-0" maxLength={2} />
+                      <input value={opt.title} onChange={e => updateOption(opt.id, "title", e.target.value)} placeholder="Ex: Bar do Zé" className="flex-1 text-sm text-white placeholder:text-white/25 bg-transparent outline-none" />
+                      {options.length > 1 && <button onClick={() => removeOption(opt.id)} className="text-white/20 hover:text-red-400 transition text-sm flex-shrink-0">✕</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[10px] text-white/20 text-center leading-relaxed">Modo assíncrono: cada pessoa abre o link, vota e devolve um link atualizado.</p>
+              <div className="flex gap-3">
+                <button onClick={onClose} className="flex-1 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.07] text-sm text-white/50">Cancelar</button>
+                <motion.button whileTap={{ scale: 0.97 }} onClick={generate} disabled={!canGenerate} className="flex-1 py-3 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-40 disabled:cursor-not-allowed">Gerar link →</motion.button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-2">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-3xl">🔗</div>
+              <div className="text-center">
+                <h3 className="text-base font-bold text-white mb-1">Link gerado!</h3>
+                <p className="text-[13px] text-white/40">Link copiado — manda no grupo</p>
+              </div>
+              <div className="w-full rounded-xl bg-white/[0.05] border border-white/[0.08] px-3.5 py-2.5">
+                <p className="text-[11px] text-white/30 break-all font-mono leading-relaxed">{generatedLink.slice(0, 80)}{generatedLink.length > 80 ? "…" : ""}</p>
+              </div>
+              <motion.button whileTap={{ scale: 0.97 }} onClick={copyAgain} className={`w-full py-3 rounded-2xl text-sm font-semibold border transition ${copied ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" : "bg-[#2563eb]/20 border-[#2563eb]/30 text-[#3b82f6] hover:bg-[#2563eb]/30"}`}>
+                {copied ? "✓ Copiado!" : "Copiar link de novo"}
+              </motion.button>
+              <button onClick={onClose} className="text-[13px] text-white/30 hover:text-white/50 transition">Fechar</button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── JoinGroupModal ────────────────────────────────────────────
+function JoinGroupModal({ deck, onJoin, onClose }) {
+  const [nick, setNick] = useState(() => { try { return localStorage.getItem(SK_GROUP_NICK) || ""; } catch { return ""; } });
+  const [avatar, setAvatar] = useState(GROUP_AVATARS[0]);
+
+  function handleJoin() {
+    if (!nick.trim()) return;
+    try { localStorage.setItem(SK_GROUP_NICK, nick.trim()); } catch {}
+    onJoin(nick.trim(), avatar);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-sm px-4">
+      <motion.div initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl">
+        <div className="px-5 pt-6 pb-5">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-3">👥</div>
+            <h2 className="text-lg font-bold text-white mb-1">Você foi convidado!</h2>
+            <p className="text-sm text-white/50">Deck: <span className="text-white font-semibold">"{deck.name}"</span></p>
+            {deck.createdBy && <p className="text-[11px] text-white/30 mt-1">por {deck.createdBy}</p>}
+          </div>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-[10px] font-semibold tracking-widest uppercase text-white/35 mb-2">Seu apelido</label>
+              <input value={nick} onChange={e => setNick(e.target.value)} onKeyDown={e => e.key === "Enter" && handleJoin()} placeholder="Ex: Guilherme" className="w-full rounded-xl bg-white/[0.05] border border-white/[0.08] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition" autoFocus />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold tracking-widest uppercase text-white/35 mb-2">Seu avatar</label>
+              <div className="grid grid-cols-8 gap-1.5">
+                {GROUP_AVATARS.map(em => (
+                  <button key={em} onClick={() => setAvatar(em)} className={`text-xl py-1.5 rounded-xl transition ${avatar === em ? "bg-[#2563eb]/30 ring-1 ring-[#2563eb]" : "hover:bg-white/[0.06]"}`}>{em}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={onClose} className="px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.07] text-sm text-white/40">Fechar</button>
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleJoin} disabled={!nick.trim()} className="flex-1 py-3 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-40">Entrar e votar →</motion.button>
+            </div>
+          </div>
+          <p className="text-[10px] text-white/20 text-center mt-4">Modo assíncrono · vote e devolva o link atualizado pro grupo</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── GroupSwipeMode ────────────────────────────────────────────
+function GroupSwipeMode({ deck, nick, avatar, onFinish }) {
+  const [remaining, setRemaining] = useState([...deck.tasks]);
+  const [votes, setVotes] = useState([]);
+  const [swipeExit, setSwipeExit] = useState({ vx: 0, vy: 0, dir: null });
+
+  const topTask = remaining[remaining.length - 1];
+
+  function handleGroupSwipe(direction, task, vel = {}) {
+    setSwipeExit({ ...vel, dir: direction });
+    const vote = direction === "right" ? "topo" : direction === "left" ? "passo" : "amo";
+    const newVote = { nick, avatar, taskId: task.id, vote };
+    const newVotes = [...votes, newVote];
+    setVotes(newVotes);
+    const newRemaining = remaining.filter(t => t.id !== task.id);
+    setRemaining(newRemaining);
+    if (newRemaining.length === 0) onFinish(newVotes);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-[#111114] flex flex-col">
+      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-3 border-b border-white/[0.05]">
+        <div>
+          <p className="text-[10px] text-white/30 font-semibold tracking-widest uppercase mb-0.5">Deck em grupo</p>
+          <h2 className="text-base font-bold text-white">{deck.name}</h2>
+        </div>
+        <div className="flex items-center gap-2 bg-white/[0.05] border border-white/[0.08] rounded-full px-3 py-1.5">
+          <span className="text-base">{avatar}</span>
+          <span className="text-[12px] text-white/60">{nick}</span>
+        </div>
+      </div>
+      <div className="flex-shrink-0 px-5 pt-3 pb-2">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] text-white/30 font-medium">Votando</span>
+          <span className="text-[11px] text-white/20 bg-white/[0.05] px-2.5 py-0.5 rounded-full">{remaining.length} de {deck.tasks.length} restantes</span>
+        </div>
+        <div className="h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+          <motion.div className="h-full bg-purple-500 rounded-full" animate={{ width: `${((deck.tasks.length - remaining.length) / deck.tasks.length) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative">
+        <div className="relative w-full h-full">
+          <AnimatePresence custom={swipeExit}>
+            {remaining.slice(-3).reverse().map((task, i, arr) => {
+              const isTop = i === 0;
+              const stackIndex = arr.length - 1 - i;
+              return <GroupTaskCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleGroupSwipe} />;
+            })}
+          </AnimatePresence>
+        </div>
+      </div>
+      <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
+        <div className="flex items-center gap-1.5 text-red-400/45"><span className="text-[9px] font-semibold tracking-widest uppercase">Passo</span></div>
+        <div className="flex flex-col items-center text-purple-400/45"><span className="text-[9px] font-semibold tracking-widest uppercase">Amo essa</span></div>
+        <div className="flex items-center gap-1.5 text-emerald-400/45"><span className="text-[9px] font-semibold tracking-widest uppercase">Topo</span></div>
+      </div>
+      <div className="flex-shrink-0 flex items-center justify-center pb-4">
+        <ActionButtons onAction={(dir) => topTask && handleGroupSwipe(dir, topTask)} disabled={!topTask} />
+      </div>
+    </div>
+  );
+}
+
+// ── GroupResultsScreen ────────────────────────────────────────
+function GroupResultsScreen({ deck, myVotes, nick, avatar, onClose }) {
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const filteredOld = deck.votes.filter(v => v.nick !== nick);
+  const allVotes = [...filteredOld, ...myVotes];
+  const mergedDeck = { ...deck, votes: allVotes };
+  const updatedLink = buildGroupUrl(mergedDeck);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setRevealed(true);
+      try {
+        const colors = ["#8b5cf6", "#34d399", "#f59e0b"];
+        const end = Date.now() + 2200;
+        (function shoot() {
+          confetti({ particleCount: 5, spread: 70, origin: { x: 0.3, y: 0.5 }, colors });
+          confetti({ particleCount: 5, spread: 70, origin: { x: 0.7, y: 0.5 }, colors });
+          if (Date.now() < end) requestAnimationFrame(shoot);
+        })();
+      } catch {}
+    }, 400);
+    return () => clearTimeout(t);
+  }, []);
+
+  const taskScores = deck.tasks.map(task => {
+    const tv = allVotes.filter(v => v.taskId === task.id);
+    const topoVoters = tv.filter(v => v.vote === "topo" || v.vote === "amo");
+    const score = tv.reduce((acc, v) => acc + (v.vote === "amo" ? 2 : v.vote === "topo" ? 1 : 0), 0);
+    return { task, topoVoters, score };
+  }).sort((a, b) => b.score - a.score);
+
+  function copyLink() {
+    navigator.clipboard?.writeText(updatedLink).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-[#111114] flex flex-col">
+      <div className="flex-shrink-0 flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
+        <div>
+          <p className="text-[10px] text-white/30 font-semibold tracking-widest uppercase mb-0.5">Resultado</p>
+          <h2 className="text-base font-bold text-white">{deck.name}</h2>
+        </div>
+        <button onClick={onClose} className="text-sm text-white/30 hover:text-white/60 transition px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">✕ Fechar</button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="flex flex-col gap-4 max-w-sm mx-auto">
+          {/* My votes summary */}
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
+            <p className="text-[10px] text-white/30 font-semibold tracking-widest uppercase mb-3">Seus votos ({avatar} {nick})</p>
+            <div className="flex flex-wrap gap-2">
+              {myVotes.map(v => {
+                const task = deck.tasks.find(t => t.id === v.taskId);
+                if (!task) return null;
+                const label = v.vote === "amo" ? "Amo essa" : v.vote === "topo" ? "Topo!" : "Passo";
+                const color = v.vote === "passo" ? "text-red-400 bg-red-500/10 border-red-500/20" : v.vote === "amo" ? "text-purple-400 bg-purple-500/10 border-purple-500/20" : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+                return <span key={v.taskId} className={`text-[11px] font-medium border px-2.5 py-1 rounded-full ${color}`}>{task.emoji} {task.title} · {label}</span>;
+              })}
+            </div>
+          </div>
+
+          {/* Scoreboard */}
+          <div>
+            <p className="text-[10px] text-white/30 font-semibold tracking-widest uppercase mb-3">Placar geral</p>
+            <div className="flex flex-col gap-3">
+              {taskScores.map(({ task, topoVoters, score }, idx) => {
+                const isWinner = idx === 0 && score > 0;
+                return (
+                  <motion.div key={task.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: revealed ? 1 : 0, x: revealed ? 0 : -16 }} transition={{ delay: idx * 0.1, type: "spring", stiffness: 200, damping: 22 }} className={`rounded-2xl border overflow-hidden ${isWinner ? "border-amber-500/40 bg-amber-500/[0.08]" : "border-white/[0.07] bg-white/[0.03]"}`}>
+                    {isWinner && <div className="h-0.5 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400" />}
+                    <div className="flex items-center gap-3 p-3.5">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-2xl bg-gradient-to-br ${task.gradient} flex-shrink-0 shadow-lg`}>{task.emoji}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <p className="text-sm font-semibold text-white truncate">{task.title}</p>
+                          {isWinner && <span className="text-[10px] font-bold text-amber-400 bg-amber-400/15 border border-amber-400/25 px-2 py-0.5 rounded-full flex-shrink-0">Vencedora 🏆</span>}
+                        </div>
+                        {topoVoters.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex">
+                              {topoVoters.slice(0, 5).map((v, i) => (
+                                <div key={`${v.nick}-${i}`} className="w-6 h-6 rounded-full bg-white/[0.08] border-2 border-[#111114] flex items-center justify-center text-sm" style={{ marginLeft: i > 0 ? "-6px" : 0, zIndex: 10 - i }}>{v.avatar}</div>
+                              ))}
+                            </div>
+                            <span className="text-[11px] text-white/40">{topoVoters.length} topou{topoVoters.length !== 1 ? "ram" : ""}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-white/20">Ninguém votou ainda</span>
+                        )}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-xl font-black ${isWinner ? "text-amber-400" : "text-white/30"}`}>{score}</p>
+                        <p className="text-[9px] text-white/20">pts</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Share back */}
+          <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+            <p className="text-[11px] text-white/40 mb-3 leading-relaxed">Seus votos foram adicionados ao link. Manda pro grupo pra todos verem o placar atualizado.</p>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={copyLink} className={`w-full py-3 rounded-2xl text-sm font-semibold transition border ${copied ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" : "bg-purple-500/20 border-purple-500/30 text-purple-400 hover:bg-purple-500/30"}`}>
+              {copied ? "✓ Copiado!" : "Mandar minhas escolhas de volta"}
+            </motion.button>
+          </div>
+          <p className="text-[10px] text-white/15 text-center pb-2">Modo assíncrono · o placar cresce conforme cada pessoa manda o link</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── ExploreTab ─────────────────────────────────────────────────
-function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile, unreadCount }) {
+function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile, unreadCount, onCreateGroup }) {
   const [expandedId, setExpandedId] = useState(null);
   const [inputValues, setInputValues] = useState({});
 
@@ -461,6 +873,10 @@ function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite,
           </div>
           <p className="text-sm text-white/40">Delegue tarefas e acompanhe quem aceitou ou recusou em tempo real.</p>
         </div>
+
+        <motion.button whileTap={{ scale: 0.97 }} onClick={onCreateGroup} className="w-full py-3.5 rounded-2xl bg-purple-500/15 border border-purple-500/25 text-purple-400 font-semibold text-sm hover:bg-purple-500/25 transition mb-6 flex items-center justify-center gap-2">
+          <span>👥</span> Criar deck em grupo
+        </motion.button>
 
         {invites.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-3xl bg-white/[0.03] border border-white/[0.06] p-12 text-center gap-4">
@@ -677,6 +1093,14 @@ export default function TaskMatch() {
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
   const [exploreSeenAt,     setExploreSeenAt]     = usePersistedState(SK.exploreSeenAt, null);
 
+  // Group deck state
+  const [groupDeck,           setGroupDeck]           = useState(null);
+  const [groupMode,           setGroupMode]           = useState(null); // "join"|"swipe"|"results"
+  const [groupNick,           setGroupNick]           = useState("");
+  const [groupAvatar,         setGroupAvatar]         = useState(GROUP_AVATARS[0]);
+  const [groupVotes,          setGroupVotes]          = useState([]);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+
   const chatEndRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
 
@@ -703,6 +1127,18 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
   useEffect(() => {
     if (activeTab === "explore") setExploreSeenAt(new Date().toISOString());
   }, [activeTab]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const d = params.get("d");
+    if (d) {
+      const decoded = decodeGroupDeck(d);
+      if (decoded?.id && decoded?.tasks?.length) {
+        setGroupDeck(decoded);
+        setGroupMode("join");
+      }
+    }
+  }, []);
 
   const unreadCount = computeUnreadCount(invites, exploreSeenAt);
 
@@ -771,6 +1207,29 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       navigator.clipboard?.writeText(url);
       showToast("Link copiado!", "bg-emerald-600/90");
     }
+  }
+
+  // ── Group deck handlers ──────────────────────────────────
+  function handleJoinGroup(nick, av) {
+    setGroupNick(nick);
+    setGroupAvatar(av);
+    setGroupMode("swipe");
+  }
+
+  function handleGroupFinish(votes) {
+    setGroupVotes(votes);
+    setGroupMode("results");
+  }
+
+  function handleCloseGroup() {
+    setGroupDeck(null);
+    setGroupMode(null);
+    setGroupVotes([]);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("d");
+      window.history.replaceState({}, "", url.toString());
+    } catch {}
   }
 
   // ── Swipe ────────────────────────────────────────────────
@@ -1042,7 +1501,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <div className="flex-shrink-0 flex items-center justify-between px-5 pt-4 pb-3 bg-[#111114]">
             <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-0.5">Decida rápido, viva mais.</p></div>
             <div className="flex gap-2">
-              <button className="w-9 h-9 rounded-2xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/40"><path strokeLinecap="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></button>
+              <button onClick={() => setShowCreateGroupModal(true)} className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center" title="Criar deck em grupo"><span className="text-base leading-none">👥</span></button>
               <button onClick={() => setActiveTab("create")} className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
             </div>
           </div>
@@ -1070,7 +1529,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 ) : (<EmptyState stats={stats} onReset={handleReset} />)}
               </div>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} />}
+            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} />}
             {activeTab === "ia" && <RafContent isMobile={true} />}
             {activeTab === "create" && <CreateContent isMobile={true} />}
             {activeTab === "profile" && (
@@ -1109,6 +1568,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                   <span className="text-[11px] font-semibold tracking-[0.06em] uppercase text-white/30">Deck pessoal</span>
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">{remaining} de {total} restantes</span>
+                    <button onClick={() => setShowCreateGroupModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">👥 Deck em grupo</button>
                     <button onClick={() => setActiveTab("create")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Criar card</button>
                   </div>
                 </div>
@@ -1128,7 +1588,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 </div>
               </>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} />}
+            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} />}
             {activeTab === "ia" && <RafContent isMobile={false} />}
             {activeTab === "create" && <CreateContent isMobile={false} />}
             {activeTab === "profile" && (
@@ -1145,6 +1605,22 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           onFinish={() => { save("tm_onboarded", true); setShowOnboarding(false); }}
           onCreateTask={createTaskFromOnboarding}
         />
+      )}
+
+      <AnimatePresence>
+        {showCreateGroupModal && (
+          <CreateGroupModal key="cgm" onClose={() => setShowCreateGroupModal(false)} createdBy={profile.name} />
+        )}
+      </AnimatePresence>
+
+      {groupMode === "join" && groupDeck && (
+        <JoinGroupModal deck={groupDeck} onJoin={handleJoinGroup} onClose={handleCloseGroup} />
+      )}
+      {groupMode === "swipe" && groupDeck && (
+        <GroupSwipeMode deck={groupDeck} nick={groupNick} avatar={groupAvatar} onFinish={handleGroupFinish} />
+      )}
+      {groupMode === "results" && groupDeck && (
+        <GroupResultsScreen deck={groupDeck} myVotes={groupVotes} nick={groupNick} avatar={groupAvatar} onClose={handleCloseGroup} />
       )}
 
       <Toast visible={toast.visible} message={toast.message} color={toast.color} />
