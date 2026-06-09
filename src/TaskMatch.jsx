@@ -4,13 +4,14 @@ import confetti from "canvas-confetti";
 
 // ── Storage keys ─────────────────────────────────────────────
 const SK = {
-  tasks:     "tm_tasks",
-  stats:     "tm_stats",
-  invites:   "tm_invites",
-  profile:   "tm_profile",
-  nextId:    "tm_next_id",
-  raf:       "taskmatch_raf_history",
-  decisions: "tm_decisions",  // histórico imutável de swipes
+  tasks:         "tm_tasks",
+  stats:         "tm_stats",
+  invites:       "tm_invites",
+  profile:       "tm_profile",
+  nextId:        "tm_next_id",
+  raf:           "taskmatch_raf_history",
+  decisions:     "tm_decisions",  // histórico imutável de swipes
+  exploreSeenAt: "tm_explore_seen_at",
 };
 
 // ── Helpers de storage ────────────────────────────────────────
@@ -38,6 +39,17 @@ function usePersistedState(key, fallback) {
     });
   }, [key]);
   return [state, set];
+}
+
+function computeUnreadCount(invites, lastSeenAt) {
+  let count = 0;
+  for (const invite of invites) {
+    for (const r of invite.recipients) {
+      if (r.status === "pending") continue;
+      if (lastSeenAt === null || (r.updatedAt && r.updatedAt > lastSeenAt)) count++;
+    }
+  }
+  return count;
 }
 
 const INITIAL_TASKS = [
@@ -412,7 +424,7 @@ function Onboarding({ onFinish, onCreateTask }) {
 }
 
 // ── ExploreTab ─────────────────────────────────────────────────
-function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile }) {
+function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile, unreadCount }) {
   const [expandedId, setExpandedId] = useState(null);
   const [inputValues, setInputValues] = useState({});
 
@@ -430,7 +442,23 @@ function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite,
         {/* Header */}
         <div className="mb-6">
           <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Explorar</p>
-          <h2 className={`font-bold text-white mb-1 ${isMobile ? "text-lg" : "text-xl"}`}>Convites enviados</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className={`font-bold text-white ${isMobile ? "text-lg" : "text-xl"}`}>Convites enviados</h2>
+            <AnimatePresence>
+              {unreadCount > 0 && (
+                <motion.span
+                  key={unreadCount}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className="text-[11px] bg-red-500/15 text-red-400 border border-red-500/25 px-2 py-0.5 rounded-full"
+                >
+                  {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
           <p className="text-sm text-white/40">Delegue tarefas e acompanhe quem aceitou ou recusou em tempo real.</p>
         </div>
 
@@ -647,7 +675,7 @@ export default function TaskMatch() {
   const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "" });
   const [swipeExit,         setSwipeExit]         = useState({ vx: 0, vy: 0, dir: null });
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
-  const [exploreLastSeen,   setExploreLastSeen]   = useState(() => load("tm_explore_last_seen", null));
+  const [exploreSeenAt,     setExploreSeenAt]     = usePersistedState(SK.exploreSeenAt, null);
 
   const chatEndRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
@@ -673,18 +701,10 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
   useEffect(() => { if (activeTab === "ia") chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages, activeTab]);
   useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
   useEffect(() => {
-    if (activeTab === "explore") {
-      const now = new Date().toISOString();
-      save("tm_explore_last_seen", now);
-      setExploreLastSeen(now);
-    }
+    if (activeTab === "explore") setExploreSeenAt(new Date().toISOString());
   }, [activeTab]);
 
-  const exploreBadgeCount = invites.reduce((acc, inv) =>
-    acc + inv.recipients.filter(r =>
-      (r.status === "accepted" || r.status === "declined") &&
-      r.updatedAt && r.updatedAt > (exploreLastSeen || "")
-    ).length, 0);
+  const unreadCount = computeUnreadCount(invites, exploreSeenAt);
 
   function showToast(message, color) { setToast({ visible: true, message, color }); setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1800); }
 
@@ -1050,7 +1070,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 ) : (<EmptyState stats={stats} onReset={handleReset} />)}
               </div>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} />}
+            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} />}
             {activeTab === "ia" && <RafContent isMobile={true} />}
             {activeTab === "create" && <CreateContent isMobile={true} />}
             {activeTab === "profile" && (
@@ -1061,7 +1081,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           </div>
 
           <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={exploreBadgeCount} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
+            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
           </div>
         </div>
       )}
@@ -1072,7 +1092,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
             <div className="mb-6 px-2"><h1 className="text-xl font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-1">Decida rápido, viva mais.</p></div>
             <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={exploreBadgeCount} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
+              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
               <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Sessão atual</p>
@@ -1108,7 +1128,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 </div>
               </>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} />}
+            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} />}
             {activeTab === "ia" && <RafContent isMobile={false} />}
             {activeTab === "create" && <CreateContent isMobile={false} />}
             {activeTab === "profile" && (
