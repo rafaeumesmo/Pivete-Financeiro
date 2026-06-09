@@ -13,7 +13,11 @@ const SK = {
   decisions:     "tm_decisions",  // histórico imutável de swipes
   exploreSeenAt: "tm_explore_seen_at",
   streak:        "tm_streak",
+  notifs:        "tm_notifs",
 };
+// Anti-spam keys for notifications (1 dispatch per type per day)
+const NOTIF_LAST_PEAK   = "tm_notif_last_peak";
+const NOTIF_LAST_STREAK = "tm_notif_last_streak";
 const SK_GROUP_NICK = "tm_group_nick";
 
 // ── Date helpers ──────────────────────────────────────────────
@@ -145,6 +149,48 @@ function deadlineBadge(deadline) {
   if (diff === 0) return { label: "Hoje",    overdue: false };
   if (diff === 1) return { label: "Amanhã",  overdue: false };
   return { label: `Em ${diff} dias`, overdue: false };
+}
+
+// ── Notification helpers ──────────────────────────────────────
+// NOTE: Notifications only fire while the app tab is open. There is no service
+// worker / Push API integration here, so they cannot wake a closed tab.
+// To evolve: register a SW, use PushManager.subscribe(), send server-side push
+// via Web Push (Supabase edge function or similar) — then call notify() in the
+// SW's 'push' event handler instead of directly here.
+function calcPeakHour(decisions) {
+  if (decisions.length < 5) return 9; // fallback
+  const counts = new Array(24).fill(0);
+  for (const d of decisions) { try { counts[new Date(d.decidedAt).getHours()]++; } catch {} }
+  return counts.indexOf(Math.max(...counts));
+}
+function notify(title, body, tag) {
+  if (Notification.permission !== "granted") return;
+  try { new Notification(title, { body, tag, icon: "/icon-192.png", badge: "/badge.png" }); } catch {}
+}
+// Reads state from localStorage directly — safe to call from setInterval without stale-closure issues.
+function checkNotifications() {
+  const settings = load(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true });
+  if (!settings.enabled || Notification.permission !== "granted") return;
+  const today = todayKey();
+  const nowH  = new Date().getHours();
+  if (settings.peakReminder && localStorage.getItem(NOTIF_LAST_PEAK) !== today) {
+    const dec  = load(SK.decisions, []);
+    const peak = calcPeakHour(dec);
+    if (nowH === peak && !dec.some(d => d.decidedAt?.startsWith(today))) {
+      notify("Seu horário de foco chegou ⚡", "Bora decidir o que importa?", "peak-reminder");
+      localStorage.setItem(NOTIF_LAST_PEAK, today);
+    }
+  }
+  if (settings.streakAlert) {
+    const s = load(SK.streak, { count: 0, lastActiveDate: null });
+    if (s.count > 0 && nowH >= 19 && localStorage.getItem(NOTIF_LAST_STREAK) !== today) {
+      const yest = new Date(); yest.setDate(yest.getDate() - 1);
+      if (s.lastActiveDate === yest.toISOString().slice(0, 10)) {
+        notify(`Seu streak de ${s.count} dias acaba à meia-noite 🔥`, "Decide 1 task pra manter!", "streak-alert");
+        localStorage.setItem(NOTIF_LAST_STREAK, today);
+      }
+    }
+  }
 }
 
 // ── Canvas / share helpers ────────────────────────────────────
@@ -1400,6 +1446,15 @@ function StreakBrokenModal({ oldCount, best, hasFreeze, onUseFreeze, onLetBreak 
   );
 }
 
+// ── IOSToggle ─────────────────────────────────────────────────
+function IOSToggle({ value, onChange, disabled = false }) {
+  return (
+    <button type="button" onClick={() => !disabled && onChange(!value)} className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${value && !disabled ? "bg-[#2563eb]" : "bg-white/15"}`} aria-checked={value} role="switch">
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${value ? "translate-x-5" : "translate-x-0"}`} />
+    </button>
+  );
+}
+
 // ── TaskShareModal ────────────────────────────────────────────
 function TaskShareModal({ task, handle, onClose }) {
   const canvasRef = useRef(null);
@@ -1490,7 +1545,8 @@ export default function TaskMatch() {
   const [nextTaskId, setNextTaskId] = usePersistedState(SK.nextId, INITIAL_TASKS.length + 1);
   const [decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
   const [chatMessages, setChatMessages] = usePersistedState(SK.raf, [{ id: 1, sender: "raf", text: "RAF online. Fala o que precisa." }]);
-  const [streak,       setStreak]       = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
+  const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
+  const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
 
   // Estados voláteis — resetam no reload (intencionalmente)
   const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
@@ -1517,6 +1573,7 @@ export default function TaskMatch() {
   const [groupVotes,          setGroupVotes]          = useState([]);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [shareTask,            setShareTask]            = useState(null);
+  const [showNotifSettings,    setShowNotifSettings]    = useState(false);
 
   const chatEndRef    = useRef(null);
   const imageInputRef = useRef(null);
@@ -1570,6 +1627,15 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     }
   }, []);
 
+  // Run notification check once on app open
+  useEffect(() => { checkNotifications(); }, []);
+  // Periodic check every 5min while notifications are enabled
+  useEffect(() => {
+    if (!notifSettings.enabled) return;
+    const id = setInterval(checkNotifications, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [notifSettings.enabled]);
+
   const unreadCount = computeUnreadCount(invites, exploreSeenAt);
 
   // Streak risk: last active was yesterday, hour >= 18, hasn't decided today
@@ -1582,6 +1648,25 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
   })();
 
   function showToast(message, color) { setToast({ visible: true, message, color }); setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1800); }
+
+  // ── Notification permission / toggle ────────────────────────
+  async function handleEnableNotifs(wantEnabled) {
+    if (!("Notification" in window)) { showToast("Seu browser não suporta notificações.", "bg-red-600/90"); return; }
+    if (!wantEnabled) { setNotifSettings(s => ({ ...s, enabled: false })); return; }
+    if (Notification.permission === "denied") { setNotifSettings(s => ({ ...s, permission: "denied" })); return; }
+    if (Notification.permission === "granted") {
+      setNotifSettings(s => ({ ...s, enabled: true, permission: "granted" }));
+      setTimeout(() => notify("Notificações ativadas 🔔", "Você vai receber lembretes inteligentes.", "test-notif"), 200);
+      return;
+    }
+    const result = await Notification.requestPermission();
+    if (result === "granted") {
+      setNotifSettings(s => ({ ...s, enabled: true, permission: "granted" }));
+      setTimeout(() => notify("Notificações ativadas 🔔", "Você vai receber lembretes inteligentes.", "test-notif"), 200);
+    } else {
+      setNotifSettings(s => ({ ...s, permission: result }));
+    }
+  }
 
   function registerActivity() {
     setStreak((s) => {
@@ -1623,6 +1708,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
   function clearAllData() {
     if (!window.confirm("Apagar todos os dados? Tasks, histórico e convites serão removidos.")) return;
     Object.values(SK).forEach((key) => { try { localStorage.removeItem(key); } catch {} });
+    [NOTIF_LAST_PEAK, NOTIF_LAST_STREAK].forEach(k => { try { localStorage.removeItem(k); } catch {} });
     setTasks([...INITIAL_TASKS]);
     setStats({ accepted: 0, rejected: 0, shared: 0 });
     setInvites([]);
@@ -1630,6 +1716,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     setNextTaskId(INITIAL_TASKS.length + 1);
     setChatMessages([{ id: 1, sender: "raf", text: "RAF online. Fala o que precisa." }]);
     setStreak({ count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
+    setNotifSettings({ enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
     showToast("Dados apagados.", "bg-red-600/90");
   }
 
@@ -1653,7 +1740,16 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: [...inv.recipients, { id: Date.now(), name: name.trim(), status: "pending" }] } : inv));
   }
   function updateRecipientStatus(inviteId, recipientId, status) {
+    // Capture before state update for notification
+    const invite    = invites.find(inv => inv.id === inviteId);
+    const recipient = invite?.recipients.find(r => r.id === recipientId);
     setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status, updatedAt: new Date().toISOString() } : r) } : inv));
+    // Invite-reply notification (event-driven, no anti-spam beyond unique tag per recipient)
+    // When adding Supabase realtime: call notify() inside the channel.on('UPDATE', ...) callback here.
+    if (notifSettings.enabled && notifSettings.inviteReplies && recipient) {
+      const verb = status === "accepted" ? "aceitou" : "recusou";
+      notify(`${recipient.name} ${verb} "${invite.title}"`, status === "accepted" ? "Tarefa aceita ✓" : "Tarefa recusada.", `invite-reply-${recipientId}`);
+    }
   }
   function shareInvite(invite) {
     const payload = {
@@ -1801,225 +1897,10 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
 
-  // ── Modals (shared) ──────────────────────────────────────
-  const ProfileEditorModal = ({ isMobile }) => (
-    <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${isMobile ? "items-end pb-6" : "items-center justify-center"}`}>
-      <div className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
-        <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Editar perfil</div><div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div></div><button type="button" onClick={closeProfileEditor} className="text-white/40 hover:text-white text-lg">✕</button></div>
-        <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">{editedProfile.avatar}</div></div>
-        <div className="space-y-3 mb-4">
-          <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
-          <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
-        </div>
-        <div className="grid grid-cols-5 gap-2 mb-4">{profileEmojis.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
-        <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Salvar</button></div>
-      </div>
-    </div>
-  );
 
-  const AboutModal = ({ isMobile }) => (
-    <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${isMobile ? "items-end pb-6" : "items-center justify-center"}`}>
-      <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
-        <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Sobre o TaskMatch</div><div className="text-[12px] text-white/40">Informações do app</div></div><button type="button" onClick={() => setShowAboutModal(false)} className="text-white/40 hover:text-white text-lg">✕</button></div>
-        <div className="space-y-3 text-sm text-white/60 mb-5"><div><div className="text-white font-semibold">TaskMatch</div><div className="text-[12px] text-white/35">Versão 0.0.0</div></div><p>App dark minimalista para tomar decisões rápidas e organizar seu dia com foco em ação.</p></div>
-        <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Fechar</button>
-      </div>
-    </div>
-  );
 
-  // ── Profile section (shared content) ────────────────────
-  const ProfileContent = ({ isMobile }) => (
-    <>
-      <div className="flex flex-col items-center gap-2 mb-6">
-        <button type="button" onClick={openProfileEditor} className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition">
-          {profile.avatar}
-          <span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span>
-        </button>
-        <div className="text-center"><div className="text-lg font-semibold text-white">{profile.name}</div><div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div></div>
-        {!isMobile && <div className="flex gap-2"><span className="text-[11px] font-semibold bg-[#2563eb]/15 text-[#93c5fd] px-3 py-1 rounded-full">Nível 7</span>{streak.count > 0 && <span className="text-[11px] font-semibold bg-amber-500/15 text-amber-300 px-3 py-1 rounded-full">🔥 {streak.count} {streak.count === 1 ? "dia" : "dias"}</span>}</div>}
-      </div>
-      <div className="grid grid-cols-3 gap-2 mb-5">
-        {[{ label: "Feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" }, { label: "Sequência", value: streak.count, color: "text-amber-400" }, { label: "Taxa", value: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%", color: "text-emerald-400" }].map(({ label, value, color }) => (
-          <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
-        ))}
-        {streak.best > 0 && streak.best > streak.count && (
-          <div className="col-span-3 flex items-center justify-center gap-1.5 py-0.5">
-            <span className="text-[11px] text-white/25">Recorde pessoal:</span>
-            <span className="text-[11px] font-semibold text-amber-400">🔥 {streak.best} dias</span>
-          </div>
-        )}
-      </div>
-      <HistorySection decisions={decisions} onShare={setShareTask} />
-      <div className={`rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden ${isMobile ? "" : "rounded-3xl"}`}>
-        {[{ label: "Editar perfil", action: openProfileEditor, icon: "👤" }, { label: "Notificações", action: () => showToast("Em breve.", "bg-white/10"), icon: "🔔" }, { label: "Aparência", action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨" }, { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true), icon: "ℹ️" }].map(({ label, action, icon }, i) => (
-          <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}><span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span><span className="text-white/20 text-lg">›</span></button>
-        ))}
-        <button type="button" onClick={clearAllData} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-amber-500/10 transition">
-          <span className="text-[17px]">🗑️</span><span className="flex-1 text-sm text-amber-300">Limpar todos os dados</span><span className="text-amber-400/40 text-lg">›</span>
-        </button>
-        <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"><span className="text-[17px]">🚪</span><span className="flex-1 text-sm text-red-300">Sair</span><span className="text-red-400/40 text-lg">›</span></button>
-      </div>
-      {showProfileEditor && <ProfileEditorModal isMobile={isMobile} />}
-      {showAboutModal && <AboutModal isMobile={isMobile} />}
-    </>
-  );
 
-  // ── RAF content (shared) ─────────────────────────────────
-  const RafContent = ({ isMobile }) => (
-    <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-      <div className={`flex-shrink-0 border-b border-white/[0.05] ${isMobile ? "px-5 pt-4 pb-3" : "px-10 pt-7 pb-4"}`}>
-        <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Assistente</p>
-        <h2 className={`font-bold text-white ${isMobile ? "text-base" : "text-lg"}`}>⚡ RAF</h2>
-      </div>
-      <div className={`flex-1 min-h-0 overflow-y-auto py-4 ${isMobile ? "px-5" : "px-10"}`} style={{ WebkitOverflowScrolling: "touch" }}>
-        <div className={`space-y-2.5 pb-2 ${isMobile ? "" : "max-w-xl mx-auto"}`}>
-          {chatMessages.map((message, index) => {
-            const isUser = message.sender === "user";
-            const previous = chatMessages[index - 1];
-            const showIcon = !isUser && (!previous || previous.sender !== "raf");
-            return (
-              <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                <div className={`flex items-start gap-1.5 ${isUser ? "ml-auto" : "mr-auto"}`}>
-                  {!isUser && showIcon && <div className="mt-1 text-[13px] text-white/40 flex-shrink-0">⚡</div>}
-                  {!isUser && !showIcon && <div className="w-[19px] flex-shrink-0" />}
-                  <div className={`${isMobile ? "max-w-[78%]" : "max-w-[480px]"} rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${isUser ? "bg-[#2563eb] text-white rounded-br-[4px]" : "bg-white/[0.07] text-white/80 rounded-bl-[4px]"}`}>{message.text}</div>
-                </div>
-              </div>
-            );
-          })}
-          {isChatLoading && <div className="flex justify-start"><div className="flex items-start gap-1.5"><div className="mt-1 text-[13px] text-white/40">⚡</div><div className="bg-white/[0.07] rounded-2xl rounded-bl-[4px] px-4 py-2.5"><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse" /><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-150" /><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-300" /></div></div></div></div>}
-          <div ref={chatEndRef} />
-        </div>
-      </div>
-      <AnimatePresence>
-        {showQuickActions && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex-shrink-0 overflow-hidden">
-            <div className={`flex items-center gap-2 py-2 overflow-x-auto ${isMobile ? "px-5" : "px-10"}`} style={{ scrollbarWidth: "none" }}>
-              {quickActions.map((action) => (<button key={action.prompt} type="button" onClick={() => handleQuickAction(action.prompt)} className="whitespace-nowrap flex-shrink-0 rounded-full border border-white/[0.12] bg-transparent px-4 py-2 text-[13px] text-white/50 hover:border-white/25 hover:text-white/75 transition">{action.label}</button>))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className={`flex-shrink-0 pt-2 bg-[#111114] ${isMobile ? "px-4 pb-3" : "px-10 pb-8"}`}>
-        <div className={isMobile ? "" : "max-w-xl mx-auto"}>
-          <form onSubmit={handleSendMessage} className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-3 py-2">
-            <textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }} placeholder="Mensagem..." disabled={isChatLoading} rows={1} className="flex-1 min-h-[40px] max-h-[120px] resize-none bg-transparent px-2 py-2 text-sm text-white placeholder:text-white/30 outline-none disabled:opacity-50" />
-            <button type="submit" disabled={isChatLoading || chatInput.trim() === ""} className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition ${chatInput.trim() === "" ? "bg-white/10 text-white/30" : "bg-[#2563eb] text-white"}`}>
-              <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h14M13 4l7 6-7 6" /></svg>
-            </button>
-          </form>
-        </div>
-      </div>
-    </motion.div>
-  );
 
-  const CreateContent = ({ isMobile }) => (
-    <motion.div className={`h-full overflow-y-auto ${isMobile ? "px-5 pt-4 pb-6" : "px-10 py-10"}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-      <div className={isMobile ? "" : "max-w-xl mx-auto"}>
-        <div className={`flex items-center justify-between ${isMobile ? "mb-5" : "mb-6"}`}>
-          <div><p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Nova tarefa</p><h2 className={`font-bold text-white ${isMobile ? "text-lg" : "text-xl"}`}>Criar card</h2></div>
-          <button onClick={() => setActiveTab("home")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>Voltar</button>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
-            const newTask = {
-              id: nextTaskId,
-              title: newTaskData.title.trim(),
-              description: newTaskData.description.trim(),
-              category: newTaskData.category,
-              emoji: newTaskData.emoji || "✨",
-              gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600",
-              accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e",
-              priority: newTaskData.priority,
-              deadline: newTaskData.deadline || null,
-              image: newTaskData.image || null,
-            };
-            setTasks((prev) => [...prev, newTask]);
-            setNextTaskId((id) => id + 1);
-            setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
-            showToast("Tarefa criada!", "bg-emerald-600/90");
-            setActiveTab("home");
-          }}
-          onPaste={async (e) => {
-            const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith("image/"));
-            if (!file) return;
-            e.preventDefault();
-            try {
-              const url = await compressImage(file);
-              if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; }
-              setNewTaskData(p => ({ ...p, image: url }));
-              showToast("Imagem colada!", "bg-emerald-600/90");
-            } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
-          }}
-          className={`${isMobile ? "flex flex-col gap-4" : "rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5"}`}
-        >
-          {/* Image upload */}
-          <div>
-            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Imagem <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
-            {newTaskData.image ? (
-              <div className="relative w-full rounded-2xl overflow-hidden border border-white/[0.08]" style={{ aspectRatio: "16/9" }}>
-                <img src={newTaskData.image} className="w-full h-full object-cover" alt="" />
-                <button type="button" onClick={() => setNewTaskData(p => ({ ...p, image: null }))} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/85 transition text-sm">✕</button>
-              </div>
-            ) : (
-              <div
-                className="w-full rounded-2xl border-2 border-dashed border-white/[0.11] bg-white/[0.02] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/25 hover:bg-white/[0.04] transition py-8"
-                onClick={() => imageInputRef.current?.click()}
-                onDragOver={e => e.preventDefault()}
-                onDrop={async (e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files[0];
-                  if (!file?.type.startsWith("image/")) return;
-                  try {
-                    const url = await compressImage(file);
-                    if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; }
-                    setNewTaskData(p => ({ ...p, image: url }));
-                  } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
-                }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} className="w-9 h-9 text-white/20">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-                <p className="text-[13px] text-white/30 font-medium">Clique, cole ou arraste</p>
-                <p className="text-[11px] text-white/20">No celular, abre a câmera 📷</p>
-              </div>
-            )}
-            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              try {
-                const url = await compressImage(file);
-                if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; }
-                setNewTaskData(p => ({ ...p, image: url }));
-              } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
-              e.target.value = "";
-            }} />
-          </div>
-          <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label><input value={newTaskData.title} onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="Ex: Comprar mantimentos" /></div>
-          <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label><select value={newTaskData.category} onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60">{["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (<option key={c} value={c} className="bg-[#111114]">{c}</option>))}</select></div>
-            <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label><input value={newTaskData.emoji} onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="✨" /></div>
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prioridade</label>
-            <div className="flex gap-2">
-              {[{ value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Média" }, { value: "low", label: "🟢 Baixa" }].map(({ value, label }) => (
-                <button key={value} type="button" onClick={() => setNewTaskData((p) => ({ ...p, priority: p.priority === value ? null : value }))} className={`flex-1 py-2.5 rounded-2xl text-sm font-medium transition border ${newTaskData.priority === value ? "bg-white/[0.12] border-white/25 text-white" : "bg-white/[0.03] border-white/[0.07] text-white/40 hover:text-white/60 hover:border-white/15"}`}>{label}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prazo <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
-            <input type="date" value={newTaskData.deadline} onChange={(e) => setNewTaskData((p) => ({ ...p, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition [color-scheme:dark]" />
-          </div>
-          <div className="flex gap-3 pt-1"><button type="button" onClick={() => setActiveTab("home")} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button><button type="submit" className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Adicionar tarefa</button></div>
-        </form>
-      </div>
-    </motion.div>
-  );
 
   // ════════════════════════════════════════════════════════
   return (
@@ -2074,11 +1955,141 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               </div>
             )}
             {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} />}
-            {activeTab === "ia" && <RafContent isMobile={true} />}
-            {activeTab === "create" && <CreateContent isMobile={true} />}
+            {activeTab === "ia" && (
+              <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex-shrink-0 border-b border-white/[0.05] px-5 pt-4 pb-3">
+                  <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Assistente</p>
+                  <h2 className="font-bold text-white text-base">⚡ RAF</h2>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto py-4 px-5" style={{ WebkitOverflowScrolling: "touch" }}>
+                  <div className="space-y-2.5 pb-2">
+                    {chatMessages.map((message, index) => {
+                      const isUser = message.sender === "user";
+                      const previous = chatMessages[index - 1];
+                      const showIcon = !isUser && (!previous || previous.sender !== "raf");
+                      return (
+                        <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                          <div className={`flex items-start gap-1.5 ${isUser ? "ml-auto" : "mr-auto"}`}>
+                            {!isUser && showIcon && <div className="mt-1 text-[13px] text-white/40 flex-shrink-0">⚡</div>}
+                            {!isUser && !showIcon && <div className="w-[19px] flex-shrink-0" />}
+                            <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${isUser ? "bg-[#2563eb] text-white rounded-br-[4px]" : "bg-white/[0.07] text-white/80 rounded-bl-[4px]"}`}>{message.text}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isChatLoading && <div className="flex justify-start"><div className="flex items-start gap-1.5"><div className="mt-1 text-[13px] text-white/40">⚡</div><div className="bg-white/[0.07] rounded-2xl rounded-bl-[4px] px-4 py-2.5"><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse" /><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-150" /><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-300" /></div></div></div></div>}
+                    <div ref={chatEndRef} />
+                  </div>
+                </div>
+                <AnimatePresence>
+                  {showQuickActions && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex-shrink-0 overflow-hidden">
+                      <div className="flex items-center gap-2 py-2 overflow-x-auto px-5" style={{ scrollbarWidth: "none" }}>
+                        {quickActions.map((action) => (<button key={action.prompt} type="button" onClick={() => handleQuickAction(action.prompt)} className="whitespace-nowrap flex-shrink-0 rounded-full border border-white/[0.12] bg-transparent px-4 py-2 text-[13px] text-white/50 hover:border-white/25 hover:text-white/75 transition">{action.label}</button>))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div className="flex-shrink-0 pt-2 bg-[#111114] px-4 pb-3">
+                  <form onSubmit={handleSendMessage} className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-3 py-2">
+                    <textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }} placeholder="Mensagem..." disabled={isChatLoading} rows={1} className="flex-1 min-h-[40px] max-h-[120px] resize-none bg-transparent px-2 py-2 text-sm text-white placeholder:text-white/30 outline-none disabled:opacity-50" />
+                    <button type="submit" disabled={isChatLoading || chatInput.trim() === ""} className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition ${chatInput.trim() === "" ? "bg-white/10 text-white/30" : "bg-[#2563eb] text-white"}`}>
+                      <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h14M13 4l7 6-7 6" /></svg>
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+            {activeTab === "create" && (
+              <motion.div className="h-full overflow-y-auto px-5 pt-4 pb-6" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div><p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Nova tarefa</p><h2 className="font-bold text-white text-lg">Criar card</h2></div>
+                    <button onClick={() => setActiveTab("home")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>Voltar</button>
+                  </div>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
+                      const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null };
+                      setTasks((prev) => [...prev, newTask]);
+                      setNextTaskId((id) => id + 1);
+                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
+                      showToast("Tarefa criada!", "bg-emerald-600/90");
+                      setActiveTab("home");
+                    }}
+                    onPaste={async (e) => {
+                      const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith("image/"));
+                      if (!file) return;
+                      e.preventDefault();
+                      try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); showToast("Imagem colada!", "bg-emerald-600/90"); } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
+                    }}
+                    className="flex flex-col gap-4"
+                  >
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Imagem <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
+                      {newTaskData.image ? (
+                        <div className="relative w-full rounded-2xl overflow-hidden border border-white/[0.08]" style={{ aspectRatio: "16/9" }}>
+                          <img src={newTaskData.image} className="w-full h-full object-cover" alt="" />
+                          <button type="button" onClick={() => setNewTaskData(p => ({ ...p, image: null }))} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/85 transition text-sm">✕</button>
+                        </div>
+                      ) : (
+                        <div className="w-full rounded-2xl border-2 border-dashed border-white/[0.11] bg-white/[0.02] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/25 hover:bg-white/[0.04] transition py-8" onClick={() => imageInputRef.current?.click()} onDragOver={e => e.preventDefault()} onDrop={async (e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (!file?.type.startsWith("image/")) return; try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); } catch { showToast("Imagem inválida.", "bg-red-600/90"); } }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} className="w-9 h-9 text-white/20"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                          <p className="text-[13px] text-white/30 font-medium">Clique, cole ou arraste</p>
+                          <p className="text-[11px] text-white/20">No celular, abre a câmera 📷</p>
+                        </div>
+                      )}
+                      <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); } catch { showToast("Imagem inválida.", "bg-red-600/90"); } e.target.value = ""; }} />
+                    </div>
+                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label><input value={newTaskData.title} onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="Ex: Comprar mantimentos" /></div>
+                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label><select value={newTaskData.category} onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60">{["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (<option key={c} value={c} className="bg-[#111114]">{c}</option>))}</select></div>
+                      <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label><input value={newTaskData.emoji} onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="✨" /></div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prioridade</label>
+                      <div className="flex gap-2">{[{ value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Média" }, { value: "low", label: "🟢 Baixa" }].map(({ value, label }) => (<button key={value} type="button" onClick={() => setNewTaskData((p) => ({ ...p, priority: p.priority === value ? null : value }))} className={`flex-1 py-2.5 rounded-2xl text-sm font-medium transition border ${newTaskData.priority === value ? "bg-white/[0.12] border-white/25 text-white" : "bg-white/[0.03] border-white/[0.07] text-white/40 hover:text-white/60 hover:border-white/15"}`}>{label}</button>))}</div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prazo <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
+                      <input type="date" value={newTaskData.deadline} onChange={(e) => setNewTaskData((p) => ({ ...p, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition [color-scheme:dark]" />
+                    </div>
+                    <div className="flex gap-3 pt-1"><button type="button" onClick={() => setActiveTab("home")} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button><button type="submit" className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Adicionar tarefa</button></div>
+                  </form>
+                </div>
+              </motion.div>
+            )}
             {activeTab === "profile" && (
               <motion.div className="h-full overflow-y-auto px-5 pt-4 pb-6" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-                <ProfileContent isMobile={true} />
+                <div className="flex flex-col items-center gap-2 mb-6">
+                  <button type="button" onClick={openProfileEditor} className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition">{profile.avatar}<span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span></button>
+                  <div className="text-center"><div className="text-lg font-semibold text-white">{profile.name}</div><div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div></div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-5">
+                  {[{ label: "Feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" }, { label: "Sequência", value: streak.count, color: "text-amber-400" }, { label: "Taxa", value: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%", color: "text-emerald-400" }].map(({ label, value, color }) => (
+                    <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
+                  ))}
+                  {streak.best > 0 && streak.best > streak.count && (<div className="col-span-3 flex items-center justify-center gap-1.5 py-0.5"><span className="text-[11px] text-white/25">Recorde pessoal:</span><span className="text-[11px] font-semibold text-amber-400">🔥 {streak.best} dias</span></div>)}
+                </div>
+                <HistorySection decisions={decisions} onShare={setShareTask} />
+                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
+                  {[
+                    { label: "Editar perfil",     action: openProfileEditor,                icon: "👤", badge: null },
+                    { label: "Notificações",      action: () => setShowNotifSettings(true), icon: "🔔", badge: notifSettings.enabled ? "on" : null },
+                    { label: "Aparência",         action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨", badge: null },
+                    { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true),    icon: "ℹ️", badge: null },
+                  ].map(({ label, action, icon, badge }, i) => (
+                    <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
+                      <span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span>
+                      {badge === "on" && <span className="text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full mr-1">On</span>}
+                      <span className="text-white/20 text-lg">›</span>
+                    </button>
+                  ))}
+                  <button type="button" onClick={clearAllData} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-amber-500/10 transition"><span className="text-[17px]">🗑️</span><span className="flex-1 text-sm text-amber-300">Limpar todos os dados</span><span className="text-amber-400/40 text-lg">›</span></button>
+                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"><span className="text-[17px]">🚪</span><span className="flex-1 text-sm text-red-300">Sair</span><span className="text-red-400/40 text-lg">›</span></button>
+                </div>
               </motion.div>
             )}
           </div>
@@ -2145,11 +2156,146 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               </>
             )}
             {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} />}
-            {activeTab === "ia" && <RafContent isMobile={false} />}
-            {activeTab === "create" && <CreateContent isMobile={false} />}
+            {activeTab === "ia" && (
+              <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex-shrink-0 border-b border-white/[0.05] px-10 pt-7 pb-4">
+                  <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-0.5">Assistente</p>
+                  <h2 className="font-bold text-white text-lg">⚡ RAF</h2>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto py-4 px-10" style={{ WebkitOverflowScrolling: "touch" }}>
+                  <div className="space-y-2.5 pb-2 max-w-xl mx-auto">
+                    {chatMessages.map((message, index) => {
+                      const isUser = message.sender === "user";
+                      const previous = chatMessages[index - 1];
+                      const showIcon = !isUser && (!previous || previous.sender !== "raf");
+                      return (
+                        <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                          <div className={`flex items-start gap-1.5 ${isUser ? "ml-auto" : "mr-auto"}`}>
+                            {!isUser && showIcon && <div className="mt-1 text-[13px] text-white/40 flex-shrink-0">⚡</div>}
+                            {!isUser && !showIcon && <div className="w-[19px] flex-shrink-0" />}
+                            <div className={`max-w-[480px] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${isUser ? "bg-[#2563eb] text-white rounded-br-[4px]" : "bg-white/[0.07] text-white/80 rounded-bl-[4px]"}`}>{message.text}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isChatLoading && <div className="flex justify-start"><div className="flex items-start gap-1.5"><div className="mt-1 text-[13px] text-white/40">⚡</div><div className="bg-white/[0.07] rounded-2xl rounded-bl-[4px] px-4 py-2.5"><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse" /><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-150" /><span className="w-2 h-2 rounded-full bg-white/50 animate-pulse delay-300" /></div></div></div></div>}
+                    <div ref={chatEndRef} />
+                  </div>
+                </div>
+                <AnimatePresence>
+                  {showQuickActions && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex-shrink-0 overflow-hidden">
+                      <div className="flex items-center gap-2 py-2 overflow-x-auto px-10" style={{ scrollbarWidth: "none" }}>
+                        {quickActions.map((action) => (<button key={action.prompt} type="button" onClick={() => handleQuickAction(action.prompt)} className="whitespace-nowrap flex-shrink-0 rounded-full border border-white/[0.12] bg-transparent px-4 py-2 text-[13px] text-white/50 hover:border-white/25 hover:text-white/75 transition">{action.label}</button>))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div className="flex-shrink-0 pt-2 bg-[#111114] px-10 pb-8">
+                  <div className="max-w-xl mx-auto">
+                    <form onSubmit={handleSendMessage} className="flex items-end gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-3 py-2">
+                      <textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); } }} placeholder="Mensagem..." disabled={isChatLoading} rows={1} className="flex-1 min-h-[40px] max-h-[120px] resize-none bg-transparent px-2 py-2 text-sm text-white placeholder:text-white/30 outline-none disabled:opacity-50" />
+                      <button type="submit" disabled={isChatLoading || chatInput.trim() === ""} className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition ${chatInput.trim() === "" ? "bg-white/10 text-white/30" : "bg-[#2563eb] text-white"}`}>
+                        <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h14M13 4l7 6-7 6" /></svg>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            {activeTab === "create" && (
+              <motion.div className="h-full overflow-y-auto px-10 py-10" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="max-w-xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div><p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Nova tarefa</p><h2 className="font-bold text-white text-xl">Criar card</h2></div>
+                    <button onClick={() => setActiveTab("home")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>Voltar</button>
+                  </div>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
+                      const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null };
+                      setTasks((prev) => [...prev, newTask]);
+                      setNextTaskId((id) => id + 1);
+                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
+                      showToast("Tarefa criada!", "bg-emerald-600/90");
+                      setActiveTab("home");
+                    }}
+                    onPaste={async (e) => {
+                      const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith("image/"));
+                      if (!file) return;
+                      e.preventDefault();
+                      try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); showToast("Imagem colada!", "bg-emerald-600/90"); } catch { showToast("Imagem inválida.", "bg-red-600/90"); }
+                    }}
+                    className="rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5"
+                  >
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Imagem <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
+                      {newTaskData.image ? (
+                        <div className="relative w-full rounded-2xl overflow-hidden border border-white/[0.08]" style={{ aspectRatio: "16/9" }}>
+                          <img src={newTaskData.image} className="w-full h-full object-cover" alt="" />
+                          <button type="button" onClick={() => setNewTaskData(p => ({ ...p, image: null }))} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/85 transition text-sm">✕</button>
+                        </div>
+                      ) : (
+                        <div className="w-full rounded-2xl border-2 border-dashed border-white/[0.11] bg-white/[0.02] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-white/25 hover:bg-white/[0.04] transition py-8" onClick={() => imageInputRef.current?.click()} onDragOver={e => e.preventDefault()} onDrop={async (e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (!file?.type.startsWith("image/")) return; try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); } catch { showToast("Imagem inválida.", "bg-red-600/90"); } }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} className="w-9 h-9 text-white/20"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                          <p className="text-[13px] text-white/30 font-medium">Clique, cole ou arraste</p>
+                          <p className="text-[11px] text-white/20">No celular, abre a câmera 📷</p>
+                        </div>
+                      )}
+                      <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); } catch { showToast("Imagem inválida.", "bg-red-600/90"); } e.target.value = ""; }} />
+                    </div>
+                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label><input value={newTaskData.title} onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="Ex: Comprar mantimentos" /></div>
+                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label><select value={newTaskData.category} onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60">{["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (<option key={c} value={c} className="bg-[#111114]">{c}</option>))}</select></div>
+                      <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label><input value={newTaskData.emoji} onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="✨" /></div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prioridade</label>
+                      <div className="flex gap-2">{[{ value: "high", label: "🔴 Alta" }, { value: "medium", label: "🟡 Média" }, { value: "low", label: "🟢 Baixa" }].map(({ value, label }) => (<button key={value} type="button" onClick={() => setNewTaskData((p) => ({ ...p, priority: p.priority === value ? null : value }))} className={`flex-1 py-2.5 rounded-2xl text-sm font-medium transition border ${newTaskData.priority === value ? "bg-white/[0.12] border-white/25 text-white" : "bg-white/[0.03] border-white/[0.07] text-white/40 hover:text-white/60 hover:border-white/15"}`}>{label}</button>))}</div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Prazo <span className="normal-case text-white/20 font-normal tracking-normal">(opcional)</span></label>
+                      <input type="date" value={newTaskData.deadline} onChange={(e) => setNewTaskData((p) => ({ ...p, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 transition [color-scheme:dark]" />
+                    </div>
+                    <div className="flex gap-3 pt-1"><button type="button" onClick={() => setActiveTab("home")} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button><button type="submit" className="flex-1 rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Adicionar tarefa</button></div>
+                  </form>
+                </div>
+              </motion.div>
+            )}
             {activeTab === "profile" && (
               <motion.div className="flex flex-1 flex-col items-center overflow-y-auto px-10 py-10" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="w-full max-w-xl"><ProfileContent isMobile={false} /></div>
+                <div className="w-full max-w-xl">
+                  <div className="flex flex-col items-center gap-2 mb-6">
+                    <button type="button" onClick={openProfileEditor} className="relative w-20 h-20 rounded-full bg-white/[0.06] border border-white/10 text-5xl flex items-center justify-center hover:bg-white/10 transition">{profile.avatar}<span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-[#111114] border border-white/10 text-[13px] flex items-center justify-center">✏️</span></button>
+                    <div className="text-center"><div className="text-lg font-semibold text-white">{profile.name}</div><div className="text-[13px] text-white/35 mt-0.5">{profile.handle}</div></div>
+                    <div className="flex gap-2"><span className="text-[11px] font-semibold bg-[#2563eb]/15 text-[#93c5fd] px-3 py-1 rounded-full">Nível 7</span>{streak.count > 0 && <span className="text-[11px] font-semibold bg-amber-500/15 text-amber-300 px-3 py-1 rounded-full">🔥 {streak.count} {streak.count === 1 ? "dia" : "dias"}</span>}</div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-5">
+                    {[{ label: "Feitas", value: stats.accepted + stats.rejected + stats.shared, color: "text-[#2563eb]" }, { label: "Sequência", value: streak.count, color: "text-amber-400" }, { label: "Taxa", value: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%", color: "text-emerald-400" }].map(({ label, value, color }) => (
+                      <div key={label} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-3"><div className={`text-xl font-bold ${color}`}>{value}</div><div className="text-[11px] text-white/35 mt-0.5">{label}</div></div>
+                    ))}
+                    {streak.best > 0 && streak.best > streak.count && (<div className="col-span-3 flex items-center justify-center gap-1.5 py-0.5"><span className="text-[11px] text-white/25">Recorde pessoal:</span><span className="text-[11px] font-semibold text-amber-400">🔥 {streak.best} dias</span></div>)}
+                  </div>
+                  <HistorySection decisions={decisions} onShare={setShareTask} />
+                  <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden rounded-3xl">
+                    {[
+                      { label: "Editar perfil",     action: openProfileEditor,                icon: "👤", badge: null },
+                      { label: "Notificações",      action: () => setShowNotifSettings(true), icon: "🔔", badge: notifSettings.enabled ? "on" : null },
+                      { label: "Aparência",         action: () => showToast("Em breve.", "bg-white/10"), icon: "🎨", badge: null },
+                      { label: "Sobre o TaskMatch", action: () => setShowAboutModal(true),    icon: "ℹ️", badge: null },
+                    ].map(({ label, action, icon, badge }, i) => (
+                      <button key={label} type="button" onClick={action} className={`flex w-full items-center gap-3 px-4 py-4 text-left text-white hover:bg-white/[0.05] transition ${i > 0 ? "border-t border-white/[0.05]" : ""}`}>
+                        <span className="text-[17px] text-white/40">{icon}</span><span className="flex-1 text-sm">{label}</span>
+                        {badge === "on" && <span className="text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full mr-1">On</span>}
+                        <span className="text-white/20 text-lg">›</span>
+                      </button>
+                    ))}
+                    <button type="button" onClick={clearAllData} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-amber-500/10 transition"><span className="text-[17px]">🗑️</span><span className="flex-1 text-sm text-amber-300">Limpar todos os dados</span><span className="text-amber-400/40 text-lg">›</span></button>
+                    <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-4 text-left border-t border-white/[0.05] hover:bg-red-500/10 transition"><span className="text-[17px]">🚪</span><span className="flex-1 text-sm text-red-300">Sair</span><span className="text-red-400/40 text-lg">›</span></button>
+                  </div>
+                </div>
               </motion.div>
             )}
           </main>
@@ -2193,6 +2339,69 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       )}
       {groupMode === "results" && groupDeck && (
         <GroupResultsScreen deck={groupDeck} myVotes={groupVotes} nick={groupNick} avatar={groupAvatar} onClose={handleCloseGroup} />
+      )}
+
+      {showProfileEditor && (
+        <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
+          <div className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Editar perfil</div><div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div></div><button type="button" onClick={closeProfileEditor} className="text-white/40 hover:text-white text-lg">✕</button></div>
+            <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">{editedProfile.avatar}</div></div>
+            <div className="space-y-3 mb-4">
+              <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
+              <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
+            </div>
+            <div className="grid grid-cols-5 gap-2 mb-4">{profileEmojis.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
+            <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Salvar</button></div>
+          </div>
+        </div>
+      )}
+
+      {showAboutModal && (
+        <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
+          <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Sobre o TaskMatch</div><div className="text-[12px] text-white/40">Informações do app</div></div><button type="button" onClick={() => setShowAboutModal(false)} className="text-white/40 hover:text-white text-lg">✕</button></div>
+            <div className="space-y-3 text-sm text-white/60 mb-5"><div><div className="text-white font-semibold">TaskMatch</div><div className="text-[12px] text-white/35">Versão 0.0.0</div></div><p>App dark minimalista para tomar decisões rápidas e organizar seu dia com foco em ação.</p></div>
+            <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {showNotifSettings && (
+        <div className={`fixed inset-0 z-50 flex bg-black/70 backdrop-blur-sm px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
+          <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
+              <div><p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mb-0.5">Configurar</p><h3 className="text-base font-bold text-white">Notificações</h3></div>
+              <button type="button" onClick={() => setShowNotifSettings(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] border border-white/[0.07] px-4 py-3.5">
+                <span className="text-xl">🔔</span>
+                <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-white">Ativar notificações</p><p className="text-[11px] text-white/35 mt-0.5">Permissão no browser necessária</p></div>
+                <IOSToggle value={notifSettings.enabled} onChange={handleEnableNotifs} disabled={!("Notification" in window)} />
+              </div>
+              {(notifSettings.permission === "denied" || ("Notification" in window && Notification.permission === "denied")) && (
+                <div className="rounded-2xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+                  <p className="text-[12px] text-red-300 font-medium mb-0.5">Permissão bloqueada</p>
+                  <p className="text-[11px] text-red-300/70">Acesse as configurações do browser e permita notificações para este site manualmente.</p>
+                </div>
+              )}
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden divide-y divide-white/[0.05]">
+                {[
+                  { key: "peakReminder",  icon: "⚡", label: "Lembrete no meu horário",         sub: "Avisa quando chega seu horário de pico" },
+                  { key: "streakAlert",   icon: "🔥", label: "Aviso de streak em risco",         sub: "Após 19h se você ainda não decidiu hoje" },
+                  { key: "inviteReplies", icon: "✉️", label: "Quando responderem meus convites", sub: "Ping imediato a cada resposta" },
+                ].map(({ key, icon, label, sub }) => (
+                  <div key={key} className="flex items-center gap-3 px-4 py-3.5">
+                    <span className="text-base w-6 text-center flex-shrink-0">{icon}</span>
+                    <div className="flex-1 min-w-0"><p className={`text-[13px] font-medium ${notifSettings.enabled ? "text-white" : "text-white/35"}`}>{label}</p><p className="text-[11px] text-white/25 mt-0.5">{sub}</p></div>
+                    <IOSToggle value={notifSettings[key]} onChange={v => setNotifSettings(s => ({ ...s, [key]: v }))} disabled={!notifSettings.enabled} />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-white/20 text-center leading-relaxed px-2">Funciona com o app aberto. Para notificações em segundo plano, seria necessário integrar Push API + service worker.</p>
+            </div>
+          </div>
+        </div>
       )}
 
       <Toast visible={toast.visible} message={toast.message} color={toast.color} />
