@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { normalizeUsername } from "../lib/username";
+import { useUsernameStatus } from "../hooks/useUsernameStatus.js";
+import { UsernameHint } from "./UsernameHint.jsx";
 
 const EMOJIS = ["😎","🚀","⚡","🎯","🔥","💡","🧠","🏆","🎮","🦊","🐼","🌟","🎸","🎪","🌈","🍕"];
 
-export function SetupProfile({ onCreate, localProfile }) {
+export function SetupProfile({ onCreate, onCheckUsername, localProfile }) {
   const suggestedHandle = localProfile?.handle?.replace(/^@/, "") || "";
   const [username,    setUsername]    = useState(suggestedHandle);
   const [displayName, setDisplayName] = useState(localProfile?.name || "");
@@ -11,16 +14,19 @@ export function SetupProfile({ onCreate, localProfile }) {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState("");
 
+  const status   = useUsernameStatus(username, onCheckUsername);
+  const canSubmit = status === "available" && !loading;
+
   async function handleSubmit(e) {
     e.preventDefault();
-    const u = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-    if (u.length < 3) { setError("Username deve ter ao menos 3 caracteres (letras, números, _)"); return; }
+    const u = normalizeUsername(username);
+    if (status !== "available") return;
     setLoading(true); setError("");
     try {
       await onCreate({ username: u, displayName: displayName || u, avatarEmoji: emoji });
     } catch (err) {
-      setError(err.message?.includes("duplicate") || err.message?.includes("unique")
-        ? "Esse username já está em uso. Tente outro."
+      setError(err.code === "23505" || err.message?.includes("duplicate") || err.message?.includes("unique")
+        ? "Esse username acabou de ser usado, tente outro."
         : err.message || "Erro ao criar perfil.");
     } finally {
       setLoading(false);
@@ -78,8 +84,13 @@ export function SetupProfile({ onCreate, localProfile }) {
               onChange={e => setUsername(e.target.value)}
               placeholder="ex: rafael_s"
               autoFocus
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition"
+              className={`w-full rounded-xl border bg-white/[0.05] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none transition ${
+                status === "available" ? "border-emerald-500/50"
+                : status === "taken" || status === "invalid" ? "border-red-500/50"
+                : "border-white/[0.08] focus:border-[#2563eb]/60"
+              }`}
             />
+            <div className="mt-1.5"><UsernameHint status={status} value={username} /></div>
           </div>
 
           <div>
@@ -98,7 +109,7 @@ export function SetupProfile({ onCreate, localProfile }) {
 
           <motion.button
             type="submit"
-            disabled={loading || username.trim().length < 3}
+            disabled={!canSubmit}
             whileTap={{ scale: 0.97 }}
             className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >

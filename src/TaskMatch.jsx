@@ -3,10 +3,13 @@ import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "
 import confetti from "canvas-confetti";
 import { useAuth } from "./hooks/useAuth.js";
 import { useSocial } from "./hooks/useSocial.js";
-import { FriendsTab } from "./components/FriendsTab.jsx";
+import { useUsernameStatus } from "./hooks/useUsernameStatus.js";
+import { UsernameHint } from "./components/UsernameHint.jsx";
+import { normalizeUsername } from "./lib/username.js";
 import { AuthScreen } from "./components/AuthScreen.jsx";
 import { SetupProfile } from "./components/SetupProfile.jsx";
 import { ShareToFeedModal } from "./components/ShareToFeedModal.jsx";
+import { SocialExplore } from "./components/SocialExplore.jsx";
 
 // ── Storage keys ─────────────────────────────────────────────
 const SK = {
@@ -519,7 +522,6 @@ function EmptyState({ stats, onReset }) {
   );
 }
 
-// ── ExploreTab ───────────────────────────────────────────────
 // ── NavBadge ──────────────────────────────────────────────────
 function NavBadge({ count }) {
   return (
@@ -1082,182 +1084,6 @@ function GroupResultsScreen({ deck, myVotes, nick, avatar, onClose }) {
   );
 }
 
-// ── ExploreTab ─────────────────────────────────────────────────
-function ExploreTab({ invites, addRecipient, updateRecipientStatus, shareInvite, isMobile, unreadCount, onCreateGroup, onShareTask }) {
-  const [expandedId, setExpandedId] = useState(null);
-  const [inputValues, setInputValues] = useState({});
-
-  const statusColor = (s) => s === "accepted" ? "text-emerald-400" : s === "declined" ? "text-red-400" : "text-white/30";
-  const statusLabel = (s) => s === "accepted" ? "Aceitou" : s === "declined" ? "Recusou" : "Aguardando";
-  const statusDot   = (s) => s === "accepted" ? "bg-emerald-400" : s === "declined" ? "bg-red-400" : "bg-white/20";
-
-  return (
-    <motion.div
-      className={`flex flex-col h-full overflow-y-auto ${isMobile ? "px-5 pt-4" : "px-10 pt-10 pb-10"}`}
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <div className={isMobile ? "" : "max-w-2xl mx-auto w-full"}>
-        {/* Header */}
-        <div className="mb-6">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Explorar</p>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className={`font-bold text-white ${isMobile ? "text-lg" : "text-xl"}`}>Convites enviados</h2>
-            <AnimatePresence>
-              {unreadCount > 0 && (
-                <motion.span
-                  key={unreadCount}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                  className="text-[11px] bg-red-500/15 text-red-400 border border-red-500/25 px-2 py-0.5 rounded-full"
-                >
-                  {unreadCount} nova{unreadCount > 1 ? "s" : ""}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </div>
-          <p className="text-sm text-white/40">Delegue tarefas e acompanhe quem aceitou ou recusou em tempo real.</p>
-        </div>
-
-        <motion.button whileTap={{ scale: 0.97 }} onClick={onCreateGroup} className="w-full py-3.5 rounded-2xl bg-purple-500/15 border border-purple-500/25 text-purple-400 font-semibold text-sm hover:bg-purple-500/25 transition mb-6 flex items-center justify-center gap-2">
-          <span>👥</span> Criar deck em grupo
-        </motion.button>
-
-        {invites.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl bg-white/[0.03] border border-white/[0.06] p-12 text-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-xl text-white/20">↑</div>
-            <div>
-              <p className="text-sm font-medium text-white/40">Nenhum convite enviado ainda</p>
-              <p className="text-xs text-white/20 mt-1">Arraste um card para cima para delegar uma tarefa.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 pb-6">
-            {invites.map((invite) => {
-              const isExpanded = expandedId === invite.id;
-              const accepted = invite.recipients.filter((r) => r.status === "accepted").length;
-              const declined = invite.recipients.filter((r) => r.status === "declined").length;
-              const pending  = invite.recipients.filter((r) => r.status === "pending").length;
-
-              return (
-                <div key={invite.id} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] overflow-hidden">
-                  {/* gradient strip */}
-                  <div className={`h-1 w-full bg-gradient-to-r ${invite.gradient}`} />
-
-                  <div className="p-4">
-                    {/* Task row */}
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${invite.gradient} flex items-center justify-center text-lg flex-shrink-0 shadow-lg`}>
-                        {invite.emoji}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/30">{invite.category}</span>
-                          <span className="text-white/15 text-xs">·</span>
-                          <span className="text-[10px] text-white/25">
-                            {new Date(invite.sentAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        </div>
-                        <p className="text-sm font-semibold text-white leading-tight">{invite.title}</p>
-                        <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{invite.description}</p>
-                      </div>
-                      <button
-                        onClick={() => shareInvite(invite)}
-                        className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition"
-                        title="Compartilhar convite"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5 text-white/50">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                      </button>
-                      {onShareTask && (
-                        <button
-                          onClick={() => onShareTask({ title: invite.title, description: invite.description, category: invite.category, emoji: invite.emoji, gradient: invite.gradient, accent: invite.accent })}
-                          className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition"
-                          title="Compartilhar como imagem"
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5 text-white/50">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Status pills */}
-                    {invite.recipients.length > 0 && (
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        {accepted > 0 && <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{accepted} aceitou{accepted > 1 ? "ram" : ""}</span>}
-                        {declined > 0 && <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-red-400 bg-red-400/10 border border-red-400/20 px-2.5 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />{declined} recusou{declined > 1 ? "ram" : ""}</span>}
-                        {pending  > 0 && <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/30 bg-white/[0.05] border border-white/[0.08] px-2.5 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-white/25" />{pending} aguardando</span>}
-                      </div>
-                    )}
-
-                    {/* Toggle */}
-                    <button onClick={() => setExpandedId(isExpanded ? null : invite.id)} className="flex items-center gap-1.5 text-[12px] text-white/40 hover:text-white/70 transition">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                      {invite.recipients.length === 0 ? "Adicionar destinatários" : `${invite.recipients.length} destinatário${invite.recipients.length > 1 ? "s" : ""}`}
-                    </button>
-
-                    {/* Expanded */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
-                          <div className="pt-3 flex flex-col gap-2">
-                            {invite.recipients.map((r) => (
-                              <div key={r.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                                <div className="w-7 h-7 rounded-full bg-white/[0.07] border border-white/10 flex items-center justify-center text-xs text-white/50 font-semibold flex-shrink-0">{r.name[0]?.toUpperCase()}</div>
-                                <span className="flex-1 text-sm text-white/70 truncate">{r.name}</span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${statusDot(r.status)}`} />
-                                  <span className={`text-[11px] font-medium ${statusColor(r.status)}`}>{statusLabel(r.status)}</span>
-                                </div>
-                                {r.status === "pending" && (
-                                  <div className="flex gap-1 ml-1">
-                                    <button onClick={() => updateRecipientStatus(invite.id, r.id, "accepted")} className="w-6 h-6 rounded-lg bg-emerald-400/15 border border-emerald-400/25 flex items-center justify-center hover:bg-emerald-400/25 transition" title="Simular aceitar">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3 text-emerald-400"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    </button>
-                                    <button onClick={() => updateRecipientStatus(invite.id, r.id, "declined")} className="w-6 h-6 rounded-lg bg-red-400/15 border border-red-400/25 flex items-center justify-center hover:bg-red-400/25 transition" title="Simular recusar">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3 text-red-400"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-
-                            {/* Add input */}
-                            <div className="flex items-center gap-2 mt-1">
-                              <input
-                                value={inputValues[invite.id] || ""}
-                                onChange={(e) => setInputValues((v) => ({ ...v, [invite.id]: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === "Enter") { addRecipient(invite.id, inputValues[invite.id] || ""); setInputValues((v) => ({ ...v, [invite.id]: "" })); } }}
-                                placeholder="Nome do destinatário..."
-                                className="flex-1 rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/50 transition"
-                              />
-                              <button onClick={() => { addRecipient(invite.id, inputValues[invite.id] || ""); setInputValues((v) => ({ ...v, [invite.id]: "" })); }} className="w-9 h-9 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center hover:bg-[#2563eb]/30 transition flex-shrink-0">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                              </button>
-                              <button onClick={() => shareInvite(invite)} className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition flex-shrink-0" title="Compartilhar link">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/40"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                              </button>
-                            </div>
-                            <p className="text-[10px] text-white/20 px-1">Enter ou + para adicionar · ✓/✕ simulam a resposta do destinatário</p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
 // ── HistorySection ───────────────────────────────────────────
 function DecisionItem({ d, i, badgeStyle, formatDate, onShare }) {
   return (
@@ -1646,65 +1472,6 @@ function ProfileTab({
     </div>
   );
 
-  const socialSection = (
-    <div className={`${isDesktop ? "" : "px-5"} mb-5`}>
-      {auth.isLoggedIn ? (
-        <div>
-          <button
-            onClick={() => setShowFriendsPanel(p => !p)}
-            className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.06] transition"
-          >
-            <div className="w-8 h-8 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-            </div>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium text-white">Amigos</p>
-              <p className="text-[11px] text-white/30 truncate">
-                {social.friends.length} amigo{social.friends.length !== 1 ? "s" : ""}
-                {social.friends.filter(f => f.isCloseFriend).length > 0 && ` · ${social.friends.filter(f => f.isCloseFriend).length} close`}
-              </p>
-            </div>
-            {friendsPendingBadge > 0 && <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full flex-shrink-0">{friendsPendingBadge}</span>}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-4 h-4 text-white/20 flex-shrink-0 transition-transform ${showFriendsPanel ? "rotate-90" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-          </button>
-          <AnimatePresence>
-            {showFriendsPanel && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22 }}
-                className="overflow-hidden mt-2 rounded-2xl border border-white/[0.07]"
-              >
-                <div style={{ maxHeight: "55vh", overflowY: "auto" }}>
-                  <FriendsTab social={social} showToast={showToast} />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.1) 0%, rgba(124,58,237,0.1) 50%, rgba(8,145,178,0.08) 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-[#2563eb]/20 flex items-center justify-center flex-shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
-            </div>
-            <p className="text-sm font-semibold text-white">Conecte com amigos</p>
-          </div>
-          <p className="text-[12px] text-white/40 leading-relaxed mb-4">
-            Entre para ver as tasks dos seus amigos no deck, reagir e compartilhar as suas.
-          </p>
-          <button
-            onClick={() => setShowAuthModal(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-500 transition"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-            Entrar com email
-          </button>
-        </div>
-      )}
-    </div>
-  );
 
   const activitySection = (
     <div className={`${isDesktop ? "" : "px-5"} mb-5`}>
@@ -1862,7 +1629,6 @@ function ProfileTab({
         </div>
         <p className="text-[13px] text-white/35">
           {profile.handle} · Nível {level}
-          {auth.profile && <span className="text-[#3b82f6]/55"> · @{auth.profile.username}</span>}
         </p>
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1.5">
@@ -1886,21 +1652,19 @@ function ProfileTab({
       {/* ── Content — dois layouts ─────────────────────────────── */}
       {isDesktop ? (
         <div className="flex gap-6 px-5 pb-4 items-start">
-          {/* Coluna esquerda ~40% — stats + social */}
+          {/* Coluna esquerda ~40% — stats */}
           <div className="w-[42%] min-w-0 flex flex-col">
             {statsSection}
-            {socialSection}
+            {settingsSection}
           </div>
-          {/* Coluna direita ~58% — histórico + configurações */}
+          {/* Coluna direita ~58% — histórico */}
           <div className="flex-1 min-w-0 flex flex-col">
             {activitySection}
-            {settingsSection}
           </div>
         </div>
       ) : (
         <>
           {statsSection}
-          {socialSection}
           {activitySection}
           {settingsSection}
         </>
@@ -1925,6 +1689,17 @@ export default function TaskMatch() {
   // ── Camada social (Supabase) ──────────────────────────────
   const auth   = useAuth();
   const social = useSocial(auth.user?.id);
+
+  // Perfil efetivo da UI: logado → tabela "profiles" do Supabase é a fonte de
+  // verdade; deslogado → perfil local do localStorage. Assim o nome/nick/emoji
+  // persistem entre reloads e dispositivos quando há sessão.
+  const displayProfile = (auth.isLoggedIn && auth.profile)
+    ? {
+        name:   auth.profile.display_name || auth.profile.username,
+        handle: `@${auth.profile.username}`,
+        avatar: auth.profile.avatar_emoji || "👤",
+      }
+    : profile;
   const [shareToFeedTask,    setShareToFeedTask]    = useState(null);
   const [showAuthModal,      setShowAuthModal]      = useState(false);
   const [showFriendsPanel,   setShowFriendsPanel]   = useState(false);
@@ -1934,8 +1709,16 @@ export default function TaskMatch() {
   const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
   const [activeTab,         setActiveTab]         = useState("home");
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [profileEditError,  setProfileEditError]  = useState("");
+  const [savingProfile,     setSavingProfile]     = useState(false);
   const [showAboutModal,    setShowAboutModal]    = useState(false);
   const [editedProfile,     setEditedProfile]     = useState(profile);
+  // Disponibilidade do username no editor (logado). Ignora o nick atual do usuário.
+  const editorUsernameStatus = useUsernameStatus(
+    auth.isLoggedIn ? editedProfile.handle : "",
+    auth.checkUsername,
+    displayProfile.handle,
+  );
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
   const [chatInput,         setChatInput]         = useState("");
   const [isChatLoading,     setIsChatLoading]     = useState(false);
@@ -2124,14 +1907,45 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     setStreakBroken(null);
   }
 
-  function openProfileEditor() { setEditedProfile(profile); setShowProfileEditor(true); }
+  function openProfileEditor() { setEditedProfile(displayProfile); setProfileEditError(""); setShowProfileEditor(true); }
   function closeProfileEditor() { setShowProfileEditor(false); }
-  function saveProfileEdits() {
-    const name = editedProfile.name.trim() || profile.name;
+  async function saveProfileEdits() {
+    const name = editedProfile.name.trim() || displayProfile.name;
     const rawHandle = editedProfile.handle.trim().replace(/^@+/, "");
-    const handle = rawHandle ? `@${rawHandle}` : profile.handle;
-    const updated = { ...profile, name, handle, avatar: editedProfile.avatar.trim() || profile.avatar };
-    setProfile(updated);   // usePersistedState já persiste automaticamente
+    const handle = rawHandle ? `@${rawHandle}` : displayProfile.handle;
+    const avatar = editedProfile.avatar.trim() || displayProfile.avatar;
+
+    // Logado: o banco é a fonte de verdade — persiste em "profiles" e só atualiza
+    // o estado local após a confirmação do update.
+    if (auth.isLoggedIn) {
+      const username = normalizeUsername(rawHandle);
+      // A verificação em tempo real já bloqueia o botão; aqui é a última trava.
+      if (editorUsernameStatus !== "available") {
+        setProfileEditError(editorUsernameStatus === "taken"
+          ? "Esse username já está em uso. Tente outro."
+          : "Username inválido (3–20 caracteres: letras, números, _ e .).");
+        return;
+      }
+      setSavingProfile(true); setProfileEditError("");
+      try {
+        await auth.updateProfile({ display_name: name, username, avatar_emoji: avatar });
+        setProfile({ name, handle: `@${username}`, avatar }); // localStorage vira só cache
+        setShowProfileEditor(false);
+      } catch (err) {
+        // 23505 = violação de unique do Postgres (corrida entre dois saves).
+        setProfileEditError(
+          err.code === "23505" || err.message?.includes("duplicate") || err.message?.includes("unique")
+            ? "Esse username acabou de ser usado, tente outro."
+            : "Não foi possível salvar o perfil. Tente novamente."
+        );
+      } finally {
+        setSavingProfile(false);
+      }
+      return;
+    }
+
+    // Deslogado: mantém o comportamento atual (salva só no localStorage).
+    setProfile({ ...profile, name, handle, avatar });
     setShowProfileEditor(false);
   }
   function handleLogout() {
@@ -2204,6 +2018,76 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       showToast("Link copiado!", "bg-emerald-600/90");
     }
   }
+
+  // ── Envio em massa (Supabase shared_tasks + rastreio local) ──────
+  // Publica a task no feed dos amigos (audience close=favoritos | friends=todos)
+  // e cria um invite local de rastreamento com os destinatários escolhidos,
+  // pra acompanhar respostas em "Convites enviados". As respostas reais do
+  // Supabase são sincronizadas no efeito abaixo.
+  async function handleMassSend(task, audience, recipientProfiles) {
+    const row = await social.massShare(task, audience); // lança em caso de erro
+    const newInvite = {
+      id: `social-${row?.id || Date.now()}`,
+      sharedTaskId: row?.id || null,
+      title: task.title,
+      description: task.description || "",
+      category: task.category || "",
+      emoji: task.emoji || "✨",
+      gradient: task.gradient || "from-blue-600 to-purple-700",
+      accent: task.accent || "#2563eb",
+      audience,
+      sentAt: new Date().toISOString(),
+      recipients: recipientProfiles.map((p) => ({
+        id: p.id, profileId: p.id, name: `@${p.username}`, username: p.username,
+        avatar: p.avatar_emoji, status: "pending",
+      })),
+    };
+    setInvites((prev) => [newInvite, ...prev]);
+    setActiveTab("explore");
+  }
+
+  async function handleResendFavorites(invite) {
+    const favs = social.friends.filter((f) => f.isCloseFriend).map((f) => f.profile);
+    if (favs.length === 0) { showToast("Você ainda não tem favoritos.", "bg-white/10"); return; }
+    try {
+      await handleMassSend(
+        { title: invite.title, description: invite.description, category: invite.category, emoji: invite.emoji, gradient: invite.gradient, accent: invite.accent },
+        "close", favs,
+      );
+      showToast(`Reenviado para ${favs.length} favorito${favs.length > 1 ? "s" : ""}! ⭐`, "bg-emerald-600/90");
+    } catch (err) {
+      showToast(err.message || "Não foi possível reenviar.", "bg-red-600/90");
+    }
+  }
+
+  // Sincroniza o status dos destinatários dos invites sociais com as respostas
+  // reais vindas do Supabase (approved/reshared → aceito, rejected → recusou).
+  useEffect(() => {
+    if (!social.sentTasks?.length) return;
+    setInvites((prev) => {
+      let changed = false;
+      const next = prev.map((inv) => {
+        if (!inv.sharedTaskId) return inv;
+        const st = social.sentTasks.find((t) => t.id === inv.sharedTaskId);
+        if (!st) return inv;
+        const respMap = {};
+        for (const r of st.responses || []) respMap[r.responder_id] = r.response;
+        let invChanged = false;
+        const recipients = inv.recipients.map((rc) => {
+          const resp = respMap[rc.profileId];
+          if (!resp) return rc;
+          const status = resp === "rejected" ? "declined" : "accepted";
+          if (status === rc.status) return rc;
+          invChanged = true;
+          return { ...rc, status };
+        });
+        if (!invChanged) return inv;
+        changed = true;
+        return { ...inv, recipients };
+      });
+      return changed ? next : prev;
+    });
+  }, [social.sentTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Group deck handlers ──────────────────────────────────
   function handleJoinGroup(nick, av) {
@@ -2421,7 +2305,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 ) : (<EmptyState stats={stats} onReset={handleReset} />)}
               </div>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={true} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} />}
+            {activeTab === "explore" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex-shrink-0 border-b border-white/[0.05] px-5 pt-4 pb-3">
@@ -2534,7 +2418,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             {activeTab === "profile" && (
               <div className="h-full overflow-y-auto">
                 <ProfileTab
-                  profile={profile} auth={auth} stats={stats} streak={streak}
+                  profile={displayProfile} auth={auth} stats={stats} streak={streak}
                   decisions={decisions} social={social} notifSettings={notifSettings}
                   openProfileEditor={openProfileEditor} showToast={showToast}
                   setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
@@ -2612,7 +2496,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 </div>
               </>
             )}
-            {activeTab === "explore" && <ExploreTab invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} isMobile={false} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} />}
+            {activeTab === "explore" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex-shrink-0 border-b border-white/[0.05] px-10 pt-7 pb-4">
@@ -2728,7 +2612,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               <div className="flex flex-1 flex-col items-center overflow-y-auto">
                 <div className="w-full max-w-[900px]">
                   <ProfileTab
-                    profile={profile} auth={auth} stats={stats} streak={streak}
+                    profile={displayProfile} auth={auth} stats={stats} streak={streak}
                     decisions={decisions} social={social} notifSettings={notifSettings}
                     openProfileEditor={openProfileEditor} showToast={showToast}
                     setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
@@ -2752,12 +2636,12 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       )}
 
       {auth.needsProfile && (
-        <SetupProfile onCreate={auth.createProfile} localProfile={profile} />
+        <SetupProfile onCreate={auth.createProfile} onCheckUsername={auth.checkUsername} localProfile={profile} />
       )}
 
       <AnimatePresence>
         {showCreateGroupModal && (
-          <CreateGroupModal key="cgm" onClose={() => setShowCreateGroupModal(false)} createdBy={profile.name} />
+          <CreateGroupModal key="cgm" onClose={() => setShowCreateGroupModal(false)} createdBy={displayProfile.name} />
         )}
         {showStreakDetail && (
           <StreakDetailModal key="sdm" streak={streak} onClose={() => setShowStreakDetail(false)} />
@@ -2773,7 +2657,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           />
         )}
         {shareTask && (
-          <TaskShareModal key="tsm" task={shareTask} handle={profile.handle} onClose={() => setShareTask(null)} />
+          <TaskShareModal key="tsm" task={shareTask} handle={displayProfile.handle} onClose={() => setShareTask(null)} />
         )}
         {shareToFeedTask && (
           <ShareToFeedModal
@@ -2827,10 +2711,18 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">{editedProfile.avatar}</div></div>
             <div className="space-y-3 mb-4">
               <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
-              <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
+              <div>
+                <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className={`w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border ${
+                  auth.isLoggedIn && editorUsernameStatus === "available" ? "border-emerald-500/50"
+                  : auth.isLoggedIn && (editorUsernameStatus === "taken" || editorUsernameStatus === "invalid") ? "border-red-500/50"
+                  : "border-transparent focus:border-[#2563eb]"
+                }`} />
+                {auth.isLoggedIn && <div className="mt-1.5"><UsernameHint status={editorUsernameStatus} value={editedProfile.handle} /></div>}
+              </div>
             </div>
             <div className="grid grid-cols-5 gap-2 mb-4">{profileEmojis.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
-            <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Salvar</button></div>
+            {profileEditError && <p className="text-[12px] text-red-400 px-1 mb-3">{profileEditError}</p>}
+            <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} disabled={savingProfile || (auth.isLoggedIn && editorUsernameStatus !== "available")} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center">{savingProfile ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : "Salvar"}</button></div>
           </div>
         </div>
       )}

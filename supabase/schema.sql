@@ -7,6 +7,11 @@
 -- ─── 1. TABELAS ─────────────────────────────────────────────────────────────
 
 -- Profiles (vinculado a auth.users)
+-- id  = PRIMARY KEY (uuid, liga ao auth.users) — NÃO é o username.
+-- username = UNIQUE NOT NULL — garante que não existam dois usuários iguais.
+-- Convenção da aplicação: username sempre salvo em lowercase, sem espaços e
+-- sem @, no formato /^[a-z0-9_.]{3,20}$/ (ver src/lib/username.js), pra que
+-- "Marina" e "marina" sejam a mesma pessoa.
 create table if not exists profiles (
   id            uuid        primary key references auth.users(id) on delete cascade,
   username      text        unique not null,
@@ -14,6 +19,20 @@ create table if not exists profiles (
   avatar_emoji  text        not null default '👤',
   created_at    timestamptz not null default now()
 );
+
+-- Garante o UNIQUE em username mesmo em bancos criados antes dessa regra.
+-- (Idempotente: só adiciona a constraint se ainda não houver índice unique.)
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_username_unique')
+     and not exists (
+       select 1 from pg_indexes
+       where tablename = 'profiles' and indexdef ilike '%unique%' and indexdef ilike '%(username)%'
+     )
+  then
+    alter table profiles add constraint profiles_username_unique unique (username);
+  end if;
+end $$;
 
 -- Friendships (modelo de duas linhas após aceite)
 -- Ao aceitar um pedido, insere-se uma segunda linha reversa.

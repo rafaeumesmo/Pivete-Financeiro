@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
+import { normalizeUsername, validateUsername } from "../lib/username";
 
 export function useAuth() {
   const [session, setSession]       = useState(undefined); // undefined = carregando
@@ -48,14 +49,33 @@ export function useAuth() {
     setProfile(null);
   }
 
+  // Verifica disponibilidade do username no banco (case-insensitive porque
+  // salvamos sempre normalizado). Ignora o próprio registro na edição.
+  // Retorna { username, valid, available }.
+  const checkUsername = useCallback(async (rawUsername) => {
+    const username = normalizeUsername(rawUsername);
+    const valid = validateUsername(username);
+    if (!supabase || !valid) return { username, valid, available: false };
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", username)
+      .maybeSingle();
+    if (error) throw error;
+    const available = !data || data.id === session?.user?.id;
+    return { username, valid, available };
+  }, [session?.user?.id]);
+
   async function createProfile({ username, displayName, avatarEmoji }) {
     if (!supabase || !session?.user) throw new Error("Não autenticado");
+    const uname = normalizeUsername(username);
+    if (!validateUsername(uname)) throw new Error("Username inválido (3–20 caracteres: letras, números, _ e .).");
     const { data, error } = await supabase
       .from("profiles")
       .insert({
         id: session.user.id,
-        username: username.trim().toLowerCase().replace(/[^a-z0-9_]/g, ""),
-        display_name: (displayName || username).trim(),
+        username: uname,
+        display_name: (displayName || uname).trim(),
         avatar_emoji: avatarEmoji || "👤",
       })
       .select()
@@ -67,9 +87,15 @@ export function useAuth() {
 
   async function updateProfile(updates) {
     if (!supabase || !session?.user) throw new Error("Não autenticado");
+    const payload = { ...updates };
+    if (payload.username !== undefined) {
+      const uname = normalizeUsername(payload.username);
+      if (!validateUsername(uname)) throw new Error("Username inválido (3–20 caracteres: letras, números, _ e .).");
+      payload.username = uname;
+    }
     const { data, error } = await supabase
       .from("profiles")
-      .update(updates)
+      .update(payload)
       .eq("id", session.user.id)
       .select()
       .single();
@@ -87,6 +113,7 @@ export function useAuth() {
     needsProfile: !!session && !profile && !loadingProfile,
     sendMagicLink,
     signOut,
+    checkUsername,
     createProfile,
     updateProfile,
   };
