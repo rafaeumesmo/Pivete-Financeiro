@@ -15,7 +15,9 @@ export function AuthScreen({ onSendLink }) {
       await onSendLink(email.trim());
       setSent(true);
     } catch (err) {
-      setError(err.message || "Erro ao enviar link. Tente novamente.");
+      // Mensagem amigável em vez do erro cru do Supabase.
+      console.error("[TaskMatch] Falha no magic link:", err);
+      setError("Não foi possível entrar, tente novamente.");
     } finally {
       setLoading(false);
     }

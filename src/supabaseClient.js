@@ -114,5 +114,24 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn("[TaskMatch] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY não configurados — recursos sociais desabilitados.");
 }
 
+/*
+ * ⚠️ CONFIGURAÇÃO OBRIGATÓRIA NO PAINEL DO SUPABASE (Authentication → URL Configuration):
+ * Para o magic link funcionar em todos os domínios (e evitar o erro
+ * "Invalid path specified in request URL"), cadastre TODAS as origens em "Redirect URLs",
+ * cada uma com /** no final, por exemplo:
+ *   http://localhost:5173/**
+ *   https://taskmatch.vercel.app/**
+ * O emailRedirectTo é definido dinamicamente com window.location.origin (ver useAuth.js),
+ * então qualquer origem listada aqui passa a funcionar sem hardcode no código.
+ */
 export const supabase =
-  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+  supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          persistSession: true,      // mantém a sessão salva entre reloads
+          autoRefreshToken: true,    // renova o token automaticamente
+          detectSessionInUrl: true,  // processa o token do magic link na volta do email
+          storage: window.localStorage,
+        },
+      })
+    : null;

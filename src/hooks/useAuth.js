@@ -11,8 +11,13 @@ export function useAuth() {
 
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      // Após o callback do magic link, limpa o hash com access_token da URL
+      // (detectSessionInUrl já processou o token) pra não deixar a URL feia.
+      if (event === "SIGNED_IN" && window.location.hash.includes("access_token")) {
+        window.history.replaceState({}, "", window.location.pathname + window.location.search);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
