@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePoll } from "../hooks/usePoll.js";
 import { PollResults } from "./PollResults.jsx";
 import { BoraDeck, gradientFor } from "./BoraDeck.jsx";
+import { BoraTournament } from "./BoraTournament.jsx";
 import { getNick, setNick as persistNick } from "../lib/anon";
 
 function getPollId() {
@@ -110,7 +111,9 @@ export default function BoraPage() {
         {closed && <span className="inline-block text-[10px] font-semibold tracking-widest uppercase text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full mb-3">Encerrada</span>}
         <h1 className="text-[24px] font-bold text-white leading-tight">{poll.title}</h1>
         {phase === "deck" && (
-          <p className="text-[13px] text-white/35 mt-1.5">Arrasta os cards · você é {nick.trim() || "anônimo"}</p>
+          <p className="text-[13px] text-white/35 mt-1.5">
+            {poll.type === "single" ? "Duelo de cards" : "Arrasta os cards"} · você é {nick.trim() || "anônimo"}
+          </p>
         )}
         {phase === "intro" && (
           <p className="text-[13px] text-white/35 mt-1.5">
@@ -126,9 +129,13 @@ export default function BoraPage() {
           {phase === "intro" && (
             <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col justify-center">
               <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 text-center">
-                <div className="text-4xl mb-3">🤙</div>
+                <div className="text-4xl mb-3">{poll.type === "single" ? "⚔️" : "🤙"}</div>
                 <p className="text-sm text-white/60 mb-4 leading-relaxed">
-                  Arraste os cards: <span className="text-emerald-400 font-medium">direita = Bora</span>, <span className="text-red-400 font-medium">esquerda = Passo</span>.
+                  {poll.type === "single" ? (
+                    <>As opções se enfrentam em duelos. <span className="text-emerald-400 font-medium">Toque na sua favorita</span> até sobrar uma campeã.</>
+                  ) : (
+                    <>Arraste os cards: <span className="text-emerald-400 font-medium">direita = Bora</span>, <span className="text-red-400 font-medium">esquerda = Passo</span>.</>
+                  )}
                 </p>
                 <input
                   value={nick}
@@ -155,6 +162,8 @@ export default function BoraPage() {
             <motion.div key="deck" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col justify-center">
               {saving ? (
                 <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" /></div>
+              ) : poll.type === "single" ? (
+                <BoraTournament options={deckOptions} onChampion={(id) => handleComplete([id])} />
               ) : (
                 <BoraDeck options={deckOptions} type={poll.type} onComplete={handleComplete} />
               )}
