@@ -10,6 +10,8 @@ import { AuthScreen } from "./components/AuthScreen.jsx";
 import { SetupProfile } from "./components/SetupProfile.jsx";
 import { ShareToFeedModal } from "./components/ShareToFeedModal.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
+import { CreatePollModal } from "./components/CreatePollModal.jsx";
+import { migrateAnonPolls } from "./lib/polls.js";
 
 // ── Storage keys ─────────────────────────────────────────────
 const SK = {
@@ -2089,6 +2091,11 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     });
   }, [social.sentTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ao logar, vincula as enquetes criadas anonimamente à conta.
+  useEffect(() => {
+    if (auth.user?.id) migrateAnonPolls(auth.user.id).catch(() => {});
+  }, [auth.user?.id]);
+
   // ── Group deck handlers ──────────────────────────────────
   function handleJoinGroup(nick, av) {
     setGroupNick(nick);
@@ -2258,7 +2265,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               {!auth.isLoggedIn && (
                 <button onClick={() => setShowAuthModal(true)} className="px-2.5 h-9 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[11px] font-semibold text-[#93c5fd] hover:bg-[#2563eb]/25 transition">Entrar</button>
               )}
-              <button onClick={() => setShowCreateGroupModal(true)} className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center" title="Criar deck em grupo"><span className="text-base leading-none">👥</span></button>
+              <button onClick={() => setShowCreateGroupModal(true)} className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center" title="Bora? — enquete de grupo"><span className="text-base leading-none">🗳️</span></button>
               <button onClick={() => setActiveTab("create")} className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
             </div>
           </div>
@@ -2305,7 +2312,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 ) : (<EmptyState stats={stats} onReset={handleReset} />)}
               </div>
             )}
-            {activeTab === "explore" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
+            {activeTab === "explore" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex-shrink-0 border-b border-white/[0.05] px-5 pt-4 pb-3">
@@ -2476,7 +2483,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                   <div className="flex items-center gap-3">
                     {!auth.isLoggedIn && <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/25 text-[12px] font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition">Entrar</button>}
                     <span className="text-[11px] text-white/20 bg-white/[0.05] px-3 py-1 rounded-full">{remaining} de {total} pessoais</span>
-                    <button onClick={() => setShowCreateGroupModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">👥 Deck em grupo</button>
+                    <button onClick={() => setShowCreateGroupModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">🗳️ Bora?</button>
                     <button onClick={() => setActiveTab("create")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Criar card</button>
                   </div>
                 </div>
@@ -2496,7 +2503,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 </div>
               </>
             )}
-            {activeTab === "explore" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
+            {activeTab === "explore" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex-shrink-0 border-b border-white/[0.05] px-10 pt-7 pb-4">
@@ -2641,7 +2648,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
 
       <AnimatePresence>
         {showCreateGroupModal && (
-          <CreateGroupModal key="cgm" onClose={() => setShowCreateGroupModal(false)} createdBy={displayProfile.name} />
+          <CreatePollModal key="cpm" onClose={() => setShowCreateGroupModal(false)} userId={auth.user?.id ?? null} showToast={showToast} isDesktop={isDesktop} />
         )}
         {showStreakDetail && (
           <StreakDetailModal key="sdm" streak={streak} onClose={() => setShowStreakDetail(false)} />

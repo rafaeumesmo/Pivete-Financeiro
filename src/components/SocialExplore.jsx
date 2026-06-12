@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { fetchMyPolls } from "../lib/polls";
 
 /*
  * SocialExplore — central social completa (aba Explorar).
@@ -403,7 +404,56 @@ function statusOf(r) {
   return "pending";
 }
 
-function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareInvite, onResendFavorites, favoritesCount, onCreateGroup, onShareTask }) {
+function MyPolls({ userId, showToast }) {
+  const [polls,   setPolls]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    fetchMyPolls(userId).then((p) => { setPolls(p); setLoading(false); });
+  }, [userId]);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  function pollLink(id) { return `${window.location.origin}${window.location.pathname}#/bora/${id}`; }
+
+  if (loading) {
+    return <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 flex justify-center"><div className="w-6 h-6 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" /></div>;
+  }
+  if (polls.length === 0) {
+    return (
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 text-center">
+        <p className="text-[13px] text-white/40">Você ainda não criou enquetes</p>
+        <p className="text-[11px] text-white/25 mt-1">Crie uma "Bora?" e mande pra galera decidir junto.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30">Minhas enquetes</h3>
+        <button onClick={refresh} className="text-[11px] text-white/30 hover:text-white/60 transition">Atualizar</button>
+      </div>
+      {polls.map((p) => (
+        <div key={p.id} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] px-4 py-3 flex items-center gap-3">
+          <span className="text-xl flex-shrink-0">🗳️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">{p.title}</p>
+            <p className="text-[11px] text-white/35 mt-0.5 flex items-center gap-1.5">
+              <span className={p.status === "open" ? "text-emerald-400" : "text-amber-400"}>{p.status === "open" ? "● Aberta" : "○ Encerrada"}</span>
+              · {p.voterCount} voto{p.voterCount !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <button onClick={() => { navigator.clipboard?.writeText(pollLink(p.id)); showToast?.("Link copiado!", "bg-emerald-600/90"); }} title="Copiar link" className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white transition flex-shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+          </button>
+          <a href={pollLink(p.id)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[12px] font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition flex-shrink-0">Resultados</a>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareInvite, onResendFavorites, favoritesCount, onCreateGroup, onShareTask, isLoggedIn, userId, showToast }) {
   const [expandedId, setExpandedId] = useState(null);
   const [inputValues, setInputValues] = useState({});
 
@@ -412,10 +462,14 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
   const dot   = (s) => s === "accepted" ? "bg-emerald-400" : s === "declined" ? "bg-red-400" : "bg-white/20";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <motion.button whileTap={{ scale: 0.97 }} onClick={onCreateGroup} className="w-full py-3 rounded-2xl bg-purple-500/15 border border-purple-500/25 text-purple-400 font-semibold text-sm hover:bg-purple-500/25 transition flex items-center justify-center gap-2">
-        <span>👥</span> Criar deck em grupo
+        <span>🗳️</span> Criar enquete (Bora?)
       </motion.button>
+
+      {isLoggedIn && <MyPolls userId={userId} showToast={showToast} />}
+
+      <div className="flex flex-col gap-3">
 
       {invites.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-3xl bg-white/[0.03] border border-white/[0.06] p-12 text-center gap-3">
@@ -543,13 +597,14 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
 
 // ── Componente principal ─────────────────────────────────────────
 export function SocialExplore({
-  isDesktop, isLoggedIn, social, tasks,
+  isDesktop, isLoggedIn, userId, social, tasks,
   invites, addRecipient, updateRecipientStatus, shareInvite, onMassSend, onResendFavorites,
   showToast, unreadCount, onCreateGroup, onShareTask, onRequireLogin,
 }) {
@@ -615,6 +670,9 @@ export function SocialExplore({
             favoritesCount={favoritesCount}
             onCreateGroup={onCreateGroup}
             onShareTask={onShareTask}
+            isLoggedIn={isLoggedIn}
+            userId={userId}
+            showToast={showToast}
           />
         )}
       </div>

@@ -135,9 +135,77 @@ create policy "task_responses_author_read" on task_responses for select using (
   exists (select 1 from shared_tasks st where st.id = shared_task_id and st.author_id = auth.uid())
 );
 
+-- ─── 2b. ENQUETES "BORA?" (votação aberta, sem login) ───────────────────────
+-- A graça da feature: qualquer pessoa vota pelo link público /bora/[id] sem
+-- conta. O "dono" da enquete é identificado por um anon_id guardado no
+-- localStorage; se a pessoa logar depois, as enquetes migram pra conta dela.
+
+create table if not exists polls (
+  id              uuid        primary key default gen_random_uuid(),
+  title           text        not null,
+  type            text        not null default 'single' check (type in ('single','multiple')),
+  creator_anon_id text        not null,
+  creator_user_id uuid        references profiles(id) on delete set null,
+  status          text        not null default 'open' check (status in ('open','closed')),
+  created_at      timestamptz not null default now()
+);
+
+create table if not exists poll_options (
+  id        uuid  primary key default gen_random_uuid(),
+  poll_id   uuid  not null references polls(id) on delete cascade,
+  emoji     text,
+  label     text  not null,
+  position  int   not null default 0
+);
+
+create table if not exists poll_votes (
+  id            uuid        primary key default gen_random_uuid(),
+  poll_id       uuid        not null references polls(id) on delete cascade,
+  option_id     uuid        not null references poll_options(id) on delete cascade,
+  voter_nick    text        not null,
+  voter_anon_id text        not null,
+  created_at    timestamptz not null default now(),
+  -- Anti-spam: no máximo 1 voto por opção por pessoa (anon_id).
+  unique (option_id, voter_anon_id)
+);
+
+create index if not exists poll_options_poll_idx on poll_options(poll_id);
+create index if not exists poll_votes_poll_idx    on poll_votes(poll_id);
+
+-- RLS: leitura e escrita LIBERADAS pra anônimos (é o gancho — votar sem login).
+-- O controle de "dono" (encerrar/migrar) é por anon_id na aplicação.
+alter table polls enable row level security;
+drop policy if exists "polls_public_read"   on polls;
+create policy "polls_public_read"   on polls for select using (true);
+drop policy if exists "polls_public_insert" on polls;
+create policy "polls_public_insert" on polls for insert with check (true);
+drop policy if exists "polls_public_update" on polls;
+create policy "polls_public_update" on polls for update using (true);
+
+alter table poll_options enable row level security;
+drop policy if exists "poll_options_public_read"   on poll_options;
+create policy "poll_options_public_read"   on poll_options for select using (true);
+drop policy if exists "poll_options_public_insert" on poll_options;
+create policy "poll_options_public_insert" on poll_options for insert with check (true);
+
+alter table poll_votes enable row level security;
+drop policy if exists "poll_votes_public_read"   on poll_votes;
+create policy "poll_votes_public_read"   on poll_votes for select using (true);
+drop policy if exists "poll_votes_public_insert" on poll_votes;
+create policy "poll_votes_public_insert" on poll_votes for insert with check (true);
+drop policy if exists "poll_votes_public_update" on poll_votes;
+create policy "poll_votes_public_update" on poll_votes for update using (true);
+drop policy if exists "poll_votes_public_delete" on poll_votes;
+create policy "poll_votes_public_delete" on poll_votes for delete using (true);
+
+-- Garante privilégios de tabela pro papel anônimo (além do RLS).
+grant select, insert, update, delete on polls, poll_options, poll_votes to anon, authenticated;
+
 -- ─── 3. REALTIME ────────────────────────────────────────────────────────────
 -- Adiciona as tabelas à publicação de realtime.
 -- (Equivale a marcar cada tabela em Database → Replication no dashboard.)
 alter publication supabase_realtime add table shared_tasks;
 alter publication supabase_realtime add table task_responses;
 alter publication supabase_realtime add table friendships;
+alter publication supabase_realtime add table poll_votes;
+alter publication supabase_realtime add table polls;

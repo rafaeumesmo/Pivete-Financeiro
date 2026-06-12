@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import TaskMatch from "./TaskMatch.jsx";
 import InvitePage from "./InvitePage.jsx";
+import BoraPage from "./components/BoraPage.jsx";
 
 function getRoute() {
-  return window.location.hash.startsWith("#/invite/") ? "invite" : "app";
+  const h = window.location.hash;
+  if (h.startsWith("#/invite/")) return "invite";
+  if (h.startsWith("#/bora/"))   return "bora";
+  return "app";
 }
 
 export default function App() {
@@ -15,5 +19,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  return route === "invite" ? <InvitePage /> : <TaskMatch />;
+  if (route === "invite") return <InvitePage />;
+  if (route === "bora")   return <BoraPage />;
+  return <TaskMatch />;
 }
