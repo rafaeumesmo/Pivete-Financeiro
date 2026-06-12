@@ -202,10 +202,21 @@ create policy "poll_votes_public_delete" on poll_votes for delete using (true);
 grant select, insert, update, delete on polls, poll_options, poll_votes to anon, authenticated;
 
 -- ─── 3. REALTIME ────────────────────────────────────────────────────────────
--- Adiciona as tabelas à publicação de realtime.
+-- Adiciona as tabelas à publicação de realtime (idempotente: ignora se já estão).
 -- (Equivale a marcar cada tabela em Database → Replication no dashboard.)
-alter publication supabase_realtime add table shared_tasks;
-alter publication supabase_realtime add table task_responses;
-alter publication supabase_realtime add table friendships;
-alter publication supabase_realtime add table poll_votes;
-alter publication supabase_realtime add table polls;
+do $$
+declare t text;
+begin
+  foreach t in array array['shared_tasks','task_responses','friendships','poll_votes','polls'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
+-- Recarrega o cache do schema do PostgREST (resolve "Could not find the table
+-- 'public.polls' in the schema cache" sem precisar esperar/recriar).
+notify pgrst, 'reload schema';
