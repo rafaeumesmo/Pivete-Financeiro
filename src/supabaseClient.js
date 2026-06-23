@@ -115,6 +115,52 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 /*
+ * ── TABELAS DO BORA (execute no SQL Editor do Supabase) ──────────────────────
+ *
+ * create table polls (
+ *   id               uuid        primary key default gen_random_uuid(),
+ *   title            text        not null,
+ *   type             text        not null default 'single' check (type in ('single','multiple')),
+ *   status           text        not null default 'open'   check (status in ('open','closed')),
+ *   creator_anon_id  text        not null,
+ *   creator_user_id  uuid        references profiles(id) on delete set null,
+ *   created_at       timestamptz not null default now()
+ * );
+ * create table poll_options (
+ *   id        uuid    primary key default gen_random_uuid(),
+ *   poll_id   uuid    not null references polls(id) on delete cascade,
+ *   emoji     text,
+ *   label     text    not null,
+ *   position  int     not null default 0
+ * );
+ * create table poll_votes (
+ *   id              uuid        primary key default gen_random_uuid(),
+ *   poll_id         uuid        not null references polls(id) on delete cascade,
+ *   option_id       uuid        not null references poll_options(id) on delete cascade,
+ *   voter_anon_id   text        not null,
+ *   voter_nick      text,
+ *   created_at      timestamptz not null default now()
+ * );
+ *
+ * -- RLS: acesso anônimo (sem login) é necessário para o Bora funcionar
+ * alter table polls        enable row level security;
+ * alter table poll_options enable row level security;
+ * alter table poll_votes   enable row level security;
+ *
+ * create policy "polls_public_read"   on polls        for select using (true);
+ * create policy "polls_anon_insert"   on polls        for insert with check (true);
+ * create policy "polls_creator_update" on polls       for update using (creator_anon_id = current_setting('request.headers', true)::json->>'x-client-info' or true);
+ * create policy "options_public_read" on poll_options for select using (true);
+ * create policy "options_anon_insert" on poll_options for insert with check (true);
+ * create policy "votes_public_read"   on poll_votes   for select using (true);
+ * create policy "votes_anon_insert"   on poll_votes   for insert with check (true);
+ * create policy "votes_anon_delete"   on poll_votes   for delete using (voter_anon_id = (select coalesce(current_setting('request.jwt.claims', true)::json->>'sub', '')));
+ *
+ * -- Ativar Realtime para: polls, poll_options, poll_votes
+ * -- Dashboard → Database → Replication → marcar cada tabela
+ */
+
+/*
  * ⚠️ CONFIGURAÇÃO OBRIGATÓRIA NO PAINEL DO SUPABASE (Authentication → URL Configuration):
  * Para o magic link funcionar em todos os domínios (e evitar o erro
  * "Invalid path specified in request URL"), cadastre TODAS as origens em "Redirect URLs",

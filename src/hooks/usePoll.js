@@ -16,11 +16,17 @@ export function usePoll(pollId) {
 
   const load = useCallback(async () => {
     if (!supabase || !pollId) { setError("config"); setLoading(false); return; }
-    const { data, error: err } = await supabase
-      .from("polls")
-      .select("*, poll_options(*), poll_votes(*)")
-      .eq("id", pollId)
-      .maybeSingle();
+    let data, err;
+    try {
+      const res = await supabase
+        .from("polls")
+        .select("*, poll_options(*), poll_votes(*)")
+        .eq("id", pollId)
+        .maybeSingle();
+      data = res.data; err = res.error;
+    } catch (e) {
+      setError("network"); setLoading(false); return;
+    }
     if (err)  { setError("load"); setLoading(false); return; }
     if (!data) { setError("notfound"); setLoading(false); return; }
     setPoll({ id: data.id, title: data.title, type: data.type, status: data.status, creator_anon_id: data.creator_anon_id, created_at: data.created_at });

@@ -25,7 +25,18 @@ export async function createPoll({ title, type, options, userId = null }) {
     })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.code === "NETWORK_ERROR") {
+      throw new Error("Sem conexão com o servidor. Verifique sua internet e tente novamente.");
+    }
+    if (error.code === "42P01") {
+      throw new Error("Tabela 'polls' não encontrada. Execute o SQL do Bora no Supabase antes de usar esta função.");
+    }
+    if (error.code === "42501" || error.message?.includes("row-level security")) {
+      throw new Error("Permissão negada. Verifique as políticas RLS das tabelas polls/poll_options/poll_votes.");
+    }
+    throw error;
+  }
 
   const rows = clean.map((o, i) => ({ poll_id: poll.id, emoji: o.emoji, label: o.label, position: i }));
   const { error: optErr } = await supabase.from("poll_options").insert(rows);

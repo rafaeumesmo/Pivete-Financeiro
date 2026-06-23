@@ -3,8 +3,9 @@ import { motion } from "framer-motion";
 
 function decodeInvite(hash) {
   try {
-    const b64 = hash.replace(/^#\/invite\//, "");
-    return JSON.parse(decodeURIComponent(atob(b64)));
+    const s = hash.replace(/^#\/invite\//, "").replace(/-/g, "+").replace(/_/g, "/");
+    const padded = s.length % 4 ? s + "=".repeat(4 - s.length % 4) : s;
+    return JSON.parse(decodeURIComponent(atob(padded)));
   } catch {
     return null;
   }

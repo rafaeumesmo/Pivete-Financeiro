@@ -87,12 +87,21 @@ const GROUP_GRADIENT_OPTIONS = [
   { gradient: "from-slate-500 via-gray-600 to-zinc-700",      accent: "#94a3b8" },
 ];
 
-function encodeGroupDeck(deck) {
-  return btoa(encodeURIComponent(JSON.stringify(deck)));
+// URL-safe base64: replaces +/= so links survive WhatsApp, email, SMS
+function b64encode(obj) {
+  return btoa(encodeURIComponent(JSON.stringify(obj)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
-function decodeGroupDeck(b64) {
-  try { return JSON.parse(decodeURIComponent(atob(b64))); } catch { return null; }
+function b64decode(s) {
+  try {
+    const padded = s.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = padded.length % 4 ? "=".repeat(4 - padded.length % 4) : "";
+    return JSON.parse(decodeURIComponent(atob(padded + pad)));
+  } catch { return null; }
 }
+
+function encodeGroupDeck(deck) { return b64encode(deck); }
+function decodeGroupDeck(b64) { return b64decode(b64); }
 function buildGroupUrl(deck) {
   return `${window.location.origin}${window.location.pathname}?d=${encodeGroupDeck(deck)}`;
 }
@@ -2289,7 +2298,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       gradient: invite.gradient,
       accent: invite.accent || "#2563eb",
     };
-    const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+    const encoded = b64encode(payload);
     const url = `${window.location.origin}${window.location.pathname}#/invite/${encoded}`;
     if (navigator.share) {
       navigator.share({ title: `TaskMatch: ${invite.title}`, text: `Você foi convidado: "${invite.title}"`, url }).catch(() => {});

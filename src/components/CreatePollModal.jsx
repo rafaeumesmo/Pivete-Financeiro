@@ -43,7 +43,12 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
       setPhase("done");
       try { await navigator.clipboard?.writeText(pollLink(id)); showToast?.("Link copiado!", "bg-emerald-600/90"); } catch { /* ignore */ }
     } catch (err) {
-      setError(err.message || "Não foi possível criar a enquete.");
+      const msg = err?.message || "";
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("fetch")) {
+        setError("Sem conexão com o servidor. Verifique sua internet e tente novamente.");
+      } else {
+        setError(msg || "Não foi possível criar a enquete.");
+      }
     } finally {
       setCreating(false);
     }

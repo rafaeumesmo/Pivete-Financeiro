@@ -70,11 +70,11 @@ export default function BoraPage() {
   if (loading || phase === null) {
     return <Shell><Branding /><div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" /></div></Shell>;
   }
-  if (error === "notfound" || !poll) {
+  if (error === "notfound" || (!poll && error !== "network" && error !== "load" && error !== "config")) {
     return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><div className="text-5xl">🔗</div><p className="text-white/50 text-sm">Enquete não encontrada ou link inválido.</p><CreateCTA /></div></Shell>;
   }
-  if (error === "config") {
-    return <Shell><Branding /><div className="flex-1 flex items-center justify-center text-center"><p className="text-white/50 text-sm">Serviço indisponível no momento.</p></div></Shell>;
+  if (error === "config" || error === "network" || error === "load") {
+    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><div className="text-5xl">📡</div><p className="text-white/50 text-sm">Não foi possível carregar a enquete.</p><p className="text-white/25 text-xs">Verifique sua conexão e tente novamente.</p><button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 rounded-xl bg-white/[0.06] border border-white/10 text-sm text-white/50 hover:text-white/70 transition">Tentar novamente</button></div></Shell>;
   }
   if (options.length === 0) {
     return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><div className="text-5xl">🤷</div><p className="text-white/50 text-sm">Essa enquete não tem opções.</p><CreateCTA /></div></Shell>;
