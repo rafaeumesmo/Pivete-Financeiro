@@ -625,9 +625,9 @@ export function SocialExplore({
       <div className={`w-full ${isDesktop ? "max-w-[720px] mx-auto" : ""} pb-10`}>
         {/* Header */}
         <div className="mb-4">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Explorar</p>
-          <h2 className={`font-bold text-white ${isDesktop ? "text-2xl" : "text-lg"}`}>Central social</h2>
-          <p className="text-sm text-white/40 mt-0.5">Amigos, favoritos e envio de tasks em massa.</p>
+          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Social</p>
+          <h2 className={`font-bold text-white ${isDesktop ? "text-2xl" : "text-lg"}`}>Interagir</h2>
+          <p className="text-sm text-white/40 mt-0.5">Amigos, favoritos, delegações e enquetes.</p>
         </div>
 
         {/* Toggle pill de sub-abas */}

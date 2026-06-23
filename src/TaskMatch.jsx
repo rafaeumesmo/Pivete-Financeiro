@@ -505,13 +505,13 @@ function Toast({ message, color, visible }) {
 }
 
 // ── EmptyState ───────────────────────────────────────────────
-function EmptyState({ stats, onReset }) {
+function EmptyState({ stats, onReset, onNavigate }) {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, type: "spring" }} className="flex flex-col items-center justify-center h-full px-8 text-center">
       <div className="text-6xl mb-5">🎉</div>
       <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Deck Finalizado!</h3>
-      <p className="text-white/40 text-sm mb-8 leading-relaxed">Suas decisões foram registradas.</p>
-      <div className="flex gap-4 mb-8">
+      <p className="text-white/40 text-sm mb-6 leading-relaxed">Suas decisões foram registradas.</p>
+      <div className="flex gap-4 mb-6">
         {[{ label: "Aceitos", value: stats.accepted, color: "text-emerald-400" }, { label: "Depois", value: stats.rejected, color: "text-red-400" }, { label: "Delegados", value: stats.shared, color: "text-blue-400" }].map(({ label, value, color }) => (
           <div key={label} className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl px-5 py-3">
             <span className={`text-2xl font-bold ${color}`}>{value}</span>
@@ -519,7 +519,15 @@ function EmptyState({ stats, onReset }) {
           </div>
         ))}
       </div>
-      <motion.button onClick={onReset} className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-white font-semibold text-sm tracking-wide hover:bg-blue-500 transition-colors" whileTap={{ scale: 0.97 }}>Recomeçar deck</motion.button>
+      <div className="w-full flex flex-col gap-2">
+        <motion.button onClick={onReset} className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-white font-semibold text-sm tracking-wide hover:bg-blue-500 transition-colors" whileTap={{ scale: 0.97 }}>+ Criar nova tarefa</motion.button>
+        {onNavigate && (
+          <div className="flex gap-2">
+            <motion.button onClick={() => onNavigate("activity")} className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-white/50 text-sm hover:text-white/70 transition" whileTap={{ scale: 0.97 }}>Ver atividade</motion.button>
+            <motion.button onClick={() => onNavigate("social")} className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-white/50 text-sm hover:text-white/70 transition" whileTap={{ scale: 0.97 }}>Social</motion.button>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -1397,6 +1405,123 @@ function TaskShareModal({ task, handle, onClose }) {
   );
 }
 
+// ── ActivityTab ───────────────────────────────────────────────
+function ActivityTab({ decisions, stats, streak, onNavigate }) {
+  const today = todayKey();
+  const yesterdayDate = new Date(); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+
+  const GROUP_ORDER = ["Hoje", "Ontem", "Esta semana", "Este mês"];
+  const grouped = {};
+
+  for (const d of [...decisions].reverse()) {
+    const dateStr = d.decidedAt?.slice(0, 10) || "";
+    let group;
+    if (dateStr === today) group = "Hoje";
+    else if (dateStr === yesterdayStr) group = "Ontem";
+    else {
+      const diff = daysBetween(dateStr, today);
+      group = diff < 7 ? "Esta semana" : "Este mês";
+    }
+    if (!grouped[group]) grouped[group] = [];
+    grouped[group].push(d);
+  }
+
+  const badgeCfg = (label) => {
+    if (label === "Aceito") return { cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", icon: "✓" };
+    if (label === "Depois") return { cls: "bg-red-500/15 text-red-400 border-red-500/20",           icon: "⏰" };
+    return                         { cls: "bg-blue-500/15 text-blue-400 border-blue-500/20",         icon: "🤝" };
+  };
+
+  const formatTime = (iso) => {
+    try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
+    catch { return ""; }
+  };
+
+  const totalDecisions = stats.accepted + stats.rejected + stats.shared;
+
+  return (
+    <motion.div className="h-full overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="px-5 pt-5 pb-4 border-b border-white/[0.05]">
+        <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Seu histórico</p>
+        <h2 className="font-bold text-white text-lg">Atividade</h2>
+      </div>
+
+      <div className="px-5 pt-4 pb-2 grid grid-cols-3 gap-2">
+        {[
+          { label: "Aceitas",   value: stats.accepted, cls: "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" },
+          { label: "Depois",    value: stats.rejected, cls: "bg-red-500/10 border border-red-500/20 text-red-400" },
+          { label: "Delegadas", value: stats.shared,   cls: "bg-blue-500/10 border border-blue-500/20 text-blue-400" },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className={`rounded-2xl p-3 text-center ${cls}`}>
+            <div className="text-xl font-bold leading-none">{value}</div>
+            <div className="text-[10px] text-white/30 mt-1">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {streak.count > 0 && (
+        <div className="mx-5 mt-3 flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3">
+          <span className="text-xl">🔥</span>
+          <div>
+            <p className="text-[13px] font-semibold text-amber-300">{streak.count} {streak.count === 1 ? "dia" : "dias"} seguidos</p>
+            {streak.best > streak.count && <p className="text-[10px] text-white/25 mt-0.5">Recorde: {streak.best} dias</p>}
+          </div>
+        </div>
+      )}
+
+      <div className="px-5 pt-4 pb-24">
+        {totalDecisions === 0 ? (
+          <div className="py-16 text-center">
+            <div className="text-4xl mb-4">📭</div>
+            <p className="text-white/40 text-sm">Nenhuma decisão ainda.</p>
+            <p className="text-white/20 text-xs mt-1">Faça swipes no Início para começar.</p>
+            {onNavigate && (
+              <motion.button onClick={() => onNavigate("home")} className="mt-5 px-5 py-2.5 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white" whileTap={{ scale: 0.97 }}>
+                Ir para o Início
+              </motion.button>
+            )}
+          </div>
+        ) : (
+          GROUP_ORDER.filter(g => grouped[g]?.length).map((group) => (
+            <div key={group} className="mb-6">
+              <h3 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-3 pl-1">{group}</h3>
+              <div className="flex flex-col gap-2">
+                {grouped[group].map((d, idx) => {
+                  const { cls, icon } = badgeCfg(d.label);
+                  return (
+                    <motion.div
+                      key={d.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: Math.min(idx * 0.03, 0.2) }}
+                      className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl px-3 py-2.5"
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${
+                        d.label === "Aceito" ? "bg-emerald-500/20" :
+                        d.label === "Depois" ? "bg-red-500/20" : "bg-blue-500/20"
+                      }`}>
+                        {d.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-white/85 truncate font-medium leading-snug">{d.title}</p>
+                        <p className="text-[10px] text-white/25 mt-0.5">{d.category} · {formatTime(d.decidedAt)}</p>
+                      </div>
+                      <span className={`text-[9px] font-semibold px-2 py-1 rounded-xl flex-shrink-0 border ${cls}`}>
+                        {icon} {d.label}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── ProfileTab ───────────────────────────────────────────────
 function ProfileTab({
   profile, auth, stats, streak, decisions, social, notifSettings,
@@ -1651,26 +1776,11 @@ function ProfileTab({
         </div>
       </div>
 
-      {/* ── Content — dois layouts ─────────────────────────────── */}
-      {isDesktop ? (
-        <div className="flex gap-6 px-5 pb-4 items-start">
-          {/* Coluna esquerda ~40% — stats */}
-          <div className="w-[42%] min-w-0 flex flex-col">
-            {statsSection}
-            {settingsSection}
-          </div>
-          {/* Coluna direita ~58% — histórico */}
-          <div className="flex-1 min-w-0 flex flex-col">
-            {activitySection}
-          </div>
-        </div>
-      ) : (
-        <>
-          {statsSection}
-          {activitySection}
-          {settingsSection}
-        </>
-      )}
+      {/* ── Content ───────────────────────────────────────────── */}
+      <div className={isDesktop ? "px-5 pb-4 max-w-xl" : ""}>
+        {statsSection}
+        {settingsSection}
+      </div>
     </motion.div>
   );
 }
@@ -1816,7 +1926,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
   useEffect(() => { if (activeTab === "ia") chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages, activeTab]);
   useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
   useEffect(() => {
-    if (activeTab === "explore") setExploreSeenAt(new Date().toISOString());
+    if (activeTab === "social") setExploreSeenAt(new Date().toISOString());
   }, [activeTab]);
 
   useEffect(() => {
@@ -2045,7 +2155,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       })),
     };
     setInvites((prev) => [newInvite, ...prev]);
-    setActiveTab("explore");
+    setActiveTab("social");
   }
 
   async function handleResendFavorites(invite) {
@@ -2189,7 +2299,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       };
       setInvites((prev) => [newInvite, ...prev]);
       showToast("↑  Convite criado!", "bg-blue-600/90 backdrop-blur-md");
-      setActiveTab("explore");
+      setActiveTab("social");
     }
     setTasks((prev) => prev.filter((t) => t.id !== task.id));
 
@@ -2239,10 +2349,10 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
   const showQuickActions = chatInput.trim() === "";
 
   const NavItems = [
-    { id: "home",    label: "Início",   icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-    { id: "explore", label: "Explorar", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
-    { id: "ia",      label: "RAF",       icon: "M13 10V3L4 14h7v7l9-11h-7z" },
-    { id: "profile", label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    { id: "home",     label: "Início",    icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+    { id: "social",   label: "Social",    icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
+    { id: "activity", label: "Atividade", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+    { id: "profile",  label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
   const friendsPendingBadge = social.pendingIncoming.length;
 
@@ -2309,10 +2419,13 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                     </div>
                     <div className="flex-shrink-0 flex items-center justify-center pb-4"><ActionButtons onAction={(dir) => mixedTopTask && handleSwipe(dir, mixedTopTask)} disabled={!mixedTopTask} /></div>
                   </>
-                ) : (<EmptyState stats={stats} onReset={handleReset} />)}
+                ) : (<EmptyState stats={stats} onReset={() => setActiveTab("create")} onNavigate={setActiveTab} />)}
               </div>
             )}
-            {activeTab === "explore" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
+            {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
+            {activeTab === "activity" && (
+              <ActivityTab decisions={decisions} stats={stats} streak={streak} onNavigate={setActiveTab} />
+            )}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex-shrink-0 border-b border-white/[0.05] px-5 pt-4 pb-3">
@@ -2439,7 +2552,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           </div>
 
           <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}{tab.id === "profile" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
+            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={unreadCount + friendsPendingBadge} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
           </div>
         </div>
       )}
@@ -2450,7 +2563,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
           <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
             <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white">Task<span style={{ color: "#2563eb" }}>Match</span></h1><p className="text-[11px] text-white/30 mt-1">Decida rápido, viva mais.</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
             <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "explore" && <NavBadge count={unreadCount} />}{tab.id === "profile" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
+              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={unreadCount + friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
               <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Sessão atual</p>
@@ -2499,11 +2612,18 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                       </div>
                       <ActionButtons onAction={(dir) => mixedTopTask && handleSwipe(dir, mixedTopTask)} disabled={!mixedTopTask} />
                     </>
-                  ) : (<EmptyState stats={stats} onReset={handleReset} />)}
+                  ) : (<EmptyState stats={stats} onReset={() => setActiveTab("create")} onNavigate={setActiveTab} />)}
                 </div>
               </>
             )}
-            {activeTab === "explore" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
+            {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
+            {activeTab === "activity" && (
+              <div className="flex-1 overflow-y-auto">
+                <div className="max-w-2xl mx-auto">
+                  <ActivityTab decisions={decisions} stats={stats} streak={streak} onNavigate={setActiveTab} />
+                </div>
+              </div>
+            )}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex-shrink-0 border-b border-white/[0.05] px-10 pt-7 pb-4">
