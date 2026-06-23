@@ -408,8 +408,160 @@ function SnoozeSetupModal({ onChoose }) {
   );
 }
 
+// ── ChecklistModal ────────────────────────────────────────────
+function ChecklistModal({ task, onClose, onToggleItem, onAddItem }) {
+  const [newText, setNewText] = useState("");
+  const addRef = useRef(null);
+  const items = task?.items || [];
+  const doneCount = items.filter(i => i.done).length;
+  const total = items.length;
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const allDone = total > 0 && doneCount === total;
+
+  const sorted = [...items].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return (a.order ?? 0) - (b.order ?? 0);
+  });
+
+  function handleAdd(e) {
+    e?.preventDefault();
+    const t = newText.trim();
+    if (!t) return;
+    onAddItem(task.id, t);
+    setNewText("");
+    addRef.current?.focus();
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: "100%" }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: "100%" }}
+      transition={{ type: "spring", stiffness: 320, damping: 32 }}
+      className="fixed inset-0 z-[85] flex flex-col bg-[#0e0e11]"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 16px)", paddingTop: "env(safe-area-inset-top)" }}
+    >
+      {/* Gradient header */}
+      <div className={`relative flex-shrink-0 bg-gradient-to-br ${task.gradient} overflow-hidden`}>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/25 to-[#0e0e11]" />
+        <div className="relative px-5 pt-5 pb-7">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={onClose} className="w-9 h-9 rounded-2xl bg-black/30 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white/70 hover:text-white transition">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <span className="text-[10px] font-semibold tracking-widest uppercase text-white/55 bg-black/20 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/10">{task.category}</span>
+          </div>
+          <div className="flex items-start gap-3 mb-4">
+            <span className="text-3xl mt-0.5 flex-shrink-0">{task.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-[17px] font-bold text-white leading-tight">{task.title}</h2>
+              <p className={`text-[13px] mt-0.5 ${allDone ? "text-emerald-300" : "text-white/50"}`}>
+                {allDone ? "✓ Tudo marcado!" : `${doneCount} de ${total} ${total === 1 ? "item" : "itens"}`}
+              </p>
+            </div>
+          </div>
+          <div className="h-1.5 rounded-full bg-black/30 overflow-hidden">
+            <motion.div className="h-full rounded-full bg-white/65" animate={{ width: `${pct}%` }} transition={{ duration: 0.35 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Items */}
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <AnimatePresence initial={false}>
+          {sorted.map(item => (
+            <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+              <button
+                onClick={() => onToggleItem(task.id, item.id)}
+                className={`w-full flex items-center gap-3.5 px-4 py-4 rounded-2xl mb-2 text-left transition active:scale-[0.98] ${
+                  item.done ? "bg-white/[0.025] border border-white/[0.04]" : "bg-white/[0.07] border border-white/[0.09] hover:bg-white/[0.10]"
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-lg border-2 flex-shrink-0 flex items-center justify-center transition-all ${item.done ? "bg-emerald-500 border-emerald-500" : "border-white/30"}`}>
+                  {item.done && <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                </div>
+                {item.emoji && <span className="text-lg flex-shrink-0">{item.emoji}</span>}
+                <span className={`flex-1 text-sm font-medium transition-all ${item.done ? "line-through text-white/25" : "text-white/85"}`}>{item.text}</span>
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        {items.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <span className="text-4xl mb-3">📋</span>
+            <p className="text-white/30 text-sm">Nenhum item ainda. Adicione abaixo.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add item */}
+      <div className="flex-shrink-0 px-4 pt-3 border-t border-white/[0.06]">
+        <form onSubmit={handleAdd} className="flex items-center gap-2">
+          <input
+            ref={addRef}
+            value={newText}
+            onChange={e => setNewText(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+            placeholder="Adicionar item..."
+            className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-2xl px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition"
+          />
+          <motion.button type="submit" whileTap={{ scale: 0.9 }} disabled={!newText.trim()} className="w-12 h-12 rounded-2xl bg-[#2563eb] flex-shrink-0 flex items-center justify-center disabled:opacity-30 transition hover:bg-blue-500">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          </motion.button>
+        </form>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── ListCompleteModal ─────────────────────────────────────────
+function ListCompleteModal({ task, onCompleteAnyway, onCreatePending, onSnooze }) {
+  const items = task?.items || [];
+  const pending = items.filter(i => !i.done);
+  const doneCount = items.length - pending.length;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm px-4 pb-6 sm:pb-0">
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 30, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 340, damping: 30 }}
+        className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
+      >
+        <div className="px-6 pt-6 pb-6">
+          <div className="flex flex-col items-center text-center mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-2xl mb-3">{task.emoji}</div>
+            <h2 className="text-[15px] font-bold text-white mb-1">{pending.length} {pending.length === 1 ? "item" : "itens"} pendentes</h2>
+            <p className="text-[12px] text-white/35">{doneCount > 0 ? `${doneCount} de ${items.length} marcados` : "Nenhum item marcado"}</p>
+          </div>
+          {pending.length > 0 && (
+            <div className="bg-white/[0.04] rounded-2xl px-4 py-3 mb-4 border border-white/[0.05]">
+              {pending.slice(0, 3).map(item => (
+                <p key={item.id} className="text-[12px] text-white/45 py-0.5 truncate">{item.emoji ? `${item.emoji} ` : "· "}{item.text}</p>
+              ))}
+              {pending.length > 3 && <p className="text-[11px] text-white/25 pt-1">+{pending.length - 3} mais</p>}
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onCreatePending} className="w-full py-3.5 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-sm font-semibold text-[#93c5fd] hover:bg-[#2563eb]/25 transition">
+              📋 Criar lista com o que faltou
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onCompleteAnyway} className="w-full py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.09] text-sm font-medium text-white/65 hover:bg-white/[0.09] transition">
+              ✓ Concluir mesmo assim
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onSnooze} className="w-full py-2.5 text-[13px] text-white/30 hover:text-white/50 transition">
+              ⏰ Adiar — volto depois
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── SwipeCard ────────────────────────────────────────────────
-function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare, onShareToFeed, isReturned = false }) {
+function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare, onShareToFeed, isReturned = false, onOpenChecklist }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateZ = useTransform(x, [-200, 200], [-18, 18]);
@@ -455,6 +607,11 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare, onShareToFeed, i
       dragConstraints={{ top: -300, bottom: 150, left: -300, right: 300 }}
       dragElastic={0.12}
       onDragEnd={handleDragEnd}
+      onTap={() => {
+        if (task.items?.length > 0 && task._source !== "friend" && task._source !== "login_prompt") {
+          onOpenChecklist?.(task);
+        }
+      }}
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1, filter: "drop-shadow(0 0px 0px rgba(0,0,0,0))" }}
       whileDrag={{ scale: 0.97, filter: "drop-shadow(0 24px 52px rgba(0,0,0,0.6))" }}
@@ -517,7 +674,15 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare, onShareToFeed, i
           </div>
         )}
 
-        <div className={`absolute top-5 left-5 z-10 ${task._source === "friend" ? "top-12" : ""}`}><span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span></div>
+        <div className={`absolute top-5 left-5 z-10 flex flex-col items-start gap-1.5 ${task._source === "friend" ? "top-12" : ""}`}>
+          <span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{task.category}</span>
+          {task.items?.length > 0 && (() => { const done = task.items.filter(i => i.done).length; return (
+            <span className="text-[10px] font-semibold bg-white/20 backdrop-blur-sm text-white/85 px-2.5 py-1 rounded-full border border-white/20 flex items-center gap-1.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3 flex-shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+              {done}/{task.items.length}
+            </span>
+          ); })()}
+        </div>
         <div className={`absolute right-5 z-10 text-4xl filter drop-shadow-lg ${task._source === "friend" ? "top-11" : "top-5"}`}>{task.emoji}</div>
         {onShare && (
           <button className="absolute top-[60px] right-5 z-40 w-8 h-8 rounded-full bg-black/35 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/55 transition" onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onShare(task); }}>
@@ -541,8 +706,23 @@ function SwipeCard({ task, onSwipe, isTop, stackIndex, onShare, onShareToFeed, i
           {task.deadline && (() => { const b = deadlineBadge(task.deadline); return b ? (
             <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2 ${b.overdue ? "bg-red-500/30 text-red-200 animate-pulse" : "bg-black/25 text-white/70"}`}>{b.overdue ? "⚠️" : "🗓"} {b.label}</span>
           ) : null; })()}
-          <p className="text-sm text-white/70 leading-relaxed">{task.description}</p>
+          {task.items?.length > 0 ? (() => {
+            const pending = task.items.filter(i => !i.done);
+            if (pending.length === 0) return <p className="text-sm text-emerald-300/80 leading-relaxed">✓ Tudo marcado!</p>;
+            const preview = pending.slice(0, 3).map(i => i.text).join("  ·  ");
+            const more = pending.length > 3 ? `  +${pending.length - 3}` : "";
+            return <p className="text-sm text-white/60 leading-relaxed truncate">{preview}{more}</p>;
+          })() : <p className="text-sm text-white/70 leading-relaxed">{task.description}</p>}
         </div>
+        {task.items?.length > 0 && (() => {
+          const done = task.items.filter(i => i.done).length;
+          const pct = Math.round((done / task.items.length) * 100);
+          return (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20 rounded-b-3xl z-10 overflow-hidden">
+              <div className="h-full bg-white/50 transition-all duration-500" style={{ width: `${pct}%` }} />
+            </div>
+          );
+        })()}
         {task.priority && (
           <div className="absolute bottom-6 right-6 z-10">
             <span className="text-[10px] font-semibold bg-black/30 backdrop-blur-sm text-white/80 px-2.5 py-1 rounded-full border border-white/10">
@@ -1980,7 +2160,7 @@ export default function TaskMatch() {
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
   const [chatInput,         setChatInput]         = useState("");
   const [isChatLoading,     setIsChatLoading]     = useState(false);
-  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
+  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null, items: [], isChecklist: false });
   const [swipeExit,         setSwipeExit]         = useState({ vx: 0, vy: 0, dir: null });
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load("tm_onboarded", false));
   const [exploreSeenAt,     setExploreSeenAt]     = usePersistedState(SK.exploreSeenAt, null);
@@ -1991,6 +2171,8 @@ export default function TaskMatch() {
   const [snoozeAsked,      setSnoozeAsked]       = usePersistedState(SK.snoozeAsked, false);
   const [pendingSnoozeTask, setPendingSnoozeTask] = useState(null);
   const [returnedTaskIds,   setReturnedTaskIds]   = useState(() => new Set());
+  const [checklistTaskId,   setChecklistTaskId]   = useState(null);
+  const [listCompleteCtx,   setListCompleteCtx]   = useState(null); // { task, vel, willEmpty }
 
   // Group deck state
   const [groupDeck,           setGroupDeck]           = useState(null);
@@ -2452,6 +2634,10 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     };
 
     if (direction === "right") {
+      if (task.items?.length > 0 && task.items.some(i => !i.done)) {
+        setListCompleteCtx({ task, vel, willEmpty: deckWillEmpty });
+        return;
+      }
       setStats((s) => ({ ...s, accepted: s.accepted + 1 }));
       setDecisions((prev) => [{ ...decision, label: "Aceito" }, ...prev].slice(0, 200));
       showToast("✓  Aceito!", "bg-emerald-600/90 backdrop-blur-md");
@@ -2532,6 +2718,91 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     const snoozeUntil = computeSnoozeUntil(snoozeDefault);
     setTasks((prev) => prev.map(t => t.id === taskId ? { ...t, snoozeUntil } : t));
     showToast("⏰  Adiado novamente", "bg-amber-600/90 backdrop-blur-md");
+  }
+
+  // ── Checklist helpers ────────────────────────────────────
+  function handleToggleItem(taskId, itemId) {
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      return { ...t, items: (t.items || []).map(item => item.id === itemId ? { ...item, done: !item.done } : item) };
+    }));
+  }
+
+  function handleAddListItem(taskId, text) {
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      const newItem = { id: Date.now(), text: text.trim(), emoji: null, done: false, order: (t.items || []).length };
+      return { ...t, items: [...(t.items || []), newItem] };
+    }));
+  }
+
+  function handleOpenChecklist(task) {
+    setChecklistTaskId(task.id);
+  }
+
+  // Extract accept logic so it can be called from both handleSwipe and ListCompleteModal handlers
+  function acceptTask(task, vel = {}, willEmpty = false) {
+    registerActivity();
+    setRiskDismissed(true);
+    setSwipeExit({ vx: 0, vy: 0, ...vel, dir: "right" });
+    try { if (navigator.vibrate) navigator.vibrate([30, 50, 30]); } catch {}
+    const decision = { id: Date.now(), taskId: task.id, title: task.title, emoji: task.emoji, category: task.category, direction: "right", decidedAt: new Date().toISOString() };
+    setStats(s => ({ ...s, accepted: s.accepted + 1 }));
+    setDecisions(prev => [{ ...decision, label: "Aceito" }, ...prev].slice(0, 200));
+    showToast("✓  Aceito!", "bg-emerald-600/90 backdrop-blur-md");
+    setTasks(prev => prev.filter(t => t.id !== task.id));
+    if (willEmpty) {
+      try {
+        const colors = ["#2563eb", "#34d399", "#f59e0b"];
+        const end = Date.now() + 2500;
+        (function shoot() {
+          confetti({ particleCount: 5, spread: 70, origin: { x: 0.3, y: 0.6 }, colors });
+          confetti({ particleCount: 5, spread: 70, origin: { x: 0.7, y: 0.6 }, colors });
+          if (Date.now() < end) requestAnimationFrame(shoot);
+        })();
+      } catch {}
+    }
+  }
+
+  function handleListCompleteAnyway() {
+    if (!listCompleteCtx) return;
+    const { task, vel, willEmpty } = listCompleteCtx;
+    setListCompleteCtx(null);
+    acceptTask(task, vel, willEmpty);
+  }
+
+  function handleListCreatePending() {
+    if (!listCompleteCtx) return;
+    const { task, vel, willEmpty } = listCompleteCtx;
+    const pendingItems = (task.items || []).filter(i => !i.done).map((item, i) => ({ ...item, done: false, order: i }));
+    if (pendingItems.length > 0) {
+      setNextTaskId(prev => {
+        const newId = prev;
+        const pendingTask = {
+          id: newId,
+          title: `Faltou: ${task.title}`,
+          description: "",
+          category: task.category,
+          emoji: task.emoji,
+          gradient: task.gradient,
+          accent: task.accent || "#2563eb",
+          items: pendingItems,
+        };
+        setTasks(ts => [...ts, pendingTask]);
+        return prev + 1;
+      });
+    }
+    setListCompleteCtx(null);
+    acceptTask(task, vel, willEmpty);
+  }
+
+  function handleListSnooze() {
+    if (!listCompleteCtx) return;
+    const { task } = listCompleteCtx;
+    setListCompleteCtx(null);
+    const snoozeUntil = computeSnoozeUntil(snoozeDefault);
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, snoozeUntil } : t));
+    showToast("⏰  Adiado", "bg-amber-600/90 backdrop-blur-md");
   }
 
   // ── RAF ──────────────────────────────────────────────────
@@ -2622,7 +2893,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
               <div className="flex flex-col h-full">
                 {mixedRemaining > 0 ? (
                   <>
-                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{mixedDeck.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; const isSelf = task._source === "self"; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop && isSelf ? setShareTask : undefined} onShareToFeed={isTop && isSelf && auth.isLoggedIn ? setShareToFeedTask : undefined} isReturned={isTop && isSelf && returnedTaskIds.has(task.id)} />); })}</AnimatePresence></div></div>
+                    <div className="flex-1 min-h-0 px-5 pt-2 pb-2 relative"><div className="relative w-full h-full"><AnimatePresence custom={swipeExit}>{mixedDeck.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; const isSelf = task._source === "self"; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop && isSelf ? setShareTask : undefined} onShareToFeed={isTop && isSelf && auth.isLoggedIn ? setShareToFeedTask : undefined} isReturned={isTop && isSelf && returnedTaskIds.has(task.id)} onOpenChecklist={isTop && isSelf ? handleOpenChecklist : undefined} />); })}</AnimatePresence></div></div>
                     <div className="flex-shrink-0 flex items-center justify-between px-8 py-2">
                       <div className="flex items-center gap-1.5 text-red-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Passei" : "Depois"}</span></div>
                       <div className="flex flex-col items-center text-blue-400/45"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Reshare" : "Delegar"}</span></div>
@@ -2692,11 +2963,14 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
-                      const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null };
+                      if (!newTaskData.title.trim()) { showToast("Preencha o título.", "bg-red-600/90"); return; }
+                      if (!newTaskData.isChecklist && !newTaskData.description.trim()) { showToast("Preencha a descrição.", "bg-red-600/90"); return; }
+                      if (newTaskData.isChecklist && !newTaskData.items.some(i => i.text.trim())) { showToast("Adicione pelo menos 1 item.", "bg-red-600/90"); return; }
+                      const cleanItems = newTaskData.isChecklist ? newTaskData.items.filter(i => i.text.trim()).map((item, i) => ({ ...item, text: item.text.trim(), order: i })) : undefined;
+                      const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null, ...(cleanItems ? { items: cleanItems } : {}) };
                       setTasks((prev) => [...prev, newTask]);
                       setNextTaskId((id) => id + 1);
-                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
+                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null, items: [], isChecklist: false });
                       showToast("Tarefa criada!", "bg-emerald-600/90");
                       setActiveTab("home");
                     }}
@@ -2725,7 +2999,54 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                       <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); } catch { showToast("Imagem inválida.", "bg-red-600/90"); } e.target.value = ""; }} />
                     </div>
                     <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label><input value={newTaskData.title} onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="Ex: Comprar mantimentos" /></div>
-                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
+                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição {newTaskData.isChecklist && <span className="normal-case text-white/20 font-normal tracking-normal">(opcional com checklist)</span>}</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[80px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
+                    <div>
+                      <button type="button" onClick={() => setNewTaskData(p => ({ ...p, isChecklist: !p.isChecklist, items: p.isChecklist ? [] : [{ id: Date.now(), text: "", emoji: null, done: false, order: 0 }] }))} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${newTaskData.isChecklist ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60"}`}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                        {newTaskData.isChecklist ? "Com itens ✓" : "+ Itens / checklist"}
+                      </button>
+                      {newTaskData.isChecklist && (
+                        <div className="mt-3 flex flex-col gap-2">
+                          {newTaskData.items.map((item, idx) => (
+                            <div key={item.id} className="flex items-center gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                              </div>
+                              <input
+                                id={`itm-${item.id}`}
+                                value={item.text}
+                                onChange={e => setNewTaskData(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, text: e.target.value } : it) }))}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const newId = Date.now();
+                                    setNewTaskData(p => { const arr = [...p.items]; arr.splice(idx + 1, 0, { id: newId, text: "", emoji: null, done: false, order: idx + 1 }); return { ...p, items: arr }; });
+                                    setTimeout(() => document.getElementById(`itm-${newId}`)?.focus(), 30);
+                                  } else if (e.key === "Backspace" && !item.text && newTaskData.items.length > 1) {
+                                    e.preventDefault();
+                                    const focusId = idx > 0 ? newTaskData.items[idx - 1].id : newTaskData.items[1]?.id;
+                                    setNewTaskData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
+                                    setTimeout(() => document.getElementById(`itm-${focusId}`)?.focus(), 30);
+                                  }
+                                }}
+                                placeholder={`Item ${idx + 1}…`}
+                                autoFocus={idx > 0 && idx === newTaskData.items.length - 1 && !item.text}
+                                className="flex-1 bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#2563eb]/50 transition"
+                              />
+                              {newTaskData.items.length > 1 && (
+                                <button type="button" onClick={() => setNewTaskData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))} className="w-7 h-7 flex-shrink-0 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 transition">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => { const newId = Date.now(); setNewTaskData(p => ({ ...p, items: [...p.items, { id: newId, text: "", emoji: null, done: false, order: p.items.length }] })); setTimeout(() => document.getElementById(`itm-${newId}`)?.focus(), 30); }} className="flex items-center gap-2 text-[13px] text-[#3b82f6]/60 hover:text-[#3b82f6] transition py-0.5 px-1 mt-1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Adicionar item
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label><select value={newTaskData.category} onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60">{["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (<option key={c} value={c} className="bg-[#111114]">{c}</option>))}</select></div>
                       <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label><input value={newTaskData.emoji} onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="✨" /></div>
@@ -2816,7 +3137,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10 py-6 min-h-0">
                   {mixedRemaining > 0 ? (
                     <>
-                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{mixedDeck.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; const isSelf = task._source === "self"; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop && isSelf ? setShareTask : undefined} onShareToFeed={isTop && isSelf && auth.isLoggedIn ? setShareToFeedTask : undefined} isReturned={isTop && isSelf && returnedTaskIds.has(task.id)} />); })}</AnimatePresence></div>
+                      <div className="relative w-full max-w-[520px]" style={{ height: cardHeight }}><AnimatePresence custom={swipeExit}>{mixedDeck.slice(-3).reverse().map((task, i, arr) => { const isTop = i === 0; const stackIndex = arr.length - 1 - i; const isSelf = task._source === "self"; return (<SwipeCard key={task.id} task={task} isTop={isTop} stackIndex={stackIndex} onSwipe={handleSwipe} onShare={isTop && isSelf ? setShareTask : undefined} onShareToFeed={isTop && isSelf && auth.isLoggedIn ? setShareToFeedTask : undefined} isReturned={isTop && isSelf && returnedTaskIds.has(task.id)} onOpenChecklist={isTop && isSelf ? handleOpenChecklist : undefined} />); })}</AnimatePresence></div>
                       <div className="flex items-center justify-between w-full max-w-[520px] px-2">
                         <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Passei" : "Depois"}</span></div>
                         <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[10px] font-semibold tracking-widest uppercase">{mixedTopTask?._source === "friend" ? "Reshare" : "Delegar"}</span></div>
@@ -2893,11 +3214,14 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      if (!newTaskData.title.trim() || !newTaskData.description.trim()) { showToast("Preencha título e descrição.", "bg-red-600/90"); return; }
-                      const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null };
+                      if (!newTaskData.title.trim()) { showToast("Preencha o título.", "bg-red-600/90"); return; }
+                      if (!newTaskData.isChecklist && !newTaskData.description.trim()) { showToast("Preencha a descrição.", "bg-red-600/90"); return; }
+                      if (newTaskData.isChecklist && !newTaskData.items.some(i => i.text.trim())) { showToast("Adicione pelo menos 1 item.", "bg-red-600/90"); return; }
+                      const cleanItems = newTaskData.isChecklist ? newTaskData.items.filter(i => i.text.trim()).map((item, i) => ({ ...item, text: item.text.trim(), order: i })) : undefined;
+                      const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null, ...(cleanItems ? { items: cleanItems } : {}) };
                       setTasks((prev) => [...prev, newTask]);
                       setNextTaskId((id) => id + 1);
-                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null });
+                      setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null, items: [], isChecklist: false });
                       showToast("Tarefa criada!", "bg-emerald-600/90");
                       setActiveTab("home");
                     }}
@@ -2926,7 +3250,54 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
                       <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; try { const url = await compressImage(file); if (url.length > 1_000_000) { showToast("Imagem muito grande.", "bg-red-600/90"); return; } setNewTaskData(p => ({ ...p, image: url })); } catch { showToast("Imagem inválida.", "bg-red-600/90"); } e.target.value = ""; }} />
                     </div>
                     <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Título</label><input value={newTaskData.title} onChange={(e) => setNewTaskData((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="Ex: Comprar mantimentos" /></div>
-                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[100px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
+                    <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Descrição {newTaskData.isChecklist && <span className="normal-case text-white/20 font-normal tracking-normal">(opcional com checklist)</span>}</label><textarea value={newTaskData.description} onChange={(e) => setNewTaskData((p) => ({ ...p, description: e.target.value }))} className="w-full min-h-[80px] rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 resize-none transition" placeholder="Detalhes da tarefa..." /></div>
+                    <div>
+                      <button type="button" onClick={() => setNewTaskData(p => ({ ...p, isChecklist: !p.isChecklist, items: p.isChecklist ? [] : [{ id: Date.now(), text: "", emoji: null, done: false, order: 0 }] }))} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${newTaskData.isChecklist ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60"}`}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                        {newTaskData.isChecklist ? "Com itens ✓" : "+ Itens / checklist"}
+                      </button>
+                      {newTaskData.isChecklist && (
+                        <div className="mt-3 flex flex-col gap-2">
+                          {newTaskData.items.map((item, idx) => (
+                            <div key={item.id} className="flex items-center gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                              </div>
+                              <input
+                                id={`itm-${item.id}`}
+                                value={item.text}
+                                onChange={e => setNewTaskData(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, text: e.target.value } : it) }))}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const newId = Date.now();
+                                    setNewTaskData(p => { const arr = [...p.items]; arr.splice(idx + 1, 0, { id: newId, text: "", emoji: null, done: false, order: idx + 1 }); return { ...p, items: arr }; });
+                                    setTimeout(() => document.getElementById(`itm-${newId}`)?.focus(), 30);
+                                  } else if (e.key === "Backspace" && !item.text && newTaskData.items.length > 1) {
+                                    e.preventDefault();
+                                    const focusId = idx > 0 ? newTaskData.items[idx - 1].id : newTaskData.items[1]?.id;
+                                    setNewTaskData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
+                                    setTimeout(() => document.getElementById(`itm-${focusId}`)?.focus(), 30);
+                                  }
+                                }}
+                                placeholder={`Item ${idx + 1}…`}
+                                autoFocus={idx > 0 && idx === newTaskData.items.length - 1 && !item.text}
+                                className="flex-1 bg-white/[0.04] border border-white/[0.07] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-[#2563eb]/50 transition"
+                              />
+                              {newTaskData.items.length > 1 && (
+                                <button type="button" onClick={() => setNewTaskData(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))} className="w-7 h-7 flex-shrink-0 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 transition">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => { const newId = Date.now(); setNewTaskData(p => ({ ...p, items: [...p.items, { id: newId, text: "", emoji: null, done: false, order: p.items.length }] })); setTimeout(() => document.getElementById(`itm-${newId}`)?.focus(), 30); }} className="flex items-center gap-2 text-[13px] text-[#3b82f6]/60 hover:text-[#3b82f6] transition py-0.5 px-1 mt-1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Adicionar item
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Categoria</label><select value={newTaskData.category} onChange={(e) => setNewTaskData((p) => ({ ...p, category: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60">{["Alimentação","Lazer","Saúde","Estudos","Trabalho","Outros"].map((c) => (<option key={c} value={c} className="bg-[#111114]">{c}</option>))}</select></div>
                       <div><label className="block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2">Emoji</label><input value={newTaskData.emoji} onChange={(e) => setNewTaskData((p) => ({ ...p, emoji: e.target.value }))} className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition" placeholder="✨" /></div>
@@ -2978,6 +3349,33 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       {pendingSnoozeTask && (
         <SnoozeSetupModal onChoose={(pref) => handleSnoozeChoice(pref, pendingSnoozeTask)} />
       )}
+
+      <AnimatePresence>
+        {checklistTaskId && (() => {
+          const t = tasks.find(t => t.id === checklistTaskId);
+          return t ? (
+            <ChecklistModal
+              key="checklist"
+              task={t}
+              onClose={() => setChecklistTaskId(null)}
+              onToggleItem={handleToggleItem}
+              onAddItem={handleAddListItem}
+            />
+          ) : null;
+        })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {listCompleteCtx && (
+          <ListCompleteModal
+            key="list-complete"
+            task={listCompleteCtx.task}
+            onCompleteAnyway={handleListCompleteAnyway}
+            onCreatePending={handleListCreatePending}
+            onSnooze={handleListSnooze}
+          />
+        )}
+      </AnimatePresence>
 
       {auth.needsProfile && (
         <SetupProfile onCreate={auth.createProfile} onCheckUsername={auth.checkUsername} localProfile={profile} />
