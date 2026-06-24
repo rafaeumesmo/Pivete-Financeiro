@@ -11,7 +11,12 @@ import { SetupProfile } from "./components/SetupProfile.jsx";
 import { ShareToFeedModal } from "./components/ShareToFeedModal.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
+import { CommitmentFormModal } from "./components/CommitmentFormModal.jsx";
 import { migrateAnonPolls } from "./lib/polls.js";
+import {
+  shouldAppearInDeck, getWeekStrip, getStreak, getAdherence,
+  recurrenceLabel, toDateStr, isScheduledOnDate, DAY_SHORT,
+} from "./lib/commitments.js";
 
 // ── Storage keys ─────────────────────────────────────────────
 const SK = {
@@ -25,8 +30,10 @@ const SK = {
   exploreSeenAt: "tm_explore_seen_at",
   streak:        "tm_streak",
   notifs:        "tm_notifs",
-  snoozeDefault: "tm_snooze_default", // "1h" | "1d"
-  snoozeAsked:   "tm_snooze_asked",   // boolean — se já perguntamos a preferência
+  snoozeDefault:   "tm_snooze_default",    // "1h" | "1d"
+  snoozeAsked:     "tm_snooze_asked",      // boolean — se já perguntamos a preferência
+  commitments:     "tm_commitments",       // recurring commitments
+  commitmentLog:   "tm_commitment_log",    // adherence log
 };
 // Anti-spam keys for notifications (1 dispatch per type per day)
 const NOTIF_LAST_PEAK   = "tm_notif_last_peak";
@@ -1664,8 +1671,57 @@ function TaskShareModal({ task, handle, onClose }) {
   );
 }
 
+// ── WeekStrip ─────────────────────────────────────────────────
+const STATUS_CFG = {
+  done:    { bg: "bg-emerald-500",     icon: "✓" },
+  missed:  { bg: "bg-red-500/70",      icon: "✗" },
+  rest:    { bg: "bg-white/[0.08]",    icon: "" },
+  pending: { bg: "bg-[#2563eb]",       icon: "" },
+  future:  { bg: "bg-white/[0.04]",   icon: "" },
+};
+
+function WeekStrip({ commitment, log, compact = false }) {
+  const strip = getWeekStrip(commitment, log);
+  if (compact) {
+    return (
+      <div className="flex gap-0.5">
+        {strip.map(({ dow, isToday, status }) => {
+          const cfg = STATUS_CFG[status] || STATUS_CFG.future;
+          return (
+            <div
+              key={dow}
+              className={`w-5 h-5 rounded-md flex items-center justify-center text-[8px] font-bold text-white ${cfg.bg} ${isToday ? "ring-1 ring-white/40" : ""}`}
+            >
+              {cfg.icon || (status === "pending" ? DAY_SHORT[dow] : DAY_SHORT[dow])}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return (
+    <div className="flex gap-1">
+      {strip.map(({ dow, isToday, status }) => {
+        const cfg = STATUS_CFG[status] || STATUS_CFG.future;
+        return (
+          <div key={dow} className="flex flex-col items-center gap-0.5 flex-1">
+            <span className={`text-[8px] font-semibold ${isToday ? "text-white" : "text-white/30"}`}>{DAY_SHORT[dow]}</span>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white ${cfg.bg} ${isToday ? "ring-2 ring-white/25" : ""}`}>
+              {cfg.icon}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── ActivityTab ───────────────────────────────────────────────
-function ActivityTab({ decisions, stats, streak, tasks = [], onNavigate, onWakeTask, onSnoozeMore }) {
+function ActivityTab({
+  decisions, stats, streak, tasks = [], onNavigate, onWakeTask, onSnoozeMore,
+  commitments = [], commitmentLog = [], onLogCommitment,
+  onCreateCommitment, onEditCommitment, onTogglePauseCommitment, onDeleteCommitment,
+}) {
   const snoozedTasks = tasks.filter(t => t.snoozeUntil && new Date(t.snoozeUntil) > new Date());
 
   const today = todayKey();
@@ -1776,9 +1832,112 @@ function ActivityTab({ decisions, stats, streak, tasks = [], onNavigate, onWakeT
         </div>
       )}
 
-      <div className="px-5 pt-4 pb-24">
+      {/* ── Compromissos recorrentes ─────────────────────────── */}
+      <div className="px-5 pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-blue-400/70">
+            Compromissos ({commitments.length})
+          </h3>
+          <button
+            onClick={onCreateCommitment}
+            className="text-[11px] font-semibold text-[#2563eb] hover:text-blue-400 transition flex items-center gap-1"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Novo
+          </button>
+        </div>
+        {commitments.length === 0 ? (
+          <button
+            onClick={onCreateCommitment}
+            className="w-full rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.02] p-5 text-center hover:border-[#2563eb]/40 hover:bg-[#2563eb]/[0.04] transition group"
+          >
+            <div className="text-3xl mb-2 opacity-40 group-hover:opacity-70 transition">📅</div>
+            <p className="text-[13px] text-white/30 group-hover:text-white/50 transition">Nenhum compromisso ainda.</p>
+            <p className="text-[11px] text-[#2563eb]/50 mt-1">Toque para criar o primeiro</p>
+          </button>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {commitments.map(c => {
+              const streak  = getStreak(c, commitmentLog);
+              const adh     = getAdherence(c, commitmentLog, 30);
+              const today   = new Date();
+              const dueToday = isScheduledOnDate(c, today) && !commitmentLog.find(e => e.commitmentId === c.id && e.date === toDateStr(today));
+              return (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl border p-3.5 ${c.paused ? "border-white/[0.06] bg-white/[0.02] opacity-60" : "border-white/[0.08] bg-white/[0.03]"}`}
+                >
+                  {/* Row 1: emoji + info + badge */}
+                  <div className="flex items-start gap-2.5 mb-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 bg-gradient-to-br ${c.gradient}`}>
+                      {c.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-[13px] text-white/90 font-semibold truncate leading-snug">{c.title}</p>
+                        {c.paused && <span className="text-[9px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded-full flex-shrink-0">pausado</span>}
+                        {dueToday && !c.paused && <span className="text-[9px] font-semibold text-blue-400 bg-[#2563eb]/15 border border-[#2563eb]/25 px-1.5 py-0.5 rounded-full flex-shrink-0">hoje</span>}
+                      </div>
+                      <p className="text-[10px] text-white/30">{recurrenceLabel(c)}{c.time ? ` · ${c.time}` : ""}</p>
+                    </div>
+                    {streak > 0 && (
+                      <div className="flex-shrink-0 flex items-center gap-1 text-[11px] font-bold text-amber-400">
+                        🔥 {streak}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Week strip */}
+                  <WeekStrip commitment={c} log={commitmentLog} />
+
+                  {/* Stats row */}
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center gap-3">
+                      {adh && (
+                        <span className="text-[10px] text-white/30">
+                          {adh.pct}% em 30 dias
+                        </span>
+                      )}
+                      {dueToday && !c.paused && (
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => onLogCommitment?.(c.id, "done")}
+                            className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded-lg hover:bg-emerald-500/25 transition"
+                          >✓ Feito</button>
+                          <button
+                            onClick={() => onLogCommitment?.(c.id, "missed")}
+                            className="text-[10px] font-semibold text-red-400 bg-red-500/15 border border-red-500/25 px-2 py-0.5 rounded-lg hover:bg-red-500/25 transition"
+                          >Pulei</button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => onTogglePauseCommitment?.(c.id)}
+                        className="text-[10px] font-medium text-white/30 hover:text-white/60 bg-white/[0.04] border border-white/[0.07] px-2 py-0.5 rounded-lg transition"
+                      >{c.paused ? "Retomar" : "Pausar"}</button>
+                      <button
+                        onClick={() => onEditCommitment?.(c)}
+                        className="text-[10px] font-medium text-white/30 hover:text-white/60 bg-white/[0.04] border border-white/[0.07] px-2 py-0.5 rounded-lg transition"
+                      >Editar</button>
+                      <button
+                        onClick={() => onDeleteCommitment?.(c.id)}
+                        className="text-[10px] font-medium text-red-400/50 hover:text-red-400 bg-white/[0.04] border border-white/[0.07] px-2 py-0.5 rounded-lg transition"
+                      >✕</button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 pt-5 pb-24">
         {totalDecisions === 0 && snoozedTasks.length === 0 ? (
-          <div className="py-16 text-center">
+          <div className="py-12 text-center">
             <div className="text-4xl mb-4">📭</div>
             <p className="text-white/40 text-sm">Nenhuma decisão ainda.</p>
             <p className="text-white/20 text-xs mt-1">Faça swipes no Início para começar.</p>
@@ -2171,8 +2330,12 @@ export default function TaskMatch() {
   const [snoozeAsked,      setSnoozeAsked]       = usePersistedState(SK.snoozeAsked, false);
   const [pendingSnoozeTask, setPendingSnoozeTask] = useState(null);
   const [returnedTaskIds,   setReturnedTaskIds]   = useState(() => new Set());
-  const [checklistTaskId,   setChecklistTaskId]   = useState(null);
-  const [listCompleteCtx,   setListCompleteCtx]   = useState(null); // { task, vel, willEmpty }
+  const [checklistTaskId,       setChecklistTaskId]       = useState(null);
+  const [listCompleteCtx,       setListCompleteCtx]       = useState(null); // { task, vel, willEmpty }
+  const [commitments,           setCommitments]           = usePersistedState(SK.commitments, []);
+  const [commitmentLog,         setCommitmentLog]         = usePersistedState(SK.commitmentLog, []);
+  const [showCreateCommitment,  setShowCreateCommitment]  = useState(false);
+  const [editingCommitment,     setEditingCommitment]     = useState(null); // commitment obj | null
 
   // Group deck state
   const [groupDeck,           setGroupDeck]           = useState(null);
@@ -2232,9 +2395,26 @@ export default function TaskMatch() {
     deadline: null,
   } : null;
 
+  // Commitment cards due today (not yet logged)
+  const todayCommitmentCards = commitments
+    .filter(c => shouldAppearInDeck(c, commitmentLog))
+    .map(c => ({
+      id: `commitment-${c.id}-${toDateStr(new Date())}`,
+      _source: "commitment",
+      _commitmentId: c.id,
+      title: c.title,
+      emoji: c.emoji,
+      category: c.category,
+      gradient: c.gradient,
+      accent: c.accent,
+      description: recurrenceLabel(c),
+      priority: null,
+      deadline: null,
+    }));
+
   const mixedDeck = (() => {
     const personal = sortedTasks.map(t => ({ ...t, _source: "self" }));
-    const result = [...personal, ...socialDeckItems];
+    const result = [...personal, ...todayCommitmentCards, ...socialDeckItems];
     if (loginPromptCard && result.length > 0) {
       result.splice(Math.max(0, personal.length - 1), 0, loginPromptCard);
     } else if (loginPromptCard) {
@@ -2596,6 +2776,18 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       return;
     }
 
+    // Commitment card — logar adesão e remover do deck
+    if (task._source === "commitment") {
+      try { if (navigator.vibrate) navigator.vibrate(direction === "right" ? [30, 50, 30] : 30); } catch {}
+      setSwipeExit({ vx: 0, vy: 0, ...vel, dir: direction });
+      if (direction === "right" || direction === "up") {
+        handleLogCommitment(task._commitmentId, "done");
+      } else {
+        handleLogCommitment(task._commitmentId, "missed");
+      }
+      return;
+    }
+
     // Task de amigo — responder no Supabase, não altera deck local
     if (task._source === "friend") {
       try { if (navigator.vibrate) navigator.vibrate(direction === "up" ? 80 : direction === "right" ? [30, 50, 30] : 30); } catch {}
@@ -2683,6 +2875,40 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
         })();
       } catch {}
     }
+  }
+
+  // ── Commitment handlers ──────────────────────────────────
+  function handleSaveCommitment(data) {
+    if (data.id) {
+      setCommitments(prev => prev.map(c => c.id === data.id ? data : c));
+    } else {
+      setCommitments(prev => [{ ...data, id: `c-${Date.now()}` }, ...prev]);
+    }
+    setShowCreateCommitment(false);
+    setEditingCommitment(null);
+  }
+
+  function handleLogCommitment(commitmentId, status) {
+    const dateStr = toDateStr(new Date());
+    setCommitmentLog(prev => {
+      const without = prev.filter(e => !(e.commitmentId === commitmentId && e.date === dateStr));
+      return [...without, { commitmentId, date: dateStr, status, loggedAt: new Date().toISOString() }];
+    });
+    showToast(
+      status === "done" ? "✓ Compromisso feito!" : "Pulei",
+      status === "done" ? "bg-emerald-600/90 backdrop-blur-md" : "bg-amber-600/90 backdrop-blur-md"
+    );
+  }
+
+  function handleDeleteCommitment(commitmentId) {
+    setCommitments(prev => prev.filter(c => c.id !== commitmentId));
+    setCommitmentLog(prev => prev.filter(e => e.commitmentId !== commitmentId));
+  }
+
+  function handleTogglePauseCommitment(commitmentId) {
+    setCommitments(prev => prev.map(c =>
+      c.id === commitmentId ? { ...c, paused: !c.paused } : c
+    ));
   }
 
   function handleReset() {
@@ -2906,7 +3132,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             )}
             {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreateGroup={() => setShowCreateGroupModal(true)} onShareTask={setShareTask} onRequireLogin={() => setShowAuthModal(true)} />}
             {activeTab === "activity" && (
-              <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} />
+              <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} commitments={commitments} commitmentLog={commitmentLog} onLogCommitment={handleLogCommitment} onCreateCommitment={() => setShowCreateCommitment(true)} onEditCommitment={c => setEditingCommitment(c)} onTogglePauseCommitment={handleTogglePauseCommitment} onDeleteCommitment={handleDeleteCommitment} />
             )}
             {activeTab === "ia" && (
               <motion.div className="flex flex-col h-full" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
@@ -3153,7 +3379,7 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
             {activeTab === "activity" && (
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto">
-                  <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} />
+                  <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} commitments={commitments} commitmentLog={commitmentLog} onLogCommitment={handleLogCommitment} onCreateCommitment={() => setShowCreateCommitment(true)} onEditCommitment={c => setEditingCommitment(c)} onTogglePauseCommitment={handleTogglePauseCommitment} onDeleteCommitment={handleDeleteCommitment} />
                 </div>
               </div>
             )}
@@ -3382,6 +3608,15 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
       )}
 
       <AnimatePresence>
+        {(showCreateCommitment || editingCommitment) && (
+          <CommitmentFormModal
+            key="cfm"
+            initial={editingCommitment}
+            onSave={handleSaveCommitment}
+            onClose={() => { setShowCreateCommitment(false); setEditingCommitment(null); }}
+            isDesktop={isDesktop}
+          />
+        )}
         {showCreateGroupModal && (
           <CreatePollModal key="cpm" onClose={() => setShowCreateGroupModal(false)} userId={auth.user?.id ?? null} showToast={showToast} isDesktop={isDesktop} />
         )}
