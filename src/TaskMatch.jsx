@@ -2745,6 +2745,25 @@ Personalidade: respostas curtas (máximo 2 frases), tom sarcástico e direto, se
     if (auth.user?.id) migrateAnonPolls(auth.user.id).catch(() => {});
   }, [auth.user?.id]);
 
+  // ── Keyboard shortcuts: seta esquerda/direita/cima = swipe ───
+  const _kbRef = useRef({});
+  _kbRef.current = { activeTab, mixedTopTask, listCompleteCtx, pendingSnoozeTask, showAuthModal, checklistTaskId, shareTask, shareToFeedTask, showOnboarding, handleSwipe };
+  useEffect(() => {
+    function onKeyDown(e) {
+      const s = _kbRef.current;
+      if (s.activeTab !== "home" || !s.mixedTopTask) return;
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || document.activeElement?.isContentEditable) return;
+      if (s.listCompleteCtx || s.pendingSnoozeTask || s.showAuthModal || s.checklistTaskId || s.shareTask || s.shareToFeedTask || s.showOnboarding) return;
+      const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up" }[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      s.handleSwipe(dir, s.mixedTopTask);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // ── Group deck handlers ──────────────────────────────────
   function handleJoinGroup(nick, av) {
     setGroupNick(nick);
