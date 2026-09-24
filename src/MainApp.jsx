@@ -13,6 +13,7 @@ import { SetupProfile } from "./components/SetupProfile.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
 import { migrateAnonPolls } from "./lib/polls.js";
+import { startSync, stopSync } from "./lib/sync.js";
 import { todayKey, daysBetween, addDays } from "./lib/dates.js";
 import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
@@ -332,6 +333,14 @@ export default function MainApp() {
   // Ao logar, vincula as enquetes criadas anonimamente à conta.
   useEffect(() => {
     if (auth.user?.id) migrateAnonPolls(auth.user.id).catch(() => {});
+  }, [auth.user?.id]);
+
+  // Logado: espelha os dados pessoais na conta (lib/sync.js) pra que apareçam
+  // em qualquer navegador. Deslogado: só no aparelho, como sempre.
+  useEffect(() => {
+    if (!auth.user?.id) return;
+    startSync(auth.user.id);
+    return () => stopSync();
   }, [auth.user?.id]);
 
   // ── Callbacks do deck financeiro ─────────────────────────

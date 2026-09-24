@@ -25,7 +25,9 @@ npm run build
 
 **Tudo funciona sem login e sem Supabase.** Lançamentos, fixos, dívidas, contas, caixinhas, categorias, histórico, streak e conquistas ficam no `localStorage` do aparelho (chaves em `SK`, `src/lib/storage.js`).
 
-**Saldos, contas, extrato, dívidas e caixinhas nunca vão pro Supabase.** Só sai do aparelho o que o usuário escolhe compartilhar:
+**Sem login, saldos, contas, extrato, dívidas e caixinhas nunca saem do aparelho.** Logado, esses dados são espelhados na tabela `user_data` (só o próprio usuário lê, via RLS) pra aparecerem em qualquer navegador; a lógica está em `src/lib/sync.js`. Configurações do aparelho (notificações, onboarding) não sincronizam.
+
+Além disso, sai do aparelho o que o usuário escolhe compartilhar:
 
 | Recurso | O que vai pro servidor |
 |---|---|
@@ -33,6 +35,7 @@ npm run build
 | Link de cobrança | o id aleatório da cobrança e o nome de quem marcou "paguei" (o valor vai só no link) |
 | Bora? (enquetes) | pergunta, opções, orçamento por pessoa (opcional) e votos |
 | Perfil social | username, nome e emoji |
+| Dados pessoais (só logado) | lançamentos, fixos, dívidas, contas, metas, categorias, histórico, streak e conquistas, visíveis só pro dono |
 
 ## Supabase (recursos sociais)
 
@@ -42,6 +45,7 @@ npm run build
    - `01_splits.sql`: grupos, despesas divididas, partes e quitações, com RLS (só membros veem; só amigos aceitos entram no grupo; só quem pagou lança a despesa).
    - `02_charges.sql`: avisos de "paguei" do link de cobrança. Anônimos inserem, mas ninguém lista a tabela: quem cobra lê só a própria cobrança pela função `charge_payments_for`.
    - `03_bora_budget.sql`: coluna opcional `budget_cents` em `poll_options`.
+   - `04_user_data.sql`: tabela `user_data`, que espelha os dados pessoais (lançamentos, dívidas, recorrentes…) de quem está logado pra que apareçam em qualquer navegador. RLS: cada usuário só lê e grava as próprias linhas.
 
 > ⚠️ **As policies não são aplicadas automaticamente.** Nenhum deploy, build ou migração roda esses arquivos: é preciso colar e executar cada um no SQL Editor do Supabase. Sem eles, as abas **Social → Dividir** e **Cobranças** (avisos de pagamento) mostram um aviso de configuração, e o orçamento por pessoa do Bora? fica indisponível. O resto do app funciona normalmente. Todos os arquivos podem ser executados de novo sem problema.
 

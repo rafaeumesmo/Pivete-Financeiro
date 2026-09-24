@@ -1,0 +1,153 @@
+import { supabase } from "../supabaseClient";
+import { SK, load, save, setSaveHook, REMOTE_UPDATE_EVENT } from "./storage.js";
+import { planSync } from "./syncPlan.js";
+
+/*
+ * Espelha os dados pessoais (localStorage) na tabela user_data quando o
+ * usuário está logado, pra que apareçam em qualquer navegador.
+ *
+ * - Cada save() de uma chave sincronizada marca a chave como "suja" e agenda
+ *   um upsert (debounce). As chaves sujas ficam salvas no localStorage, então
+ *   uma edição feita offline sobe no próximo login/foco.
+ * - Ao logar e ao voltar pra aba, baixa o que está no servidor. Chave suja ou
+ *   com envio pendente não é sobrescrita: a edição local vence.
+ * - Conflito entre dois aparelhos editando ao mesmo tempo: o último envio vence.
+ */
+
+// Configurações do aparelho (notificações, onboarding, soneca) ficam de fora.
+export const SYNC_KEYS = [
+  SK.lancamentos, SK.recorrentes, SK.dividas, SK.contas, SK.metas, SK.categorias,
+  SK.revisoes, SK.contaPadrao, SK.reservaMeses, SK.conquistas, SK.stats,
+  SK.cobrancas, SK.pixKey, SK.profile, SK.decisions, SK.streak,
+];
+
+const OWNER_KEY = "fin_sync_owner"; // id do usuário dono dos dados deste navegador
+const DIRTY_KEY = "fin_sync_dirty"; // chaves alteradas que ainda não subiram
+const PUSH_DELAY_MS = 800;
+const PULL_THROTTLE_MS = 15_000;
+
+let userId = null;
+let session = 0;            // invalida respostas de um login anterior
+let lastPull = 0;
+const timers = new Map();   // key → timeout do envio agendado
+
+function hasLocal(key) {
+  try { return localStorage.getItem(key) !== null; } catch { return false; }
+}
+function getDirty() { return load(DIRTY_KEY, []); }
+function setDirty(keys) { save(DIRTY_KEY, [...new Set(keys)]); }
+
+function notify(key) {
+  try { window.dispatchEvent(new CustomEvent(REMOTE_UPDATE_EVENT, { detail: { key } })); } catch { /* ignore */ }
+}
+
+// Grava o valor vindo do servidor sem passar pelo save() (senão viraria envio).
+function applyRemote(key, value) {
+  try {
+    const raw = value === null ? null : JSON.stringify(value);
+    if (localStorage.getItem(key) === raw) return;
+    if (raw === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, raw);
+  } catch { return; }
+  notify(key);
+}
+
+async function push(keys) {
+  if (!supabase || !userId || keys.length === 0) return;
+  const mySession = session;
+  const updatedAt = new Date().toISOString();
+  const rows = keys.map((key) => ({ user_id: userId, key, value: load(key, null), updated_at: updatedAt }));
+  const { error } = await supabase.from("user_data").upsert(rows, { onConflict: "user_id,key" });
+  if (mySession !== session) return;
+  if (error) { console.warn("[sync] falha ao enviar:", error.message); return; }
+  // Só limpa o que não voltou a mudar enquanto o envio estava no ar.
+  setDirty(getDirty().filter((k) => !keys.includes(k) || timers.has(k)));
+}
+
+function schedulePush(key) {
+  clearTimeout(timers.get(key));
+  timers.set(key, setTimeout(() => { timers.delete(key); push([key]); }, PUSH_DELAY_MS));
+}
+
+function flushPending() {
+  const keys = [...timers.keys()];
+  keys.forEach((k) => clearTimeout(timers.get(k)));
+  timers.clear();
+  push(keys);
+}
+
+async function fetchRemote() {
+  const { data, error } = await supabase.from("user_data").select("key, value").eq("user_id", userId);
+  if (error) throw error;
+  return (data || []).filter((r) => SYNC_KEYS.includes(r.key));
+}
+
+// Atualiza com o servidor, sem mexer em chave suja ou com envio pendente.
+async function pull() {
+  if (!supabase || !userId) return;
+  const mySession = session;
+  lastPull = Date.now();
+  try {
+    const rows = await fetchRemote();
+    if (mySession !== session) return;
+    const skip = new Set([...getDirty(), ...timers.keys()]);
+    rows.filter((r) => !skip.has(r.key)).forEach((r) => applyRemote(r.key, r.value));
+  } catch (err) {
+    console.warn("[sync] falha ao baixar:", err.message);
+  }
+}
+
+function onVisibility() {
+  if (document.visibilityState === "hidden") flushPending();
+  else if (Date.now() - lastPull > PULL_THROTTLE_MS) pull();
+}
+
+setSaveHook((key) => {
+  if (!userId || !SYNC_KEYS.includes(key)) return;
+  setDirty([...getDirty(), key]);
+  schedulePush(key);
+});
+
+export async function startSync(uid) {
+  if (!supabase || !uid || uid === userId) return;
+  stopSync();
+  userId = uid;
+  const mySession = ++session;
+
+  let rows;
+  try {
+    rows = await fetchRemote();
+  } catch (err) {
+    console.warn("[sync] falha ao baixar:", err.message);
+    return; // sem conseguir ler o servidor, não arrisca sobrescrever nada
+  }
+  if (mySession !== session) return;
+  lastPull = Date.now();
+
+  const plan = planSync({
+    uid,
+    owner: load(OWNER_KEY, null),
+    localKeys: SYNC_KEYS.filter(hasLocal),
+    remoteKeys: rows.map((r) => r.key),
+    dirtyKeys: getDirty().filter((k) => SYNC_KEYS.includes(k)),
+  });
+
+  if (plan.wipeLocal) {
+    setDirty([]);
+    SYNC_KEYS.forEach((k) => applyRemote(k, null));
+  }
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  plan.apply.forEach((k) => applyRemote(k, byKey.get(k)));
+  save(OWNER_KEY, uid);
+  await push(plan.push);
+
+  document.addEventListener("visibilitychange", onVisibility);
+}
+
+export function stopSync() {
+  if (!userId) return;
+  flushPending();
+  document.removeEventListener("visibilitychange", onVisibility);
+  userId = null;
+  session++;
+}

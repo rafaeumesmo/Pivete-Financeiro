@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 // ── Storage keys ─────────────────────────────────────────────
-// Tudo é local-first: estes dados nunca vão pro Supabase. Só o que o usuário
-// escolhe compartilhar (divisões, cobranças, enquetes) sai do aparelho.
+// Tudo é local-first: sem login, estes dados nunca saem do aparelho. Logado,
+// as chaves de SYNC_KEYS (lib/sync.js) são espelhadas na tabela user_data pra
+// aparecerem em outros navegadores.
 export const SK = {
   // Finanças
   lancamentos:   "fin_lancamentos",
@@ -47,10 +48,27 @@ export function save(key, value) {
   } catch (err) {
     try { window.dispatchEvent(new CustomEvent("fin:storage-error", { detail: { key, err } })); } catch {}
   }
+  saveHook?.(key);
 }
+
+// lib/sync.js se registra aqui pra saber o que mudou (evita import circular).
+let saveHook = null;
+export function setSaveHook(fn) { saveHook = fn; }
+
+// Evento disparado por lib/sync.js quando uma chave chega do servidor.
+export const REMOTE_UPDATE_EVENT = "fin:remote-update";
 
 export function usePersistedState(key, fallback) {
   const [state, setState] = useState(() => load(key, fallback));
+  const fallbackRef = useRef(fallback);
+  fallbackRef.current = fallback;
+
+  useEffect(() => {
+    const onRemote = (e) => { if (e.detail?.key === key) setState(load(key, fallbackRef.current)); };
+    window.addEventListener(REMOTE_UPDATE_EVENT, onRemote);
+    return () => window.removeEventListener(REMOTE_UPDATE_EVENT, onRemote);
+  }, [key]);
+
   const set = useCallback((valueOrUpdater) => {
     setState((prev) => {
       const next = typeof valueOrUpdater === "function" ? valueOrUpdater(prev) : valueOrUpdater;
