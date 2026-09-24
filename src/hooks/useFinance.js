@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { SK, usePersistedState } from "../lib/storage.js";
 import { DEFAULT_CATEGORIAS } from "../lib/categories.js";
-import { todayKey } from "../lib/dates.js";
+import { todayKey, addDays } from "../lib/dates.js";
 import {
   materializar, mergeNovos, adiamentoExpirado, aplicarPagamento, makeId, custoEfetivo, gerarParcelamento,
 } from "../lib/finance.js";
@@ -146,7 +146,115 @@ export function useFinance() {
     }
   }
 
+  // ── Edição (aba Atividade) ─────────────────────────────────
+
+  // Some com os lançamentos ainda não pagos de hoje em diante que batem com
+  // `pred` — usado quando uma recorrência/dívida muda ou sai, pra que as
+  // ocorrências futuras sejam regeradas (ou não) com os dados novos.
+  function limparFuturos(pred) {
+    const hoje = todayKey();
+    setLancamentos(prev => prev.filter(l => !(pred(l) && l.status !== "pago" && l.data && l.data >= hoje)));
+  }
+  const regerarDeHoje = () => addDays(todayKey(), -1);
+
+  function salvarRecorrente(rec) {
+    if (rec.id && recorrentes.some(r => r.id === rec.id)) {
+      limparFuturos(l => l.recorrenteId === rec.id);
+      setRecorrentes(prev => prev.map(r => r.id === rec.id ? { ...rec, geradoAte: regerarDeHoje() } : r));
+    } else {
+      setRecorrentes(prev => [...prev, { ...rec, id: makeId("rec"), ativo: true, inicio: rec.inicio || todayKey() }]);
+    }
+  }
+
+  // Pausar remove as ocorrências futuras; retomar volta a gerar a partir de
+  // hoje (sem recriar o período pausado).
+  function alternarRecorrente(id) {
+    const rec = recorrentes.find(r => r.id === id);
+    if (!rec) return;
+    if (rec.ativo) limparFuturos(l => l.recorrenteId === id);
+    setRecorrentes(prev => prev.map(r => r.id === id ? { ...r, ativo: !r.ativo, geradoAte: regerarDeHoje() } : r));
+  }
+
+  function removerRecorrente(id) {
+    limparFuturos(l => l.recorrenteId === id);
+    setRecorrentes(prev => prev.filter(r => r.id !== id));
+  }
+
+  function salvarDivida(d) {
+    if (d.id && dividas.some(x => x.id === d.id)) {
+      limparFuturos(l => l.dividaId === d.id);
+      setDividas(prev => prev.map(x => x.id === d.id ? { ...x, ...d, geradoAte: regerarDeHoje() } : x));
+    } else {
+      setDividas(prev => [...prev, { ...d, id: makeId("div"), inicio: todayKey() }]);
+    }
+  }
+
+  function removerDivida(id) {
+    limparFuturos(l => l.dividaId === id);
+    setDividas(prev => prev.filter(x => x.id !== id));
+  }
+
+  function salvarMeta(m) {
+    if (m.id) setMetas(prev => prev.map(x => x.id === m.id ? { ...x, ...m } : x));
+    else setMetas(prev => [...prev, { guardado: 0, ...m, id: makeId("meta") }]);
+  }
+
+  function removerMeta(id) {
+    // O que estava guardado volta pra 1ª conta, pra não "sumir" dinheiro do patrimônio.
+    const m = metas.find(x => x.id === id);
+    if (m?.guardado > 0 && contas[0]) moverSaldo(contas[0].id, m.guardado);
+    setMetas(prev => prev.filter(x => x.id !== id));
+  }
+
+  // Aporte (valor > 0) ou retirada (valor < 0): transferência entre conta e
+  // caixinha — não é gasto, então não vira lançamento.
+  function aportar(metaId, valor, contaId) {
+    const conta = contaDe(contaId);
+    setMetas(prev => prev.map(m => m.id === metaId ? { ...m, guardado: Math.max(0, m.guardado + valor) } : m));
+    moverSaldo(conta?.id, -valor);
+  }
+
+  function salvarConta(c) {
+    if (c.id) setContas(prev => prev.map(x => x.id === c.id ? { ...x, ...c } : x));
+    else setContas(prev => [...prev, { saldo: 0, ...c, id: makeId("conta") }]);
+  }
+
+  function removerConta(id) {
+    if (contas.length <= 1) return false;
+    setContas(prev => prev.filter(c => c.id !== id));
+    return true;
+  }
+
+  function atualizarLancamento(id, patch) {
+    setLancamentos(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+  }
+
+  // Desfaz um pagamento: volta a pendente e devolve o valor à conta. Parcela
+  // de dívida não pode ser estornada (a amortização já mexeu no saldo devedor).
+  function estornar(id) {
+    const l = lancamentos.find(x => x.id === id);
+    if (!l || l.status !== "pago" || l.dividaId) return false;
+    moverSaldo(l.contaId, l.tipo === "entrada" ? -l.valor : l.valor);
+    setLancamentos(prev => prev.map(x => x.id === id ? { ...x, status: "pendente", pagoEm: null, contaId: null, divisao: undefined } : x));
+    return true;
+  }
+
+  // Excluir um lançamento pago devolve o valor à conta (exceto parcela de dívida).
+  function removerLancamento(id) {
+    const l = lancamentos.find(x => x.id === id);
+    if (!l) return;
+    if (l.status === "pago" && !l.dividaId) moverSaldo(l.contaId, l.tipo === "entrada" ? -l.valor : l.valor);
+    setLancamentos(prev => prev.filter(x => x.id !== id));
+  }
+
+  function trazerDeVolta(id) {
+    setLancamentos(prev => prev.map(l => l.id === id ? { ...l, status: "pendente", adiadoAte: null, voltou: true } : l));
+  }
+
   return {
+    salvarRecorrente, alternarRecorrente, removerRecorrente, salvarDivida, removerDivida,
+    salvarMeta, removerMeta, aportar, salvarConta, removerConta,
+    atualizarLancamento, estornar, removerLancamento, trazerDeVolta,
     lancamentos, recorrentes, dividas, contas, metas, categorias, revisoes, contaPadrao,
     setLancamentos, setRecorrentes, setDividas, setContas, setMetas, setCategorias, setRevisoes,
     pagar, adiar, dividir, revisar, limparRevisoes, adicionarLancamentos, criarLancamento, moverSaldo, custoEfetivo,

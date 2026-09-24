@@ -10,9 +10,8 @@ import { AuthScreen } from "./components/AuthScreen.jsx";
 import { SetupProfile } from "./components/SetupProfile.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
-import { CommitmentFormModal } from "./components/CommitmentFormModal.jsx";
 import { migrateAnonPolls } from "./lib/polls.js";
-import { todayKey, daysBetween, addDays, computeSnoozeUntil, toDateStr } from "./lib/dates.js";
+import { todayKey, daysBetween, addDays } from "./lib/dates.js";
 import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
 import { NovoLancamentoForm } from "./components/NovoLancamentoForm.jsx";
@@ -29,14 +28,6 @@ import { SK, load, save, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { APP_NAME, APP_TAGLINE } from "./config.js";
 
-// Chaves do app de tarefas que as abas Criar/Atividade ainda usam até serem
-// convertidas (Etapas 2 e 3).
-const LEGACY_SK = {
-  tasks:         "tm_tasks",
-  nextId:        "tm_next_id",
-  commitments:   "tm_commitments",
-  commitmentLog: "tm_commitment_log",
-};
 // Anti-spam keys for notifications (1 dispatch per type per day)
 const NOTIF_LAST_PEAK   = "fin_notif_last_peak";
 const NOTIF_LAST_STREAK = "fin_notif_last_streak";
@@ -115,12 +106,10 @@ export default function MainApp() {
   const prefersReducedMotion = useReducedMotion();
   // Estados persistidos — sobrevivem ao reload
   const finance = useFinance();
-  const [tasks,     setTasks]     = usePersistedState(LEGACY_SK.tasks, []);
   const [stats,     setStats]     = usePersistedState(SK.stats,   { accepted: 0, rejected: 0, shared: 0 });
   const [invites,   setInvites]   = usePersistedState(SK.invites, []);
   const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@voce", avatar: "👤" });
-  const [nextTaskId, setNextTaskId] = usePersistedState(LEGACY_SK.nextId, 1);
-  const [decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
+  const [_decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
   const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
   const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
 
@@ -163,11 +152,6 @@ export default function MainApp() {
   const [riskDismissed,    setRiskDismissed]     = useState(false);
   const [snoozeDefault,    setSnoozeDefault]     = usePersistedState(SK.snoozeDefault, "1d");
   const [snoozeAsked,      setSnoozeAsked]       = usePersistedState(SK.snoozeAsked, false);
-  const [commitments,           setCommitments]           = usePersistedState(LEGACY_SK.commitments, []);
-  const [commitmentLog,         setCommitmentLog]         = usePersistedState(LEGACY_SK.commitmentLog, []);
-  const [showCreateCommitment,  setShowCreateCommitment]  = useState(false);
-  const [editingCommitment,     setEditingCommitment]     = useState(null); // commitment obj | null
-
   const [showCreatePollModal,  setShowCreatePollModal]  = useState(false);
   const [showNotifSettings,    setShowNotifSettings]    = useState(false);
 
@@ -199,23 +183,6 @@ export default function MainApp() {
     const id = setInterval(checkNotifications, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [notifSettings.enabled]);
-
-  // Wake snoozed tasks whose snoozeUntil has passed
-  useEffect(() => {
-    function wakeSnoozed() {
-      const now = new Date();
-      setTasks(prev => prev.map(t => {
-        if (t.snoozeUntil && new Date(t.snoozeUntil) <= now) {
-          const { snoozeUntil: _snoozeUntil, ...rest } = t;
-          return rest;
-        }
-        return t;
-      }));
-    }
-    wakeSnoozed();
-    const id = setInterval(wakeSnoozed, 60_000);
-    return () => clearInterval(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- setTasks é o setter de usePersistedState, estável
 
   const unreadCount = computeUnreadCount(invites, exploreSeenAt);
 
@@ -334,7 +301,7 @@ export default function MainApp() {
 
   function clearAllData() {
     if (!window.confirm("Apagar todos os dados? Lançamentos, contas, dívidas, caixinhas e histórico serão removidos deste aparelho.")) return;
-    [...Object.values(SK), ...Object.values(LEGACY_SK), NOTIF_LAST_PEAK, NOTIF_LAST_STREAK].forEach((key) => { try { localStorage.removeItem(key); } catch {} });
+    [...Object.values(SK), NOTIF_LAST_PEAK, NOTIF_LAST_STREAK].forEach((key) => { try { localStorage.removeItem(key); } catch {} });
     finance.setLancamentos([]);
     finance.setRecorrentes([]);
     finance.setDividas([]);
@@ -342,11 +309,9 @@ export default function MainApp() {
     finance.setMetas([]);
     finance.setCategorias(DEFAULT_CATEGORIAS);
     finance.setRevisoes({});
-    setTasks([]);
     setStats({ accepted: 0, rejected: 0, shared: 0 });
     setInvites([]);
     setDecisions([]);
-    setNextTaskId(1);
     setStreak({ count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
     setNotifSettings({ enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
     showToast("Dados apagados.", "bg-red-600/90");
@@ -508,100 +473,12 @@ export default function MainApp() {
     if (!prefersReducedMotion) fireDeckCompleteConfetti();
   }
 
-  // ── Commitment handlers ──────────────────────────────────
-  function handleSaveCommitment(data) {
-    if (data.id) {
-      setCommitments(prev => prev.map(c => c.id === data.id ? data : c));
-    } else {
-      setCommitments(prev => [{ ...data, id: `c-${Date.now()}` }, ...prev]);
-    }
-    setShowCreateCommitment(false);
-    setEditingCommitment(null);
-  }
-
-  function handleLogCommitment(commitmentId, status) {
-    const dateStr = toDateStr(new Date());
-    setCommitmentLog(prev => {
-      const without = prev.filter(e => !(e.commitmentId === commitmentId && e.date === dateStr));
-      return [...without, { commitmentId, date: dateStr, status, loggedAt: new Date().toISOString() }];
-    });
-    showToast(
-      status === "done" ? "✓ Compromisso feito!" : "Pulei",
-      status === "done" ? "bg-emerald-600/90 backdrop-blur-md" : "bg-amber-600/90 backdrop-blur-md"
-    );
-  }
-
-  function handleDeleteCommitment(commitmentId) {
-    setCommitments(prev => prev.filter(c => c.id !== commitmentId));
-    setCommitmentLog(prev => prev.filter(e => e.commitmentId !== commitmentId));
-  }
-
-  function handleTogglePauseCommitment(commitmentId) {
-    setCommitments(prev => prev.map(c =>
-      c.id === commitmentId ? { ...c, paused: !c.paused } : c
-    ));
-  }
-
-  function handleWakeTask(taskId) {
-    setTasks((prev) => prev.map(t => {
-      if (t.id !== taskId) return t;
-      const { snoozeUntil: _snoozeUntil, ...rest } = t;
-      return rest;
-    }));
-    showToast("✓  Tarefa de volta!", "bg-emerald-600/90 backdrop-blur-md");
-  }
-
-  // Agenda semanal (Atividade): agenda uma tarefa pra um dia (dateStr) ou
-  // limpa a data (dateStr null) — reusa o campo `deadline` que já existe.
-  function handleScheduleTask(taskId, dateStr) {
-    setTasks((prev) => prev.map(t => t.id === taskId ? { ...t, deadline: dateStr } : t));
-    showToast(dateStr ? "📅  Agendado" : "Data removida", "bg-[#2563eb]/90 backdrop-blur-md");
-  }
-
-  function handleSnoozeMore(taskId) {
-    const snoozeUntil = computeSnoozeUntil(snoozeDefault);
-    setTasks((prev) => prev.map(t => t.id === taskId ? { ...t, snoozeUntil } : t));
-    showToast("⏰  Adiado novamente", "bg-amber-600/90 backdrop-blur-md");
-  }
-
-  // ── Checklist helpers ────────────────────────────────────
-  function handleToggleItem(taskId, itemId) {
-    setTasks(prev => prev.map(t => {
-      if (t.id !== taskId) return t;
-      return { ...t, items: (t.items || []).map(item => item.id === itemId ? { ...item, done: !item.done } : item) };
-    }));
-  }
-
-  function handleAddListItem(taskId, text) {
-    setTasks(prev => prev.map(t => {
-      if (t.id !== taskId) return t;
-      const newItem = { id: Date.now(), text: text.trim(), emoji: null, done: false, order: (t.items || []).length };
-      return { ...t, items: [...(t.items || []), newItem] };
-    }));
-  }
-
-  // Cria uma lista vazia direto da aba Listas — sem passar pelo formulário
-  // completo de criação de tarefa (título só, itens vêm depois, inline).
-  function handleCreateChecklist(title) {
-    setTasks(prev => [...prev, {
-      id: nextTaskId,
-      title: title.trim(),
-      description: "",
-      category: "Lista",
-      emoji: "📝",
-      gradient: "from-emerald-600 via-teal-600 to-cyan-700",
-      accent: "#10b981",
-      items: [],
-    }]);
-    setNextTaskId(n => n + 1);
-    showToast("Lista criada!", "bg-emerald-600/90 backdrop-blur-md");
-  }
-
-  // Marca uma lista como concluída direto da aba Listas.
-  function handleCompleteChecklist(taskId) {
+  // Pagamento feito fora do deck (Calendário) ou aporte em caixinha: conta
+  // como atividade do dia pro streak.
+  function handlePagoFora(l, r = {}) {
     registerActivity();
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-    showToast("✓  Feito!", "bg-emerald-600/90 backdrop-blur-md");
+    if (l) handleDecision({ id: Date.now(), lancamentoId: l.id, title: l.descricao, valor: l.valor, categoria: l.categoria, direction: "right", label: l.tipo === "entrada" ? "Recebi" : "Paguei", decidedAt: new Date().toISOString() });
+    if (r.quitouDivida) handleQuitouDivida(l);
   }
 
   // ── Shared sub-sections ──────────────────────────────────
@@ -652,9 +529,9 @@ export default function MainApp() {
 
           <div className="flex-1 min-h-0 overflow-hidden relative">
             {activeTab === "home" && <FinDeck isDesktop={false} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} />}
-            {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
+            {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={[]} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
             {activeTab === "activity" && (
-              <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} commitments={commitments} commitmentLog={commitmentLog} onLogCommitment={handleLogCommitment} onScheduleTask={handleScheduleTask} onCreateCommitment={() => setShowCreateCommitment(true)} onEditCommitment={c => setEditingCommitment(c)} onTogglePauseCommitment={handleTogglePauseCommitment} onDeleteCommitment={handleDeleteCommitment} onToggleItem={handleToggleItem} onAddItem={handleAddListItem} onCompleteChecklist={handleCompleteChecklist} onCreateChecklist={handleCreateChecklist} />
+              <ActivityTab finance={finance} isDesktop={false} showToast={showToast} onPago={handlePagoFora} />
             )}
             {activeTab === "create" && (
               <NovoLancamentoForm
@@ -727,11 +604,11 @@ export default function MainApp() {
                 <div className="flex-1 min-h-0"><FinDeck isDesktop={true} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} /></div>
               </>
             )}
-            {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={tasks} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
+            {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={[]} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
             {activeTab === "activity" && (
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto">
-                  <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} commitments={commitments} commitmentLog={commitmentLog} onLogCommitment={handleLogCommitment} onScheduleTask={handleScheduleTask} onCreateCommitment={() => setShowCreateCommitment(true)} onEditCommitment={c => setEditingCommitment(c)} onTogglePauseCommitment={handleTogglePauseCommitment} onDeleteCommitment={handleDeleteCommitment} onToggleItem={handleToggleItem} onAddItem={handleAddListItem} onCompleteChecklist={handleCompleteChecklist} onCreateChecklist={handleCreateChecklist} />
+                  <ActivityTab finance={finance} isDesktop={true} showToast={showToast} onPago={handlePagoFora} />
                 </div>
               </div>
             )}
@@ -776,15 +653,6 @@ export default function MainApp() {
       )}
 
       <AnimatePresence>
-        {(showCreateCommitment || editingCommitment) && (
-          <CommitmentFormModal
-            key="cfm"
-            initial={editingCommitment}
-            onSave={handleSaveCommitment}
-            onClose={() => { setShowCreateCommitment(false); setEditingCommitment(null); }}
-            isDesktop={isDesktop}
-          />
-        )}
         {showCreatePollModal && (
           <CreatePollModal key="cpm" onClose={() => setShowCreatePollModal(false)} userId={auth.user?.id ?? null} showToast={showToast} isDesktop={isDesktop} />
         )}

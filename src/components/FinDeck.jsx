@@ -227,7 +227,7 @@ function ContaOption({ conta, selected, onSelect }) {
   );
 }
 
-function ContaPickerSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
+export function ContaPickerSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
   const [contaId, setContaId] = useState(contas.some(c => c.id === contaPadrao) ? contaPadrao : contas[0]?.id);
   const entrada = lancamento.tipo === "entrada";
   return (
