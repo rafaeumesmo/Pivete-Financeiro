@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate, useReducedMotion } from "framer-motion";
 
 /*
  * Deck de swipe da votação "Bora?" — mesma mecânica do SwipeCard do Início
@@ -21,9 +21,10 @@ const GRADIENTS = [
 export const gradientFor = (i) => GRADIENTS[i % GRADIENTS.length];
 
 function BoraCard({ option, isTop, stackIndex, onSwipe }) {
+  const prefersReducedMotion = useReducedMotion();
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateZ = useTransform(x, [-200, 200], [-18, 18]);
+  const rotateZ = useTransform(x, [-200, 200], prefersReducedMotion ? [0, 0] : [-18, 18]);
   const greenOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
   const redOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
 
@@ -69,9 +70,9 @@ function BoraCard({ option, isTop, stackIndex, onSwipe }) {
       whileDrag={{ scale: 0.97, filter: "drop-shadow(0 24px 52px rgba(0,0,0,0.6))" }}
       variants={{
         exit: ({ vx = 0, dir } = {}) => {
-          const cx = x.get(), cy = y.get();
+          const cy = y.get();
           const sign = dir === "right" ? 1 : -1;
-          const velRotate = sign * Math.min(Math.abs(vx) / 160, 20);
+          const velRotate = prefersReducedMotion ? 0 : sign * Math.min(Math.abs(vx) / 160, 20);
           const exitDur = Math.max(0.26, 0.38 - Math.min(Math.abs(vx), 1200) / 5000);
           return { x: sign * 720, y: cy + 80, rotate: velRotate, opacity: 0, transition: { duration: exitDur, ease: [0.4, 0, 1, 1] } };
         },

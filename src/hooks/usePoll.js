@@ -24,7 +24,7 @@ export function usePoll(pollId) {
         .eq("id", pollId)
         .maybeSingle();
       data = res.data; err = res.error;
-    } catch (e) {
+    } catch {
       setError("network"); setLoading(false); return;
     }
     if (err)  { setError("load"); setLoading(false); return; }

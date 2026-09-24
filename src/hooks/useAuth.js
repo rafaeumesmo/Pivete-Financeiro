@@ -32,7 +32,7 @@ export function useAuth() {
       .eq("id", session.user.id)
       .maybeSingle()
       .then(({ data }) => { setProfile(data); setLoadingProfile(false); });
-  }, [session?.user?.id]);
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- de propósito: só o id, não o objeto session inteiro (evita refetch a cada refresh de token)
 
   async function sendMagicLink(email) {
     if (!supabase) throw new Error("Supabase não configurado");

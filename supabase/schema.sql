@@ -201,6 +201,28 @@ create policy "poll_votes_public_delete" on poll_votes for delete using (true);
 -- Garante privilégios de tabela pro papel anônimo (além do RLS).
 grant select, insert, update, delete on polls, poll_options, poll_votes to anon, authenticated;
 
+-- ─── 2c. RESPOSTAS DE CONVITE PÚBLICO (#/invite/...) ────────────────────────
+-- O link "Delegar" (#/invite/<payload>) é aberto por quem recebeu, sem login.
+-- invite_id vem do id local do convite (gerado no dispositivo de quem enviou)
+-- — não é FK pra nenhuma tabela, é só uma correlação fraca pra permitir contar
+-- quantas pessoas responderam pelo link. Sem isso, quem envia nunca sabia se
+-- o convite foi visto (a resposta ficava só na tela de quem clicou).
+create table if not exists invite_link_responses (
+  id          uuid        primary key default gen_random_uuid(),
+  invite_id   text        not null,
+  decision    text        not null check (decision in ('accepted','declined')),
+  created_at  timestamptz not null default now()
+);
+create index if not exists invite_link_responses_invite_idx on invite_link_responses(invite_id);
+
+alter table invite_link_responses enable row level security;
+drop policy if exists "invite_link_responses_public_read"   on invite_link_responses;
+create policy "invite_link_responses_public_read"   on invite_link_responses for select using (true);
+drop policy if exists "invite_link_responses_public_insert" on invite_link_responses;
+create policy "invite_link_responses_public_insert" on invite_link_responses for insert with check (true);
+
+grant select, insert on invite_link_responses to anon, authenticated;
+
 -- ─── 3. REALTIME ────────────────────────────────────────────────────────────
 -- Adiciona as tabelas à publicação de realtime (idempotente: ignora se já estão).
 -- (Equivale a marcar cada tabela em Database → Replication no dashboard.)

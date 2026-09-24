@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchMyPolls } from "../lib/polls";
+import { supabase } from "../supabaseClient";
 
 /*
  * SocialExplore — central social completa (aba Explorar).
@@ -184,10 +185,10 @@ function FriendsPanel({ social, showToast, isDesktop }) {
                   {profile?.display_name && <p className="text-[11px] text-white/40 truncate">{profile.display_name}</p>}
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  <motion.button whileTap={{ scale: 0.9 }} disabled={busy.has(friendshipId)} onClick={() => run(friendshipId, () => social.rejectFriend(friendshipId), "Não foi possível recusar.")} className="w-8 h-8 rounded-xl bg-red-400/15 border border-red-400/25 flex items-center justify-center hover:bg-red-400/25 transition disabled:opacity-40">
+                  <motion.button whileTap={{ scale: 0.9 }} disabled={busy.has(friendshipId)} onClick={() => run(friendshipId, () => social.rejectFriend(friendshipId), "Não foi possível recusar.")} aria-label={`Recusar pedido de @${profile?.username}`} className="w-8 h-8 rounded-xl bg-red-400/15 border border-red-400/25 flex items-center justify-center hover:bg-red-400/25 transition disabled:opacity-40">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5 text-red-400"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </motion.button>
-                  <motion.button whileTap={{ scale: 0.9 }} disabled={busy.has(friendshipId)} onClick={() => run(friendshipId, async () => { await social.acceptFriend(friendshipId); showToast("Amizade aceita! 🎉", "bg-emerald-600/90"); }, "Não foi possível aceitar.")} className="w-8 h-8 rounded-xl bg-emerald-400/15 border border-emerald-400/25 flex items-center justify-center hover:bg-emerald-400/25 transition disabled:opacity-40">
+                  <motion.button whileTap={{ scale: 0.9 }} disabled={busy.has(friendshipId)} onClick={() => run(friendshipId, async () => { await social.acceptFriend(friendshipId); showToast("Amizade aceita! 🎉", "bg-emerald-600/90"); }, "Não foi possível aceitar.")} aria-label={`Aceitar pedido de @${profile?.username}`} className="w-8 h-8 rounded-xl bg-emerald-400/15 border border-emerald-400/25 flex items-center justify-center hover:bg-emerald-400/25 transition disabled:opacity-40">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5 text-emerald-400"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   </motion.button>
                 </div>
@@ -404,6 +405,46 @@ function statusOf(r) {
   return "pending";
 }
 
+// Mostra quantas pessoas responderam pelo link público de convite
+// (#/invite/...), que não passa pelos "destinatários" nomeados abaixo — ver
+// InvitePage.jsx + tabela invite_link_responses no schema do Supabase.
+function LinkResponseBadge({ inviteId }) {
+  const [counts, setCounts] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!supabase || !inviteId) return;
+    supabase
+      .from("invite_link_responses")
+      .select("decision")
+      .eq("invite_id", String(inviteId))
+      .then(({ data }) => {
+        if (!active || !data?.length) return;
+        setCounts({
+          accepted: data.filter((r) => r.decision === "accepted").length,
+          declined: data.filter((r) => r.decision === "declined").length,
+        });
+      });
+    return () => { active = false; };
+  }, [inviteId]);
+
+  if (!counts) return null;
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+      {counts.accepted > 0 && (
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
+          🔗 {counts.accepted} aceitou pelo link
+        </span>
+      )}
+      {counts.declined > 0 && (
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5 rounded-full">
+          🔗 {counts.declined} recusou pelo link
+        </span>
+      )}
+    </div>
+  );
+}
+
 function MyPolls({ userId, showToast }) {
   const [polls,   setPolls]   = useState([]);
   const [loading, setLoading] = useState(true);
@@ -453,7 +494,7 @@ function MyPolls({ userId, showToast }) {
   );
 }
 
-function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareInvite, onResendFavorites, favoritesCount, onCreateGroup, onShareTask, isLoggedIn, userId, showToast }) {
+function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareInvite, onResendFavorites, favoritesCount, onCreatePoll, onShareTask, isLoggedIn, userId, showToast }) {
   const [expandedId, setExpandedId] = useState(null);
   const [inputValues, setInputValues] = useState({});
 
@@ -463,7 +504,7 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
 
   return (
     <div className="flex flex-col gap-5">
-      <motion.button whileTap={{ scale: 0.97 }} onClick={onCreateGroup} className="w-full py-3 rounded-2xl bg-purple-500/15 border border-purple-500/25 text-purple-400 font-semibold text-sm hover:bg-purple-500/25 transition flex items-center justify-center gap-2">
+      <motion.button whileTap={{ scale: 0.97 }} onClick={onCreatePoll} className="w-full py-3 rounded-2xl bg-purple-500/15 border border-purple-500/25 text-purple-400 font-semibold text-sm hover:bg-purple-500/25 transition flex items-center justify-center gap-2">
         <span>🗳️</span> Criar enquete (Bora?)
       </motion.button>
 
@@ -510,6 +551,8 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
                       </button>
                     )}
                   </div>
+
+                  <LinkResponseBadge inviteId={invite.id} />
 
                   {/* Avatares empilhados + status */}
                   {recips.length > 0 && (
@@ -579,7 +622,7 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
                                 placeholder="Nome do destinatário..."
                                 className="flex-1 rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/50 transition"
                               />
-                              <button onClick={() => { addRecipient(invite.id, inputValues[invite.id] || ""); setInputValues((v) => ({ ...v, [invite.id]: "" })); }} className="w-9 h-9 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center hover:bg-[#2563eb]/30 transition flex-shrink-0">
+                              <button onClick={() => { addRecipient(invite.id, inputValues[invite.id] || ""); setInputValues((v) => ({ ...v, [invite.id]: "" })); }} aria-label="Adicionar destinatário" className="w-9 h-9 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center hover:bg-[#2563eb]/30 transition flex-shrink-0">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                               </button>
                               <button onClick={() => shareInvite(invite)} className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition flex-shrink-0" title="Compartilhar link">
@@ -606,7 +649,7 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
 export function SocialExplore({
   isDesktop, isLoggedIn, userId, social, tasks,
   invites, addRecipient, updateRecipientStatus, shareInvite, onMassSend, onResendFavorites,
-  showToast, unreadCount, onCreateGroup, onShareTask, onRequireLogin,
+  showToast, unreadCount, onCreatePoll, onShareTask, onRequireLogin,
 }) {
   const [subTab, setSubTab] = useState("amigos"); // "amigos" | "enviados"
   const favoritesCount = social.friends.filter(f => f.isCloseFriend).length;
@@ -668,7 +711,7 @@ export function SocialExplore({
             shareInvite={shareInvite}
             onResendFavorites={isLoggedIn ? onResendFavorites : null}
             favoritesCount={favoritesCount}
-            onCreateGroup={onCreateGroup}
+            onCreatePoll={onCreatePoll}
             onShareTask={onShareTask}
             isLoggedIn={isLoggedIn}
             userId={userId}

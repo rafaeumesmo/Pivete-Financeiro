@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "./supabaseClient";
 
 function decodeInvite(hash) {
   try {
@@ -11,16 +12,33 @@ function decodeInvite(hash) {
   }
 }
 
+// Registra a resposta em invite_link_responses (ver supabase/schema.sql) pra
+// que quem enviou o convite consiga ver, em "Convites enviados", quantas
+// pessoas responderam pelo link — sem isso a resposta ficava só na tela de
+// quem clicou e nunca voltava pro organizador.
+async function recordInviteResponse(inviteId, decision) {
+  if (!supabase || !inviteId) return false;
+  const { error } = await supabase.from("invite_link_responses").insert({ invite_id: String(inviteId), decision });
+  return !error;
+}
+
 export default function InvitePage() {
   const [invite, setInvite] = useState(null);
   const [decision, setDecision] = useState(null);
   const [invalid, setInvalid] = useState(false);
+  const [delivered, setDelivered] = useState(false);
 
   useEffect(() => {
     const data = decodeInvite(window.location.hash);
     if (!data) setInvalid(true);
     else setInvite(data);
   }, []);
+
+  async function handleDecision(value) {
+    setDecision(value);
+    const ok = await recordInviteResponse(invite?.id, value);
+    setDelivered(ok);
+  }
 
   if (invalid) {
     return (
@@ -48,9 +66,9 @@ export default function InvitePage() {
             {accepted ? "Tarefa aceita!" : "Tarefa recusada."}
           </h2>
           <p className="text-sm text-white/40 max-w-xs">
-            {accepted
-              ? "Boa! O organizador vai saber que você topou."
-              : "Tudo bem. O organizador vai saber que você não pode."}
+            {delivered
+              ? (accepted ? "Boa! O organizador vai ver que você topou." : "Tudo bem. O organizador vai ver que você não pode.")
+              : "Sua resposta foi registrada neste dispositivo, mas não foi possível avisar o organizador agora (sem conexão). Se puder, avise por fora."}
           </p>
         </motion.div>
       </div>
@@ -117,14 +135,14 @@ export default function InvitePage() {
       >
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setDecision("declined")}
+          onClick={() => handleDecision("declined")}
           className="flex-1 py-4 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-400 font-semibold text-sm hover:bg-red-500/20 transition-colors"
         >
           ✕ Recusar
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setDecision("accepted")}
+          onClick={() => handleDecision("accepted")}
           className="flex-1 py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-semibold text-sm hover:bg-emerald-500/20 transition-colors"
         >
           ✓ Aceitar

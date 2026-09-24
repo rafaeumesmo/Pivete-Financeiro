@@ -277,10 +277,11 @@ export function useSocial(userId) {
 
   async function respondToTask(sharedTaskId, response) {
     if (!supabase || !userId) return;
-    await supabase.from("task_responses").upsert(
+    const { error } = await supabase.from("task_responses").upsert(
       { shared_task_id: sharedTaskId, responder_id: userId, response },
       { onConflict: "shared_task_id,responder_id" }
     );
+    if (error) throw error;
     setFeed(prev => prev.map(t =>
       t.id === sharedTaskId ? { ...t, myResponse: response } : t
     ));

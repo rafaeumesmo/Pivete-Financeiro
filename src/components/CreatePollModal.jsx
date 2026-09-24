@@ -80,7 +80,7 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
             <p className="text-[10px] font-semibold tracking-widest uppercase text-purple-400/70 mb-0.5">Enquete de grupo</p>
             <h2 className="text-base font-bold text-white">Bora? 🗳️</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
+          <button onClick={onClose} aria-label="Fechar" className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
         </div>
 
         <div className="overflow-y-auto px-5 py-5">

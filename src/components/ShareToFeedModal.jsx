@@ -32,7 +32,7 @@ export function ShareToFeedModal({ task, onShare, onClose }) {
             <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mb-0.5">Compartilhar no</p>
             <h2 className="text-base font-bold text-white">Feed Social</h2>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
+          <button onClick={onClose} aria-label="Fechar" className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
         </div>
 
         <div className="px-5 py-5 flex flex-col gap-4">
