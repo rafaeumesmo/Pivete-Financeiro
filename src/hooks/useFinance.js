@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { SK, usePersistedState } from "../lib/storage.js";
 import { DEFAULT_CATEGORIAS } from "../lib/categories.js";
-import { todayKey, addDays } from "../lib/dates.js";
+import { todayKey, addDays, fromDateStr } from "../lib/dates.js";
 import {
   materializar, mergeNovos, adiamentoExpirado, aplicarPagamento, makeId, randomId, custoEfetivo, gerarParcelamento,
 } from "../lib/finance.js";
@@ -247,6 +247,38 @@ export function useFinance() {
     setLancamentos(prev => prev.filter(x => x.id !== id));
   }
 
+  // ── Dados de exemplo (onboarding) ──────────────────────────
+  // Renda 1.700 + 800 e fixos Passagem 450, Claude 110, Internet 40,
+  // Spotify 20 — com vencimentos nos próximos dias pra o deck já mostrar
+  // cards. Tudo marcado com `exemplo: true` pra poder limpar depois.
+  function carregarExemplo() {
+    const hoje = todayKey();
+    const dia = (k) => fromDateStr(addDays(hoje, k)).getDate();
+    const rec = (id, nome, valor, categoria, tipo, k) => ({ id: `ex-${id}`, nome, valor, categoria, tipo, frequencia: "mensal", dia: dia(k), ativo: true, inicio: hoje, exemplo: true });
+    const exemplos = [
+      rec("salario",  "Salário",     170000, "renda",       "entrada", 3),
+      rec("extra",    "Renda extra",  80000, "renda",       "entrada", 10),
+      rec("passagem", "Passagem",     45000, "transporte",  "saida",   0),
+      rec("claude",   "Claude",       11000, "assinaturas", "saida",   6),
+      rec("internet", "Internet",      4000, "casa",        "saida",   2),
+      rec("spotify",  "Spotify",       2000, "assinaturas", "saida",   4),
+    ];
+    setRecorrentes(prev => [...prev.filter(r => !r.exemplo), ...exemplos]);
+  }
+
+  const temExemplo = recorrentes.some(r => r.exemplo);
+
+  // Remove as recorrências de exemplo e TODOS os lançamentos gerados por
+  // elas; o que foi pago/recebido volta pro saldo da conta como estava.
+  function limparExemplo() {
+    const ids = new Set(recorrentes.filter(r => r.exemplo).map(r => r.id));
+    for (const l of lancamentos) {
+      if (ids.has(l.recorrenteId) && l.status === "pago") moverSaldo(l.contaId, l.tipo === "entrada" ? -l.valor : l.valor);
+    }
+    setLancamentos(prev => prev.filter(l => !ids.has(l.recorrenteId)));
+    setRecorrentes(prev => prev.filter(r => !r.exemplo));
+  }
+
   function trazerDeVolta(id) {
     setLancamentos(prev => prev.map(l => l.id === id ? { ...l, status: "pendente", adiadoAte: null, voltou: true } : l));
   }
@@ -254,7 +286,7 @@ export function useFinance() {
   return {
     salvarRecorrente, alternarRecorrente, removerRecorrente, salvarDivida, removerDivida,
     salvarMeta, removerMeta, aportar, salvarConta, removerConta,
-    atualizarLancamento, estornar, removerLancamento, trazerDeVolta,
+    atualizarLancamento, estornar, removerLancamento, trazerDeVolta, carregarExemplo, limparExemplo, temExemplo,
     lancamentos, recorrentes, dividas, contas, metas, categorias, revisoes, contaPadrao,
     setLancamentos, setRecorrentes, setDividas, setContas, setMetas, setCategorias, setRevisoes,
     pagar, adiar, dividir, revisar, limparRevisoes, adicionarLancamentos, criarLancamento, moverSaldo, custoEfetivo,

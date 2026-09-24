@@ -96,14 +96,21 @@ function OBStep2() {
 function OBStep3({ onBack, onFinish }) {
   return (
     <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }} transition={{ duration: 0.22 }} className="flex flex-col gap-4">
-      <div className="text-5xl text-center pt-4">🔒</div>
-      <div className="text-center">
-        <h3 className="text-white font-bold text-[17px] mb-2">Seus números ficam com você</h3>
-        <p className="text-white/45 text-sm leading-relaxed">Saldos, contas e extrato ficam só neste aparelho — funciona sem login. Entrar só serve pra dividir contas e cobrar amigos.</p>
+      <div className="text-center pt-1">
+        <div className="text-4xl mb-2">🔒</div>
+        <h3 className="text-white font-bold text-[17px] mb-1.5">Seus números ficam com você</h3>
+        <p className="text-white/45 text-[13px] leading-relaxed">Saldos, contas e extrato ficam só neste aparelho — funciona sem login. Entrar só serve pra dividir contas com amigos.</p>
       </div>
-      <div className="flex gap-2 pt-3">
-        <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={onBack} className="px-3.5 py-2.5 rounded-xl text-sm text-white/40 bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition">← Voltar</motion.button>
-        <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={onFinish} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#2563eb] hover:bg-blue-500 transition">Começar →</motion.button>
+      <div className="rounded-2xl bg-white/[0.04] border border-white/[0.07] px-4 py-3">
+        <p className="text-[12px] font-semibold text-white/80 mb-1">Quer ver funcionando primeiro?</p>
+        <p className="text-[11.5px] text-white/40 leading-relaxed">Os dados de exemplo trazem renda de R$ 1.700 + R$ 800 e os fixos Passagem R$ 450, Claude R$ 110, Internet R$ 40 e Spotify R$ 20. Dá pra apagar tudo depois no Perfil.</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={() => onFinish(true)} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-[#2563eb] hover:bg-blue-500 transition">Começar com dados de exemplo</motion.button>
+        <div className="flex gap-2">
+          <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={onBack} className="px-3.5 py-2.5 rounded-xl text-sm text-white/40 bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition">← Voltar</motion.button>
+          <motion.button whileTap={{ scale: 0.96 }} type="button" onClick={() => onFinish(false)} className="flex-1 py-2.5 rounded-xl text-sm text-white/70 bg-white/[0.06] border border-white/[0.09] hover:bg-white/[0.1] transition">Começar do zero</motion.button>
+        </div>
       </div>
     </motion.div>
   );

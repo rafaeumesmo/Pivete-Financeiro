@@ -60,6 +60,16 @@ export function ProfileTab({
 
   const financeSections = (
     <div className={`${isDesktop ? "" : "px-5"} flex flex-col gap-6 mb-8`}>
+      {finance.temExemplo && (
+        <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.08] px-4 py-3 flex items-center gap-3">
+          <p className="flex-1 text-[12px] text-blue-100/80 leading-snug">Você está vendo <strong>dados de exemplo</strong> (renda e fixos fictícios).</p>
+          <button type="button" onClick={() => {
+            if (!window.confirm("Apagar os dados de exemplo? Somem a renda e os fixos de exemplo e os lançamentos gerados por eles (o que foi pago volta pro saldo). O que você cadastrou continua.")) return;
+            finance.limparExemplo();
+            showToast("Dados de exemplo removidos", "bg-white/10");
+          }} className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-400/30 text-[12px] font-semibold text-blue-100 hover:bg-blue-500/30 transition">Limpar dados de exemplo</button>
+        </div>
+      )}
       <ContasSection finance={finance} showToast={showToast} />
       <ReservaSection custo={custo} reserva={reserva} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses}
         temCaixinhaReserva={finance.metas.some(m => /reserva/i.test(m.nome))}

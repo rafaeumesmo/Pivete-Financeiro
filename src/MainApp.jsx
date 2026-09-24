@@ -528,7 +528,11 @@ export default function MainApp() {
 
       {showOnboarding && (
         <Onboarding
-          onFinish={() => { save(SK.onboarded, true); setShowOnboarding(false); }}
+          onFinish={(comExemplo) => {
+            save(SK.onboarded, true);
+            setShowOnboarding(false);
+            if (comExemplo) { finance.carregarExemplo(); showToast("Dados de exemplo carregados — apague quando quiser no Perfil", "bg-blue-600/90"); }
+          }}
         />
       )}
 
