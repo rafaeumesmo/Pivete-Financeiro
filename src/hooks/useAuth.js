@@ -43,6 +43,17 @@ export function useAuth() {
     if (error) throw error;
   }
 
+  // Redireciona pro Google e volta pra mesma origem; a sessão chega pela URL
+  // e é processada pelo detectSessionInUrl, igual ao magic link.
+  async function signInWithGoogle() {
+    if (!supabase) throw new Error("Supabase não configurado");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw error;
+  }
+
   async function signOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -112,6 +123,7 @@ export function useAuth() {
     isLoggedIn: !!session,
     needsProfile: !!session && !profile && !loadingProfile,
     sendMagicLink,
+    signInWithGoogle,
     signOut,
     checkUsername,
     createProfile,

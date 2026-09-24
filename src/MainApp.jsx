@@ -578,7 +578,7 @@ export default function MainApp() {
                 <h3 className="font-bold text-white text-base">Entrar no {APP_NAME}</h3>
                 <button onClick={() => setShowAuthModal(false)} aria-label="Fechar" className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-white/40 hover:text-white transition text-sm">✕</button>
               </div>
-              <AuthScreen onSendLink={auth.sendMagicLink} />
+              <AuthScreen onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} />
             </motion.div>
           </motion.div>
         )}
