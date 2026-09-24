@@ -5,6 +5,7 @@ import { LancamentoCardContent, RevisaoCardContent } from "./LancamentoCard.jsx"
 import { ActionButtons } from "./ActionButtons.jsx";
 import { SnoozeSetupModal } from "./SnoozeSetupModal.jsx";
 import { Sheet } from "./Sheet.jsx";
+import { PainelPanel } from "./PainelPanel.jsx";
 import { findCategoria } from "../lib/categories.js";
 import { formatBRL, splitCents } from "../lib/money.js";
 import { computeSnoozeUntil, todayKey } from "../lib/dates.js";
@@ -14,14 +15,15 @@ const LABELS_SAIDA   = { right: "Paguei", left: "Adiar", up: "Dividir" };
 const LABELS_ENTRADA = { right: "Recebi", left: "Adiar" };
 const LABELS_REVISAO = { right: "Valeu a pena", left: "Cortar" };
 
-// Aba Início: deck de contas a pagar/receber (padrão) ou "Revisar gastos".
+// Aba Início: deck de contas a pagar/receber (padrão), o Painel com os gráficos
+// ou "Revisar gastos" (aberto pelo deck vazio).
 export function FinDeck({
   finance, isDesktop, snoozeDefault, setSnoozeDefault, snoozeAsked, setSnoozeAsked,
   keyboardEnabled, onActivity, onDecision, onDividido, onQuitouDivida, onDeckComplete,
   onNavigate, showToast, stats,
 }) {
   const { lancamentos, categorias, contas, contaPadrao, recorrentes, revisoes } = finance;
-  const [mode, setMode] = useState("contas"); // "contas" | "revisar"
+  const [mode, setMode] = useState("contas"); // "contas" | "painel" | "revisar"
   const [swipeExit, setSwipeExit] = useState({ vx: 0, vy: 0, dir: null });
   const [payCtx, setPayCtx] = useState(null);       // { lancamento, vel }
   const [splitCtx, setSplitCtx] = useState(null);   // { lancamento, vel }
@@ -31,7 +33,7 @@ export function FinDeck({
   const deck = deckLancamentos(lancamentos);
   const itensTodos = itensRevisao({ recorrentes, lancamentos }, hoje);
   const revisaoDeck = revisaoPendente(itensTodos, revisoes);
-  const items = mode === "contas" ? deck : revisaoDeck;
+  const items = mode === "contas" ? deck : mode === "revisar" ? revisaoDeck : [];
   const top = items[items.length - 1];
   const labels = mode === "revisar" ? LABELS_REVISAO : top?.tipo === "entrada" ? LABELS_ENTRADA : LABELS_SAIDA;
   const totalPagar = deck.filter(l => l.tipo === "saida").reduce((a, l) => a + l.valor, 0);
@@ -132,7 +134,7 @@ export function FinDeck({
       <div className={`flex-shrink-0 ${px} ${isDesktop ? "pt-6" : "pt-1"} pb-3`}>
         <div className={`flex items-center gap-3 ${isDesktop ? "justify-between" : "flex-col items-stretch"}`}>
           <div className="flex bg-white/[0.05] border border-white/[0.07] p-1 rounded-xl" role="tablist">
-            {[{ id: "contas", label: "Contas", badge: deck.length }, { id: "revisar", label: "Revisar gastos", badge: revisaoDeck.length }].map(t => (
+            {[{ id: "contas", label: "Contas", badge: deck.length }, { id: "painel", label: "Painel" }].map(t => (
               <button key={t.id} role="tab" aria-selected={mode === t.id} onClick={() => setMode(t.id)} className={`flex-1 px-4 py-1.5 rounded-lg text-[12px] font-semibold whitespace-nowrap transition flex items-center justify-center gap-1.5 ${mode === t.id ? "bg-white/[0.12] text-white" : "text-white/40 hover:text-white/60"}`}>
                 {t.label}
                 {t.badge > 0 && <span className="text-[10px] tabular-nums text-white/40">{t.badge}</span>}
@@ -152,7 +154,13 @@ export function FinDeck({
         </div>
       </div>
 
-      {items.length > 0 ? (
+      {mode === "painel" ? (
+        <div className={`flex-1 min-h-0 overflow-y-auto ${px} pt-2 pb-10`}>
+          <div className={isDesktop ? "max-w-3xl mx-auto" : ""}>
+            <PainelPanel finance={finance} isDesktop={isDesktop} />
+          </div>
+        </div>
+      ) : items.length > 0 ? (
         <div className={`flex-1 min-h-0 flex flex-col ${isDesktop ? "items-center justify-center gap-6 px-10 py-4" : ""}`}>
           <div className={isDesktop ? cardBox : `flex-1 min-h-0 ${px} pt-1 pb-2`} style={isDesktop ? { height: 420 } : undefined}>
             <div className={isDesktop ? "relative w-full h-full" : cardBox}>
