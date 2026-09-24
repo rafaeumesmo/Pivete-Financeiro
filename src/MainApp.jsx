@@ -413,7 +413,7 @@ export default function MainApp() {
             {activeTab === "home" && <FinDeck isDesktop={false} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} />}
             {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
             {activeTab === "activity" && (
-              <ActivityTab finance={finance} isDesktop={false} showToast={showToast} onPago={handlePagoFora} />
+              <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
             )}
             {activeTab === "create" && (
               <NovoLancamentoForm
@@ -491,7 +491,7 @@ export default function MainApp() {
             {activeTab === "activity" && (
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto">
-                  <ActivityTab finance={finance} isDesktop={true} showToast={showToast} onPago={handlePagoFora} />
+                  <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
                 </div>
               </div>
             )}

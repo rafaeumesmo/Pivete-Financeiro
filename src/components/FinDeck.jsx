@@ -134,7 +134,7 @@ export function FinDeck({
       <div className={`flex-shrink-0 ${px} ${isDesktop ? "pt-6" : "pt-1"} pb-3`}>
         <div className={`flex items-center gap-3 ${isDesktop ? "justify-between" : "flex-col items-stretch"}`}>
           <div className="flex bg-white/[0.05] border border-white/[0.07] p-1 rounded-xl" role="tablist">
-            {[{ id: "contas", label: "Contas", badge: deck.length }, { id: "painel", label: "Painel" }].map(t => (
+            {[{ id: "painel", label: "Painel" }, { id: "contas", label: "Contas", badge: deck.length }].map(t => (
               <button key={t.id} role="tab" aria-selected={mode === t.id} onClick={() => setMode(t.id)} className={`flex-1 px-4 py-1.5 rounded-lg text-[12px] font-semibold whitespace-nowrap transition flex items-center justify-center gap-1.5 ${mode === t.id ? "bg-white/[0.12] text-white" : "text-white/40 hover:text-white/60"}`}>
                 {t.label}
                 {t.badge > 0 && <span className="text-[10px] tabular-nums text-white/40">{t.badge}</span>}

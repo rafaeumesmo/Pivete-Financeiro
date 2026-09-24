@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FinCalendar } from "./FinCalendar.jsx";
 import { CaixinhasPanel } from "./CaixinhasPanel.jsx";
-import { PainelPanel } from "./PainelPanel.jsx";
 import { FixosDividasPanel } from "./FixosDividasPanel.jsx";
 import { ExtratoPanel } from "./ExtratoPanel.jsx";
 import { LancamentoEditSheet } from "./LancamentoEditSheet.jsx";
@@ -10,12 +9,12 @@ import { ContaPickerSheet } from "./FinDeck.jsx";
 import { formatBRL } from "../lib/money.js";
 import { jurosAlto } from "../lib/finance.js";
 
-// Aba Atividade: 5 sub-abas (ex-Calendário/Listas/Status/Compromissos/Histórico).
-export function ActivityTab({ finance, isDesktop, showToast, onPago }) {
+// Aba Atividade: 4 sub-abas (ex-Calendário/Listas/Status/Compromissos/Histórico).
+export function ActivityTab({ finance, showToast, onPago }) {
   const [subTab, setSubTab] = useState("calendario");
   const [editando, setEditando] = useState(null);
   const [pagando, setPagando] = useState(null);
-  const { lancamentos, metas, dividas, recorrentes, contas } = finance;
+  const { metas, dividas, recorrentes, contas } = finance;
 
   function pagar(l, contaId) {
     const r = finance.pagar(l.id, contaId);
@@ -28,11 +27,9 @@ export function ActivityTab({ finance, isDesktop, showToast, onPago }) {
     else pagar(l, contas[0]?.id);
   }
 
-  const adiados = lancamentos.filter(l => l.status === "adiado").length;
   const tabs = [
     { id: "calendario", label: "Calendário" },
     { id: "caixinhas",  label: "Caixinhas" },
-    { id: "painel",     label: "Painel",           badge: adiados },
     { id: "fixos",      label: "Fixos & Dívidas",  badge: dividas.filter(d => d.saldoDevedor > 0 && jurosAlto(d)).length },
     { id: "extrato",    label: "Extrato" },
   ];
@@ -63,7 +60,6 @@ export function ActivityTab({ finance, isDesktop, showToast, onPago }) {
       <div className="px-5 pt-5 pb-10">
         {subTab === "calendario" && <FinCalendar finance={finance} onPagar={pedirPagamento} onEditar={setEditando} />}
         {subTab === "caixinhas"  && <CaixinhasPanel finance={finance} showToast={showToast} onActivity={() => onPago?.(null, {})} />}
-        {subTab === "painel"     && <PainelPanel finance={finance} isDesktop={isDesktop} />}
         {subTab === "fixos"      && <FixosDividasPanel finance={finance} showToast={showToast} />}
         {subTab === "extrato"    && <ExtratoPanel finance={finance} onEditar={setEditando} />}
       </div>
