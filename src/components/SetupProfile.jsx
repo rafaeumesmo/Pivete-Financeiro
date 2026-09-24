@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { normalizeUsername } from "../lib/username";
 import { useUsernameStatus } from "../hooks/useUsernameStatus.js";
 import { UsernameHint } from "./UsernameHint.jsx";
+import { Brand } from "./Brand.jsx";
 
 const EMOJIS = ["😎","🚀","⚡","🎯","🔥","💡","🧠","🏆","🎮","🦊","🐼","🌟","🎸","🎪","🌈","🍕"];
 
@@ -44,7 +45,7 @@ export function SetupProfile({ onCreate, onCheckUsername, localProfile }) {
         <div className="px-6 pt-6 pb-5 border-b border-white/[0.06]">
           <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-0.5">Bem-vindo ao</p>
           <h2 className="text-xl font-black text-white leading-none">
-            Task<span style={{ color: "#2563eb" }}>Match</span>{" "}
+            <Brand />{" "}
             <span className="text-white/30 font-normal text-base">Social</span>
           </h2>
         </div>

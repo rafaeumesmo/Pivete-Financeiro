@@ -1,20 +1,20 @@
 import { useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
-import { todayKey } from "../lib/dates.js";
+import { todayKey, toDateStr } from "../lib/dates.js";
 
 function getWeekDots(streak) {
   const today = todayKey();
   const dots = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    dots.push(d.toISOString().slice(0, 10));
+    dots.push(toDateStr(d));
   }
   if (!streak.lastActiveDate) return dots.map(d => ({ date: d, active: false, isToday: d === today }));
   const activeDates = new Set();
   for (let i = 0; i < streak.count; i++) {
     const d = new Date(streak.lastActiveDate + "T00:00:00"); d.setDate(d.getDate() - i);
-    activeDates.add(d.toISOString().slice(0, 10));
+    activeDates.add(toDateStr(d));
   }
   return dots.map(d => ({ date: d, active: activeDates.has(d), isToday: d === today }));
 }

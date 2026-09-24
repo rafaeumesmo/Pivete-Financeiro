@@ -5,6 +5,8 @@ import { PollResults } from "./PollResults.jsx";
 import { BoraDeck, gradientFor } from "./BoraDeck.jsx";
 import { BoraTournament } from "./BoraTournament.jsx";
 import { getNick, setNick as persistNick } from "../lib/anon";
+import { Brand } from "./Brand.jsx";
+import { APP_NAME } from "../config.js";
 
 function getPollId() {
   const m = window.location.hash.match(/^#\/bora\/([^/?]+)/);
@@ -26,7 +28,7 @@ function Branding() {
   return (
     <div className="flex items-center justify-center gap-1.5 py-4 flex-shrink-0">
       <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/30">feito no</span>
-      <span className="text-sm font-black text-white">Task<span style={{ color: "#2563eb" }}>Match</span></span>
+      <span className="text-sm font-black text-white"><Brand /></span>
     </div>
   );
 }
@@ -38,7 +40,7 @@ function CreateCTA() {
       className="mt-6 block rounded-2xl px-5 py-4 text-center transition hover:brightness-110"
       style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.15), rgba(124,58,237,0.15))", border: "1px solid rgba(255,255,255,0.08)" }}
     >
-      <p className="text-sm font-semibold text-white">Gostou? Crie seu Bora no TaskMatch</p>
+      <p className="text-sm font-semibold text-white">Gostou? Crie seu Bora no {APP_NAME}</p>
       <p className="text-[12px] text-white/40 mt-0.5">Decisões em grupo no swipe — de graça, sem complicação.</p>
     </a>
   );

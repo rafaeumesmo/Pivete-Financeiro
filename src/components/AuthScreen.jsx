@@ -16,7 +16,7 @@ export function AuthScreen({ onSendLink }) {
       setSent(true);
     } catch (err) {
       // Mensagem amigável em vez do erro cru do Supabase.
-      console.error("[TaskMatch] Falha no magic link:", err);
+      console.error("[auth] Falha no magic link:", err);
       setError("Não foi possível entrar, tente novamente.");
     } finally {
       setLoading(false);

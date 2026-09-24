@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "./supabaseClient";
+import { APP_NAME } from "./config.js";
 
 function decodeInvite(hash) {
   try {
@@ -84,7 +85,7 @@ export default function InvitePage() {
         className="text-center mb-8"
       >
         <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-1.5">
-          TaskMatch
+          {APP_NAME}
         </p>
         <h1 className="text-xl font-bold text-white">Você foi convidado</h1>
         <p className="text-sm text-white/35 mt-1">Aceite ou recuse esta tarefa</p>

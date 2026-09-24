@@ -11,8 +11,8 @@ export function SnoozeSetupModal({ onChoose }) {
         <div className="px-6 pt-6 pb-6">
           <div className="flex flex-col items-center text-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-2xl mb-4">⏰</div>
-            <h2 className="text-base font-bold text-white mb-1.5">Quando tarefas adiadas devem voltar?</h2>
-            <p className="text-[12px] text-white/35 leading-relaxed">Você pode mudar essa preferência depois em Configurações.</p>
+            <h2 className="text-base font-bold text-white mb-1.5">Quando contas adiadas devem voltar pro deck?</h2>
+            <p className="text-[12px] text-white/35 leading-relaxed">Você pode mudar essa preferência depois no Perfil.</p>
           </div>
           <div className="flex gap-3">
             <motion.button

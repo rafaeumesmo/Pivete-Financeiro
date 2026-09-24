@@ -1,5 +1,5 @@
 /*
- * Regras de username do TaskMatch.
+ * Regras de username do app.
  * - Único no sistema (constraint UNIQUE em profiles.username — ver schema.sql).
  * - Sempre salvo em minúsculas, sem espaços e sem @, pra "Marina" e "marina"
  *   serem a mesma pessoa.

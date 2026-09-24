@@ -649,9 +649,9 @@ function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareI
 export function SocialExplore({
   isDesktop, isLoggedIn, userId, social, tasks,
   invites, addRecipient, updateRecipientStatus, shareInvite, onMassSend, onResendFavorites,
-  showToast, unreadCount, onCreatePoll, onShareTask, onRequireLogin,
+  showToast, unreadCount, onCreatePoll, onShareTask, onRequireLogin, initialTab = "amigos",
 }) {
-  const [subTab, setSubTab] = useState("amigos"); // "amigos" | "enviados"
+  const [subTab, setSubTab] = useState(initialTab); // "amigos" | "enviados"
   const favoritesCount = social.friends.filter(f => f.isCloseFriend).length;
 
   const tabs = [

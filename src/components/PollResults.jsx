@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
+import { APP_NAME } from "../config.js";
 
 const ACCENT = "#7c3aed";
 
@@ -22,7 +23,7 @@ function buildResultImage(poll, tally, totalVoters) {
 
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.font = "600 30px system-ui, sans-serif";
-  ctx.fillText("BORA?  ·  feito no TaskMatch", pad, 90);
+  ctx.fillText(`BORA?  ·  feito no ${APP_NAME}`, pad, 90);
 
   ctx.fillStyle = "#fff";
   ctx.font = "800 60px system-ui, sans-serif";

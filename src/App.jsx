@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import TaskMatch from "./TaskMatch.jsx";
+import MainApp from "./MainApp.jsx";
 import InvitePage from "./InvitePage.jsx";
 import BoraPage from "./components/BoraPage.jsx";
 
@@ -21,5 +21,5 @@ export default function App() {
 
   if (route === "invite") return <InvitePage />;
   if (route === "bora")   return <BoraPage />;
-  return <TaskMatch />;
+  return <MainApp />;
 }
