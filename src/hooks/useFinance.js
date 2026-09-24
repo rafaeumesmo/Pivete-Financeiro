@@ -3,7 +3,7 @@ import { SK, usePersistedState } from "../lib/storage.js";
 import { DEFAULT_CATEGORIAS } from "../lib/categories.js";
 import { todayKey } from "../lib/dates.js";
 import {
-  materializar, mergeNovos, adiamentoExpirado, aplicarPagamento, makeId, custoEfetivo,
+  materializar, mergeNovos, adiamentoExpirado, aplicarPagamento, makeId, custoEfetivo, gerarParcelamento,
 } from "../lib/finance.js";
 import { splitCents } from "../lib/money.js";
 
@@ -111,9 +111,44 @@ export function useFinance() {
     setLancamentos(prev => [...prev, ...novos]);
   }
 
+  // Tela "Novo lançamento". Três formas:
+  // - avulso: 1 lançamento;
+  // - fixo (recorrente): cria a recorrência a partir de `data`; os
+  //   lançamentos saem da materialização (useEffect acima);
+  // - parcelado: N lançamentos mensais ligados (gerarParcelamento).
+  // `pago` quita na hora o primeiro lançamento e mexe no saldo da conta.
+  function criarLancamento({ tipo, valor, categoria, descricao, data, recorrente, parcelas, pago, contaId }) {
+    const conta = contaDe(contaId);
+    const quitado = pago ? { status: "pago", pagoEm: new Date().toISOString(), contaId: conta?.id ?? null } : { status: "pendente" };
+    const base = { tipo, categoria, descricao };
+
+    if (recorrente) {
+      const rec = { id: makeId("rec"), nome: descricao, valor, categoria, tipo, ...recorrente, ativo: true, inicio: data };
+      if (pago) {
+        // Grava já a 1ª ocorrência como paga (mesmo id que a materialização
+        // geraria) e marca a recorrência como gerada até ela.
+        setLancamentos(prev => [...prev, { ...base, id: `r:${rec.id}:${data}`, valor, data, recorrenteId: rec.id, ...quitado }]);
+        rec.geradoAte = data;
+      }
+      setRecorrentes(prev => [...prev, rec]);
+    } else if (parcelas) {
+      const ls = gerarParcelamento({ ...base, valorTotal: valor, parcelas, data, descricao });
+      if (pago) Object.assign(ls[0], quitado);
+      setLancamentos(prev => [...prev, ...ls]);
+      if (pago) valor = ls[0].valor;
+    } else {
+      setLancamentos(prev => [...prev, { ...base, id: makeId("l"), valor, data, ...quitado }]);
+    }
+
+    if (pago && conta) {
+      moverSaldo(conta.id, tipo === "entrada" ? valor : -valor);
+      setContaPadrao(conta.id);
+    }
+  }
+
   return {
     lancamentos, recorrentes, dividas, contas, metas, categorias, revisoes, contaPadrao,
     setLancamentos, setRecorrentes, setDividas, setContas, setMetas, setCategorias, setRevisoes,
-    pagar, adiar, dividir, revisar, limparRevisoes, adicionarLancamentos, moverSaldo, custoEfetivo,
+    pagar, adiar, dividir, revisar, limparRevisoes, adicionarLancamentos, criarLancamento, moverSaldo, custoEfetivo,
   };
 }

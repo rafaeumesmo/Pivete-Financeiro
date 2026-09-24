@@ -8,7 +8,6 @@ import { UsernameHint } from "./components/UsernameHint.jsx";
 import { normalizeUsername } from "./lib/username.js";
 import { AuthScreen } from "./components/AuthScreen.jsx";
 import { SetupProfile } from "./components/SetupProfile.jsx";
-import { ShareToFeedModal } from "./components/ShareToFeedModal.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
 import { CommitmentFormModal } from "./components/CommitmentFormModal.jsx";
@@ -16,8 +15,7 @@ import { migrateAnonPolls } from "./lib/polls.js";
 import { todayKey, daysBetween, addDays, computeSnoozeUntil, toDateStr } from "./lib/dates.js";
 import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
-import { CreateTaskForm } from "./components/CreateTaskForm.jsx";
-import { ONBOARDING_GRADIENTS } from "./lib/categories.js";
+import { NovoLancamentoForm } from "./components/NovoLancamentoForm.jsx";
 import { Toast } from "./components/Toast.jsx";
 import { NavBadge } from "./components/NavBadge.jsx";
 import { Onboarding } from "./components/Onboarding.jsx";
@@ -140,7 +138,6 @@ export default function MainApp() {
         avatar: auth.profile.avatar_emoji || "👤",
       }
     : profile;
-  const [shareToFeedTask,    setShareToFeedTask]    = useState(null);
   const [showAuthModal,      setShowAuthModal]      = useState(false);
 
   // Estados voláteis — resetam no reload (intencionalmente)
@@ -159,7 +156,6 @@ export default function MainApp() {
     displayProfile.handle,
   );
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
-  const [newTaskData,       setNewTaskData]       = useState({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null, items: [], isChecklist: false });
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load(SK.onboarded, false));
   const [exploreSeenAt,     setExploreSeenAt]     = usePersistedState(SK.exploreSeenAt, null);
   const [showStreakDetail,  setShowStreakDetail]  = useState(false);
@@ -175,7 +171,6 @@ export default function MainApp() {
   const [showCreatePollModal,  setShowCreatePollModal]  = useState(false);
   const [showNotifSettings,    setShowNotifSettings]    = useState(false);
 
-  const imageInputRef = useRef(null);
   const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
 
   useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
@@ -357,22 +352,12 @@ export default function MainApp() {
     showToast("Dados apagados.", "bg-red-600/90");
   }
 
-  function handleCreateTaskSubmit(e) {
-    e.preventDefault();
-    if (!newTaskData.title.trim()) { showToast("Preencha o título.", "bg-red-600/90"); return; }
-    if (!newTaskData.isChecklist && !newTaskData.description.trim()) { showToast("Preencha a descrição.", "bg-red-600/90"); return; }
-    if (newTaskData.isChecklist && !newTaskData.items.some(i => i.text.trim())) { showToast("Adicione pelo menos 1 item.", "bg-red-600/90"); return; }
-    const cleanItems = newTaskData.isChecklist ? newTaskData.items.filter(i => i.text.trim()).map((item, i) => ({ ...item, text: item.text.trim(), order: i })) : undefined;
-    const newTask = { id: nextTaskId, title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-sky-600 via-cyan-600 to-emerald-600", accent: ONBOARDING_GRADIENTS[newTaskData.category]?.accent || "#22c55e", priority: newTaskData.priority, deadline: newTaskData.deadline || null, image: newTaskData.image || null, ...(cleanItems ? { items: cleanItems } : {}) };
-    setTasks((prev) => [...prev, newTask]);
-    setNextTaskId((id) => id + 1);
-    setNewTaskData({ title: "", description: "", category: "Alimentação", emoji: "✨", priority: null, deadline: "", image: null, items: [], isChecklist: false });
-    showToast("Tarefa criada!", "bg-emerald-600/90");
+  function handleCriarLancamento(data) {
+    finance.criarLancamento(data);
+    registerActivity();
+    const extra = data.recorrente ? " · fixo" : data.parcelas ? ` · ${data.parcelas}x` : "";
+    showToast(`✓ ${data.tipo === "entrada" ? "Entrada" : "Saída"} de ${formatBRL(data.valor)} salva${extra}`, "bg-emerald-600/90");
     setActiveTab("home");
-  }
-
-  function handleShareNewTaskToFeed() {
-    setShareToFeedTask({ title: newTaskData.title.trim(), description: newTaskData.description.trim(), category: newTaskData.category, emoji: newTaskData.emoji || "✨", gradient: ONBOARDING_GRADIENTS[newTaskData.category]?.gradient || "from-blue-600 via-sky-600 to-cyan-600", image: newTaskData.image });
   }
 
   // ── Invite helpers ───────────────────────────────────────
@@ -641,7 +626,7 @@ export default function MainApp() {
       {!isDesktop && (
         <div className="flex flex-col w-full bg-[#111114] overflow-hidden" style={{ height: "100dvh" }}>
           <div className="flex-shrink-0 flex items-center justify-between px-5 pb-3 bg-[#111114]" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
-            <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-0.5">{APP_TAGLINE}</p></div>
+            <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-0.5 whitespace-nowrap max-[400px]:hidden">{APP_TAGLINE}</p></div>
             <div className="flex items-center gap-1">
               <StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} />
               {!auth.isLoggedIn && (
@@ -672,15 +657,13 @@ export default function MainApp() {
               <ActivityTab decisions={decisions} stats={stats} streak={streak} tasks={tasks} onNavigate={setActiveTab} onWakeTask={handleWakeTask} onSnoozeMore={handleSnoozeMore} commitments={commitments} commitmentLog={commitmentLog} onLogCommitment={handleLogCommitment} onScheduleTask={handleScheduleTask} onCreateCommitment={() => setShowCreateCommitment(true)} onEditCommitment={c => setEditingCommitment(c)} onTogglePauseCommitment={handleTogglePauseCommitment} onDeleteCommitment={handleDeleteCommitment} onToggleItem={handleToggleItem} onAddItem={handleAddListItem} onCompleteChecklist={handleCompleteChecklist} onCreateChecklist={handleCreateChecklist} />
             )}
             {activeTab === "create" && (
-              <CreateTaskForm
+              <NovoLancamentoForm
                 isDesktop={false}
-                newTaskData={newTaskData}
-                setNewTaskData={setNewTaskData}
-                imageInputRef={imageInputRef}
+                categorias={finance.categorias}
+                contas={finance.contas}
+                contaPadrao={finance.contaPadrao}
                 onCancel={() => setActiveTab("home")}
-                onSubmit={handleCreateTaskSubmit}
-                canShareToFeed={auth.isLoggedIn && !!newTaskData.title.trim()}
-                onShareToFeed={handleShareNewTaskToFeed}
+                onSubmit={handleCriarLancamento}
                 showToast={showToast}
               />
             )}
@@ -753,15 +736,13 @@ export default function MainApp() {
               </div>
             )}
             {activeTab === "create" && (
-              <CreateTaskForm
+              <NovoLancamentoForm
                 isDesktop={true}
-                newTaskData={newTaskData}
-                setNewTaskData={setNewTaskData}
-                imageInputRef={imageInputRef}
+                categorias={finance.categorias}
+                contas={finance.contas}
+                contaPadrao={finance.contaPadrao}
                 onCancel={() => setActiveTab("home")}
-                onSubmit={handleCreateTaskSubmit}
-                canShareToFeed={auth.isLoggedIn && !!newTaskData.title.trim()}
-                onShareToFeed={handleShareNewTaskToFeed}
+                onSubmit={handleCriarLancamento}
                 showToast={showToast}
               />
             )}
@@ -818,14 +799,6 @@ export default function MainApp() {
             hasFreeze={streakBroken.hasFreeze}
             onUseFreeze={handleUseFreeze}
             onLetBreak={handleLetStreakBreak}
-          />
-        )}
-        {shareToFeedTask && (
-          <ShareToFeedModal
-            key="stfm"
-            task={shareToFeedTask}
-            onShare={social.shareTask}
-            onClose={() => setShareToFeedTask(null)}
           />
         )}
         {showAuthModal && !auth.isLoggedIn && (

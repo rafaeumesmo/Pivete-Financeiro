@@ -75,6 +75,15 @@ export function gerarParcelamento({ valorTotal, parcelas, data, descricao, ...ba
 }
 
 // ── Recorrentes ──────────────────────────────────────────────
+export const DAY_NAMES = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+export function diaSemanaLabel(dow) {
+  return `${dow === 0 || dow === 6 ? "Todo" : "Toda"} ${DAY_NAMES[dow]}`;
+}
+
+export function frequenciaLabel(rec) {
+  return rec.frequencia === "semanal" ? diaSemanaLabel(rec.diaSemana) : `Todo dia ${rec.dia}`;
+}
 // frequencia: "mensal" (todo mês no `dia`) | "semanal" (toda semana no `diaSemana`, 0=dom)
 
 export function ocorrencias(rec, de, ate) {
