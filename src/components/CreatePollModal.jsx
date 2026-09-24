@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPoll } from "../lib/polls";
 import { usePoll } from "../hooks/usePoll.js";
 import { PollResults } from "./PollResults.jsx";
+import { MoneyInput } from "./MoneyInput.jsx";
 
 const EMOJI_SUGGESTIONS = ["🎬", "🍕", "🍔", "🎮", "🏖️", "⚽", "🎸", "📍", "🛒", "🍻", "☕", "🏠"];
 
@@ -24,14 +25,14 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
   const [phase,   setPhase]   = useState("form"); // form | done
   const [title,   setTitle]   = useState("");
   const [type,    setType]    = useState("single");
-  const [options, setOptions] = useState([{ emoji: "", label: "" }, { emoji: "", label: "" }]);
+  const [options, setOptions] = useState([{ emoji: "", label: "", budget: 0 }, { emoji: "", label: "", budget: 0 }]);
   const [creating, setCreating] = useState(false);
   const [error,   setError]   = useState("");
   const [createdId, setCreatedId] = useState(null);
   const [showResults, setShowResults] = useState(false);
 
   function setOpt(i, patch) { setOptions((prev) => prev.map((o, idx) => idx === i ? { ...o, ...patch } : o)); }
-  function addOpt() { if (options.length < 10) setOptions((prev) => [...prev, { emoji: "", label: "" }]); }
+  function addOpt() { if (options.length < 10) setOptions((prev) => [...prev, { emoji: "", label: "", budget: 0 }]); }
   function removeOpt(i) { if (options.length > 2) setOptions((prev) => prev.filter((_, idx) => idx !== i)); }
 
   async function handleGenerate() {
@@ -121,7 +122,8 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
                   <label className="block text-[10px] font-semibold tracking-widest uppercase text-white/35 mb-2">Opções (mín. 2)</label>
                   <div className="flex flex-col gap-2">
                     {options.map((opt, i) => (
-                      <div key={i} className="flex items-center gap-2">
+                      <div key={i} className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
                         <input
                           value={opt.emoji}
                           onChange={(e) => setOpt(i, { emoji: e.target.value.slice(0, 2) })}
@@ -139,6 +141,13 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         )}
+                      </div>
+                      <div className="flex items-center gap-2 pl-[52px]">
+                        <span className="text-[11px] text-white/30 flex-shrink-0">💸 por pessoa</span>
+                        <MoneyInput ariaLabel={`Orçamento por pessoa da opção ${i + 1}`} value={opt.budget} onChange={(budget) => setOpt(i, { budget })}
+                          className={`w-28 rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#2563eb]/60 ${opt.budget ? "text-white" : "text-white/25"}`} />
+                        {opt.budget > 0 && <button type="button" onClick={() => setOpt(i, { budget: 0 })} className="text-[11px] text-white/30 hover:text-white/60">limpar</button>}
+                      </div>
                       </div>
                     ))}
                   </div>

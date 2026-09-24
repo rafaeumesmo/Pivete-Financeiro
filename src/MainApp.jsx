@@ -3,6 +3,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useAuth } from "./hooks/useAuth.js";
 import { useSocial } from "./hooks/useSocial.js";
+import { useSplits } from "./hooks/useSplits.js";
+import { useCobrancas } from "./hooks/useCobrancas.js";
 import { useUsernameStatus } from "./hooks/useUsernameStatus.js";
 import { UsernameHint } from "./components/UsernameHint.jsx";
 import { normalizeUsername } from "./lib/username.js";
@@ -32,22 +34,6 @@ import { avaliarConquistas, CONQUISTAS } from "./lib/conquistas.js";
 // Anti-spam keys for notifications (1 dispatch per type per day)
 const NOTIF_LAST_PEAK   = "fin_notif_last_peak";
 const NOTIF_LAST_STREAK = "fin_notif_last_streak";
-
-// URL-safe base64: replaces +/= so links survive WhatsApp, email, SMS
-function b64encode(obj) {
-  return btoa(encodeURIComponent(JSON.stringify(obj)))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-}
-function computeUnreadCount(invites, lastSeenAt) {
-  let count = 0;
-  for (const invite of invites) {
-    for (const r of invite.recipients) {
-      if (r.status === "pending") continue;
-      if (lastSeenAt === null || (r.updatedAt && r.updatedAt > lastSeenAt)) count++;
-    }
-  }
-  return count;
-}
 
 // ── Notification helpers ──────────────────────────────────────
 // NOTE: Notifications only fire while the app tab is open. There is no service
@@ -108,17 +94,18 @@ export default function MainApp() {
   // Estados persistidos — sobrevivem ao reload
   const finance = useFinance();
   const [stats,     setStats]     = usePersistedState(SK.stats,   { accepted: 0, rejected: 0, shared: 0 });
-  const [invites,   setInvites]   = usePersistedState(SK.invites, []);
   const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@voce", avatar: "👤" });
   const [_decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
   const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
   const [reservaMeses,  setReservaMeses]  = usePersistedState(SK.reservaMeses, 6);
   const [conquistas,    setConquistas]    = usePersistedState(SK.conquistas, {});
-  const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
+  const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, permission: "default" });
 
   // ── Camada social (Supabase) ──────────────────────────────
   const auth   = useAuth();
   const social = useSocial(auth.user?.id);
+  const splits = useSplits(auth.user?.id);
+  const cob    = useCobrancas(finance);
 
   // Perfil efetivo da UI: logado → tabela "profiles" do Supabase é a fonte de
   // verdade; deslogado → perfil local do localStorage. Assim o nome/nick/emoji
@@ -135,7 +122,7 @@ export default function MainApp() {
   // Estados voláteis — resetam no reload (intencionalmente)
   const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
   const [activeTab,         setActiveTab]         = useState("home");
-  const [socialTab,         setSocialTab]         = useState("amigos"); // sub-aba inicial ao abrir o Social
+  const [socialTab,         setSocialTab]         = useState("cobrancas"); // sub-aba inicial ao abrir o Social
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [profileEditError,  setProfileEditError]  = useState("");
   const [savingProfile,     setSavingProfile]     = useState(false);
@@ -149,7 +136,6 @@ export default function MainApp() {
   );
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
   const [showOnboarding,    setShowOnboarding]    = useState(() => !load(SK.onboarded, false));
-  const [exploreSeenAt,     setExploreSeenAt]     = usePersistedState(SK.exploreSeenAt, null);
   const [showStreakDetail,  setShowStreakDetail]  = useState(false);
   const [streakBroken,     setStreakBroken]      = useState(null); // null | { oldCount, hasFreeze }
   const [riskDismissed,    setRiskDismissed]     = useState(false);
@@ -162,9 +148,8 @@ export default function MainApp() {
 
   useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
   useEffect(() => {
-    if (activeTab === "social") setExploreSeenAt(new Date().toISOString());
-    else setSocialTab("amigos");
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps -- setExploreSeenAt é o setter de usePersistedState, estável
+    if (activeTab !== "social") setSocialTab("cobrancas");
+  }, [activeTab]);
 
   useEffect(() => {
     const today = todayKey();
@@ -202,7 +187,6 @@ export default function MainApp() {
     setTimeout(() => showToast(`${q.icon} Conquista: ${q.nome} · +${q.xp} XP`, "bg-amber-600/90 backdrop-blur-md"), 900);
   }, [finance.lancamentos, finance.dividas, finance.metas, finance.revisoes, finance.recorrentes, streak, reservaMeses]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const unreadCount = computeUnreadCount(invites, exploreSeenAt);
 
   // Streak risk: last active was yesterday, hour >= 18, hasn't decided today
   const streakAtRisk = (() => {
@@ -330,10 +314,10 @@ export default function MainApp() {
     setConquistas({});
     setReservaMeses(6);
     setStats({ accepted: 0, rejected: 0, shared: 0 });
-    setInvites([]);
+    cob.setCobrancas([]);
     setDecisions([]);
     setStreak({ count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
-    setNotifSettings({ enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
+    setNotifSettings({ enabled: false, peakReminder: true, streakAlert: true, permission: "default" });
     showToast("Dados apagados.", "bg-red-600/90");
   }
 
@@ -344,113 +328,6 @@ export default function MainApp() {
     showToast(`✓ ${data.tipo === "entrada" ? "Entrada" : "Saída"} de ${formatBRL(data.valor)} salva${extra}`, "bg-emerald-600/90");
     setActiveTab("home");
   }
-
-  // ── Invite helpers ───────────────────────────────────────
-  function addRecipient(inviteId, name) {
-    if (!name.trim()) return;
-    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: [...inv.recipients, { id: Date.now(), name: name.trim(), status: "pending" }] } : inv));
-  }
-  function updateRecipientStatus(inviteId, recipientId, status) {
-    // Capture before state update for notification
-    const invite    = invites.find(inv => inv.id === inviteId);
-    const recipient = invite?.recipients.find(r => r.id === recipientId);
-    setInvites((prev) => prev.map((inv) => inv.id === inviteId ? { ...inv, recipients: inv.recipients.map((r) => r.id === recipientId ? { ...r, status, updatedAt: new Date().toISOString() } : r) } : inv));
-    // Invite-reply notification (event-driven, no anti-spam beyond unique tag per recipient)
-    // When adding Supabase realtime: call notify() inside the channel.on('UPDATE', ...) callback here.
-    if (notifSettings.enabled && notifSettings.inviteReplies && recipient) {
-      const verb = status === "accepted" ? "aceitou" : "recusou";
-      notify(`${recipient.name} ${verb} "${invite.title}"`, status === "accepted" ? "Tarefa aceita ✓" : "Tarefa recusada.", `invite-reply-${recipientId}`);
-    }
-  }
-  function shareInvite(invite) {
-    const payload = {
-      id: invite.id, // correlação fraca — deixa quem recebeu registrar a resposta em invite_link_responses
-      title: invite.title,
-      description: invite.description,
-      emoji: invite.emoji,
-      category: invite.category,
-      gradient: invite.gradient,
-      accent: invite.accent || "#2563eb",
-    };
-    const encoded = b64encode(payload);
-    const url = `${window.location.origin}${window.location.pathname}#/invite/${encoded}`;
-    if (navigator.share) {
-      navigator.share({ title: `${APP_NAME}: ${invite.title}`, text: invite.valorPorPessoa ? `Sua parte em "${invite.title}": ${formatBRL(invite.valorPorPessoa)}` : `Você foi convidado: "${invite.title}"`, url }).catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(url);
-      showToast("Link copiado!", "bg-emerald-600/90");
-    }
-  }
-
-  // ── Envio em massa (Supabase shared_tasks + rastreio local) ──────
-  // Publica a task no feed dos amigos (audience close=favoritos | friends=todos)
-  // e cria um invite local de rastreamento com os destinatários escolhidos,
-  // pra acompanhar respostas em "Convites enviados". As respostas reais do
-  // Supabase são sincronizadas no efeito abaixo.
-  async function handleMassSend(task, audience, recipientProfiles) {
-    const row = await social.massShare(task, audience); // lança em caso de erro
-    const newInvite = {
-      id: `social-${row?.id || Date.now()}`,
-      sharedTaskId: row?.id || null,
-      title: task.title,
-      description: task.description || "",
-      category: task.category || "",
-      emoji: task.emoji || "✨",
-      gradient: task.gradient || "from-blue-600 to-purple-700",
-      accent: task.accent || "#2563eb",
-      audience,
-      sentAt: new Date().toISOString(),
-      recipients: recipientProfiles.map((p) => ({
-        id: p.id, profileId: p.id, name: `@${p.username}`, username: p.username,
-        avatar: p.avatar_emoji, status: "pending",
-      })),
-    };
-    setInvites((prev) => [newInvite, ...prev]);
-    setActiveTab("social");
-  }
-
-  async function handleResendFavorites(invite) {
-    const favs = social.friends.filter((f) => f.isCloseFriend).map((f) => f.profile);
-    if (favs.length === 0) { showToast("Você ainda não tem favoritos.", "bg-white/10"); return; }
-    try {
-      await handleMassSend(
-        { title: invite.title, description: invite.description, category: invite.category, emoji: invite.emoji, gradient: invite.gradient, accent: invite.accent },
-        "close", favs,
-      );
-      showToast(`Reenviado para ${favs.length} favorito${favs.length > 1 ? "s" : ""}! ⭐`, "bg-emerald-600/90");
-    } catch (err) {
-      showToast(err.message || "Não foi possível reenviar.", "bg-red-600/90");
-    }
-  }
-
-  // Sincroniza o status dos destinatários dos invites sociais com as respostas
-  // reais vindas do Supabase (approved/reshared → aceito, rejected → recusou).
-  useEffect(() => {
-    if (!social.sentTasks?.length) return;
-    setInvites((prev) => {
-      let changed = false;
-      const next = prev.map((inv) => {
-        if (!inv.sharedTaskId) return inv;
-        const st = social.sentTasks.find((t) => t.id === inv.sharedTaskId);
-        if (!st) return inv;
-        const respMap = {};
-        for (const r of st.responses || []) respMap[r.responder_id] = r.response;
-        let invChanged = false;
-        const recipients = inv.recipients.map((rc) => {
-          const resp = respMap[rc.profileId];
-          if (!resp) return rc;
-          const status = resp === "rejected" ? "declined" : "accepted";
-          if (status === rc.status) return rc;
-          invChanged = true;
-          return { ...rc, status };
-        });
-        if (!invChanged) return inv;
-        changed = true;
-        return { ...inv, recipients };
-      });
-      return changed ? next : prev;
-    });
-  }, [social.sentTasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ao logar, vincula as enquetes criadas anonimamente à conta.
   useEffect(() => {
@@ -465,26 +342,11 @@ export default function MainApp() {
     setRiskDismissed(true); // banner some após a primeira decisão do dia
   }
 
-  // Conta dividida no deck: vira um convite de cobrança local em "Convites
-  // enviados", com link pra mandar pra quem vai dividir (Social).
+  // Conta dividida no deck: vira uma cobrança local com link pra mandar pra
+  // quem vai pagar a parte (Social → Cobranças).
   function handleDividido(l) {
-    const cat = finance.categorias.find(c => c.id === l.categoria);
-    setInvites((prev) => [{
-      id: l.divisao.cobrancaId,
-      lancamentoId: l.id,
-      title: l.descricao,
-      description: `Dividido em ${l.divisao.partes} · ${formatBRL(l.divisao.porPessoa)} por pessoa`,
-      emoji: cat?.icon || "💸",
-      category: cat?.nome || "",
-      gradient: cat?.gradient || "from-blue-600 to-purple-700",
-      accent: cat?.cor || "#2563eb",
-      valorTotal: l.valor,
-      valorPorPessoa: l.divisao.porPessoa,
-      partes: l.divisao.partes,
-      sentAt: new Date().toISOString(),
-      recipients: [],
-    }, ...prev]);
-    setSocialTab("enviados");
+    cob.criar(l);
+    setSocialTab("cobrancas");
     setActiveTab("social");
   }
 
@@ -549,7 +411,7 @@ export default function MainApp() {
 
           <div className="flex-1 min-h-0 overflow-hidden relative">
             {activeTab === "home" && <FinDeck isDesktop={false} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} />}
-            {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={[]} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
+            {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
             {activeTab === "activity" && (
               <ActivityTab finance={finance} isDesktop={false} showToast={showToast} onPago={handlePagoFora} />
             )}
@@ -581,7 +443,7 @@ export default function MainApp() {
           </div>
 
           <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={unreadCount + friendsPendingBadge} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
+            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
           </div>
         </div>
       )}
@@ -592,7 +454,7 @@ export default function MainApp() {
           <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
             <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-1 leading-snug">{APP_TAGLINE}</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
             <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={unreadCount + friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
+              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
               <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Decisões no deck</p>
@@ -625,7 +487,7 @@ export default function MainApp() {
                 <div className="flex-1 min-h-0"><FinDeck isDesktop={true} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} /></div>
               </>
             )}
-            {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} tasks={[]} invites={invites} addRecipient={addRecipient} updateRecipientStatus={updateRecipientStatus} shareInvite={shareInvite} onMassSend={handleMassSend} onResendFavorites={handleResendFavorites} showToast={showToast} unreadCount={unreadCount} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
+            {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
             {activeTab === "activity" && (
               <div className="flex-1 overflow-y-auto">
                 <div className="max-w-2xl mx-auto">
@@ -773,9 +635,8 @@ export default function MainApp() {
               )}
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden divide-y divide-white/[0.05]">
                 {[
-                  { key: "peakReminder",  icon: "⚡", label: "Lembrete no meu horário",         sub: "Avisa quando chega seu horário de pico" },
-                  { key: "streakAlert",   icon: "🔥", label: "Aviso de streak em risco",         sub: "Após 19h se você ainda não decidiu hoje" },
-                  { key: "inviteReplies", icon: "✉️", label: "Quando responderem meus convites", sub: "Ping imediato a cada resposta" },
+                  { key: "peakReminder",  icon: "⚡", label: "Lembrete no meu horário",         sub: "No horário em que você costuma revisar as contas" },
+                  { key: "streakAlert",   icon: "🔥", label: "Aviso de streak em risco",         sub: "Após 19h se você ainda não registrou nada hoje" },
                 ].map(({ key, icon, label, sub }) => (
                   <div key={key} className="flex items-center gap-3 px-4 py-3.5">
                     <span className="text-base w-6 text-center flex-shrink-0">{icon}</span>

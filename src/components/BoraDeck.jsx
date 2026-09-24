@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate, useReducedMotion } from "framer-motion";
+import { formatBRL } from "../lib/money.js";
 
 /*
  * Deck de swipe da votação "Bora?" — mesma mecânica do SwipeCard do Início
@@ -91,6 +92,7 @@ function BoraCard({ option, isTop, stackIndex, onSwipe }) {
         {/* Conteúdo */}
         <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
           <h2 className="text-2xl font-bold text-white tracking-tight leading-tight">{option.label}</h2>
+          {option.budget_cents > 0 && <span className="inline-block mt-1.5 text-[12px] font-semibold bg-black/30 text-white/85 px-2.5 py-1 rounded-full">💸 {formatBRL(option.budget_cents)} por pessoa</span>}
           {option.description && <p className="text-sm text-white/70 leading-relaxed mt-1.5">{option.description}</p>}
         </div>
 

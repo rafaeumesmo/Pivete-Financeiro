@@ -1,27 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { normalizeUsername } from "../lib/username";
-
-function loadSeenStories() {
-  try { return JSON.parse(localStorage.getItem("tm_stories_seen") || "{}"); } catch { return {}; }
-}
 
 export function useSocial(userId) {
   const [friends,         setFriends]         = useState([]);
   const [pendingIncoming, setPendingIncoming] = useState([]);
   const [pendingOutgoing, setPendingOutgoing] = useState([]);
-  const [feed,            setFeed]            = useState([]);
-  const [sentTasks,       setSentTasks]       = useState([]);
-  const [loading,         setLoading]         = useState(false);
   const [friendsLoading,  setFriendsLoading]  = useState(false);
-  const seenRef = useRef(loadSeenStories());
-
-  // ── seen tracking ─────────────────────────────────────────
-  function markSeen(taskId) {
-    seenRef.current[taskId] = true;
-    try { localStorage.setItem("tm_stories_seen", JSON.stringify(seenRef.current)); } catch {}
-  }
-  function isSeen(taskId) { return !!seenRef.current[taskId]; }
 
   // ── load friends ──────────────────────────────────────────
   const loadFriends = useCallback(async () => {
@@ -58,64 +43,15 @@ export function useSocial(userId) {
     setPendingOutgoing((out || []).map(f => ({ friendshipId: f.id, profile: f.target })));
   }, [userId]);
 
-  // ── load feed ─────────────────────────────────────────────
-  const loadFeed = useCallback(async () => {
-    if (!supabase || !userId) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("shared_tasks")
-      .select(`
-        *,
-        author:profiles!shared_tasks_author_id_fkey(id,username,display_name,avatar_emoji),
-        task_responses(
-          id, responder_id, response, created_at,
-          responder:profiles!task_responses_responder_id_fkey(id,username,avatar_emoji)
-        )
-      `)
-      .neq("author_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(40);
-    setLoading(false);
-    if (error) { console.error(error); return; }
-    setFeed((data || []).map(t => ({
-      ...t,
-      myResponse: t.task_responses?.find(r => r.responder_id === userId)?.response ?? null,
-      responses: t.task_responses || [],
-    })));
-  }, [userId]);
-
-  // ── load my sent tasks (broadcasts) + responses ───────────
-  // O autor consegue ler suas próprias shared_tasks e as respostas
-  // (policy task_responses_author_read). Usado na aba "Convites enviados".
-  const loadSentTasks = useCallback(async () => {
-    if (!supabase || !userId) return;
-    const { data, error } = await supabase
-      .from("shared_tasks")
-      .select(`
-        *,
-        task_responses(
-          id, responder_id, response, created_at,
-          responder:profiles!task_responses_responder_id_fkey(id,username,display_name,avatar_emoji)
-        )
-      `)
-      .eq("author_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(40);
-    if (error) { console.error(error); return; }
-    setSentTasks((data || []).map(t => ({ ...t, responses: t.task_responses || [] })));
-  }, [userId]);
-
   // ── initial load + realtime ───────────────────────────────
   useEffect(() => {
     if (!userId) {
-      setFriends([]); setPendingIncoming([]); setPendingOutgoing([]); setFeed([]); setSentTasks([]);
+      setFriends([]); setPendingIncoming([]); setPendingOutgoing([]);
       setFriendsLoading(false);
       return;
     }
     setFriendsLoading(true);
     Promise.all([loadFriends(), loadPending()]).finally(() => setFriendsLoading(false));
-    loadFeed();
-    loadSentTasks();
 
     if (!supabase) return;
 
@@ -124,36 +60,10 @@ export function useSocial(userId) {
       .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, () => {
         loadFriends(); loadPending();
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shared_tasks" }, () => {
-        loadFeed(); loadSentTasks();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_responses" }, () => {
-        loadFeed(); loadSentTasks();
-      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId, loadFriends, loadPending, loadFeed, loadSentTasks]);
-
-  // ── compute stories ───────────────────────────────────────
-  const stories = (() => {
-    const byAuthor = {};
-    for (const task of feed) {
-      if (!byAuthor[task.author_id]) {
-        byAuthor[task.author_id] = {
-          author: task.author,
-          tasks: [],
-          hasUnread: false,
-          isCloseFriend: friends.some(f => f.profile?.id === task.author_id && f.isCloseFriend),
-        };
-      }
-      byAuthor[task.author_id].tasks.push(task);
-      if (!task.myResponse && !isSeen(task.id)) byAuthor[task.author_id].hasUnread = true;
-    }
-    const list = Object.values(byAuthor);
-    list.sort((a, b) => (b.hasUnread ? 1 : 0) - (a.hasUnread ? 1 : 0));
-    return list;
-  })();
+  }, [userId, loadFriends, loadPending]);
 
   // ── actions ───────────────────────────────────────────────
   async function sendFriendRequest(username) {
@@ -215,7 +125,7 @@ export function useSocial(userId) {
       status: "accepted",
     }, { onConflict: "user_id,friend_id" });
 
-    await loadFriends(); await loadPending(); await loadFeed();
+    await loadFriends(); await loadPending();
   }
 
   async function rejectFriend(friendshipId) {
@@ -234,58 +144,6 @@ export function useSocial(userId) {
     setFriends(prev =>
       prev.map(f => f.profile?.id === friendId ? { ...f, isCloseFriend: isClose } : f)
     );
-  }
-
-  async function shareTask(task, audience) {
-    if (!supabase || !userId) throw new Error("Não autenticado");
-    const { error } = await supabase.from("shared_tasks").insert({
-      author_id: userId,
-      title: task.title,
-      description: task.description || "",
-      category: task.category || "",
-      emoji: task.emoji || "✨",
-      gradient: task.gradient || "",
-      image_url: task.image || task.image_url || null,
-      audience,
-    });
-    if (error) throw error;
-  }
-
-  // Envio em massa: cria uma shared_task com a audiência escolhida
-  // (close = só favoritos via RLS; friends = todos os amigos). Retorna a linha
-  // criada pra que a UI possa rastrear as respostas em "Convites enviados".
-  async function massShare(task, audience) {
-    if (!supabase || !userId) throw new Error("Não autenticado");
-    const { data, error } = await supabase
-      .from("shared_tasks")
-      .insert({
-        author_id: userId,
-        title: task.title,
-        description: task.description || "",
-        category: task.category || "",
-        emoji: task.emoji || "✨",
-        gradient: task.gradient || "",
-        image_url: task.image || task.image_url || null,
-        audience,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    await loadSentTasks();
-    return data;
-  }
-
-  async function respondToTask(sharedTaskId, response) {
-    if (!supabase || !userId) return;
-    const { error } = await supabase.from("task_responses").upsert(
-      { shared_task_id: sharedTaskId, responder_id: userId, response },
-      { onConflict: "shared_task_id,responder_id" }
-    );
-    if (error) throw error;
-    setFeed(prev => prev.map(t =>
-      t.id === sharedTaskId ? { ...t, myResponse: response } : t
-    ));
-    markSeen(sharedTaskId);
   }
 
   async function searchUsers(query) {
@@ -307,23 +165,12 @@ export function useSocial(userId) {
     friends,
     pendingIncoming,
     pendingOutgoing,
-    feed,
-    sentTasks,
-    stories,
-    loading,
     friendsLoading,
-    markSeen,
-    isSeen,
-    loadFeed,
-    loadSentTasks,
     sendFriendRequest,
     acceptFriend,
     rejectFriend,
     removeFriend,
     toggleCloseFriend,
-    shareTask,
-    massShare,
-    respondToTask,
     searchUsers,
   };
 }

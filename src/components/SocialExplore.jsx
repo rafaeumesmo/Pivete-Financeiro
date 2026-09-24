@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchMyPolls } from "../lib/polls";
-import { supabase } from "../supabaseClient";
+import { CobrancasPanel } from "./CobrancasPanel.jsx";
+import { DividirPanel } from "./DividirPanel.jsx";
 
 /*
- * SocialExplore — central social completa (aba Explorar).
+ * SocialExplore — aba Social: cobranças, divisão de contas (Supabase),
+ * amigos e enquetes Bora?.
  * Renderiza o MESMO conteúdo nos dois layouts; só o container muda:
  *   - mobile  (< 1024px): coluna única, largura toda, scroll vertical
  *   - desktop (≥ 1024px): container centralizado max-w-[720px], cards proporcionais
@@ -264,187 +266,6 @@ function FriendsPanel({ social, showToast, isDesktop }) {
 }
 
 // ── Card de envio em massa ───────────────────────────────────────
-function MassSendCard({ tasks, social, onMassSend, showToast, isDesktop }) {
-  const [selectedTaskId, setSelectedTaskId] = useState(tasks[0]?.id ?? null);
-  const [pickMode,       setPickMode]       = useState(false); // "escolher quem"
-  const [picked,         setPicked]         = useState(new Set());
-  const [sending,        setSending]        = useState(false);
-
-  const task = tasks.find(t => t.id === selectedTaskId) || tasks[0];
-  const favorites = social.friends.filter(f => f.isCloseFriend);
-
-  function togglePick(id) {
-    setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  }
-
-  async function send(audience, recipients) {
-    if (!task) { showToast("Crie ou tenha uma task primeiro.", "bg-white/10"); return; }
-    if (recipients.length === 0) { showToast("Selecione ao menos um destinatário.", "bg-white/10"); return; }
-    setSending(true);
-    try {
-      await onMassSend(task, audience, recipients);
-      showToast(`Task enviada para ${recipients.length} pessoa${recipients.length > 1 ? "s" : ""}! 🚀`, "bg-emerald-600/90");
-      setPickMode(false); setPicked(new Set());
-    } catch (err) {
-      showToast(err.message || "Não foi possível enviar.", "bg-red-600/90");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  if (!task) {
-    return (
-      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 text-center">
-        <p className="text-sm text-white/40">Sem tasks pra enviar</p>
-        <p className="text-[12px] text-white/25 mt-1">Crie uma task no Início para disparar pra galera.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-3xl border border-white/[0.08] overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(124,58,237,0.06))" }}>
-      <div className="px-5 pt-5 pb-3">
-        <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-[#93c5fd]/70 mb-0.5">Envio em massa</p>
-        <h3 className="text-base font-bold text-white">🚀 Enviar task pra galera</h3>
-      </div>
-
-      {/* Seletor de task */}
-      <div className="px-5 pb-3">
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {tasks.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setSelectedTaskId(t.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-shrink-0 transition ${
-                t.id === task.id ? "bg-white/[0.1] border-[#2563eb]/50" : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.07]"
-              }`}
-            >
-              <span className="text-lg">{t.emoji}</span>
-              <span className="text-[13px] text-white/80 whitespace-nowrap max-w-[140px] truncate">{t.title}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Ações */}
-      <div className="px-5 pb-5 flex flex-col gap-2.5">
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          disabled={sending || favorites.length === 0}
-          onClick={() => send("close", favorites.map(f => f.profile))}
-          className="w-full py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-40"
-          style={{ background: "rgba(52,211,153,0.15)", border: `1px solid rgba(52,211,153,0.35)`, color: FAV_GREEN }}
-        >
-          ⭐ Pros favoritos ({favorites.length})
-        </motion.button>
-        {favorites.length === 0 && (
-          <p className="text-[11px] text-white/25 text-center -mt-1">Marque amigos como favoritos na aba Amigos para liberar.</p>
-        )}
-
-        <button
-          onClick={() => setPickMode(p => !p)}
-          className="w-full py-3 rounded-2xl bg-white/[0.05] border border-white/[0.1] text-sm font-medium text-white/80 hover:bg-white/[0.08] transition flex items-center justify-center gap-2"
-        >
-          {pickMode ? "Fechar seleção" : "Escolher quem"}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-4 h-4 transition-transform ${pickMode ? "rotate-180" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-        </button>
-
-        <AnimatePresence>
-          {pickMode && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              {social.friends.length === 0 ? (
-                <p className="text-[12px] text-white/30 text-center py-3">Sem amigos para escolher.</p>
-              ) : (
-                <>
-                  <div className={`pt-1 ${isDesktop ? "grid grid-cols-2 gap-1.5" : "flex flex-col gap-1.5"}`} style={{ maxHeight: "40vh", overflowY: "auto" }}>
-                    {social.friends.map(({ profile, isCloseFriend }) => {
-                      const on = picked.has(profile.id);
-                      return (
-                        <button
-                          key={profile.id}
-                          onClick={() => togglePick(profile.id)}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border transition text-left ${
-                            on ? "bg-[#2563eb]/15 border-[#2563eb]/40" : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06]"
-                          }`}
-                        >
-                          <Avatar emoji={profile?.avatar_emoji} close={isCloseFriend} size="sm" />
-                          <span className="flex-1 text-[13px] text-white/80 truncate">@{profile?.username}</span>
-                          <span className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${on ? "bg-[#2563eb] border-[#2563eb]" : "border-white/20"}`}>
-                            {on && <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    disabled={sending || picked.size === 0}
-                    onClick={() => send("friends", social.friends.filter(f => picked.has(f.profile.id)).map(f => f.profile))}
-                    className="w-full mt-2.5 py-3 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-40 flex items-center justify-center gap-2"
-                  >
-                    {sending ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : `Enviar para ${picked.size} selecionado${picked.size !== 1 ? "s" : ""}`}
-                  </motion.button>
-                  <p className="text-[10px] text-white/20 mt-2 px-1 leading-relaxed">
-                    A task é publicada no feed dos seus amigos; você acompanha as respostas das pessoas escolhidas em Convites enviados.
-                  </p>
-                </>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-// ── Sub-aba CONVITES ENVIADOS ────────────────────────────────────
-function statusOf(r) {
-  // recipients de invites locais usam accepted/declined/pending
-  if (r.status === "accepted") return "accepted";
-  if (r.status === "declined") return "declined";
-  return "pending";
-}
-
-// Mostra quantas pessoas responderam pelo link público de convite
-// (#/invite/...), que não passa pelos "destinatários" nomeados abaixo — ver
-// InvitePage.jsx + tabela invite_link_responses no schema do Supabase.
-function LinkResponseBadge({ inviteId }) {
-  const [counts, setCounts] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    if (!supabase || !inviteId) return;
-    supabase
-      .from("invite_link_responses")
-      .select("decision")
-      .eq("invite_id", String(inviteId))
-      .then(({ data }) => {
-        if (!active || !data?.length) return;
-        setCounts({
-          accepted: data.filter((r) => r.decision === "accepted").length,
-          declined: data.filter((r) => r.decision === "declined").length,
-        });
-      });
-    return () => { active = false; };
-  }, [inviteId]);
-
-  if (!counts) return null;
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-      {counts.accepted > 0 && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
-          🔗 {counts.accepted} aceitou pelo link
-        </span>
-      )}
-      {counts.declined > 0 && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5 rounded-full">
-          🔗 {counts.declined} recusou pelo link
-        </span>
-      )}
-    </div>
-  );
-}
-
 function MyPolls({ userId, showToast }) {
   const [polls,   setPolls]   = useState([]);
   const [loading, setLoading] = useState(true);
@@ -494,169 +315,18 @@ function MyPolls({ userId, showToast }) {
   );
 }
 
-function SentInvitesPanel({ invites, addRecipient, updateRecipientStatus, shareInvite, onResendFavorites, favoritesCount, onCreatePoll, onShareTask, isLoggedIn, userId, showToast }) {
-  const [expandedId, setExpandedId] = useState(null);
-  const [inputValues, setInputValues] = useState({});
-
-  const color = (s) => s === "accepted" ? "text-emerald-400" : s === "declined" ? "text-red-400" : "text-white/30";
-  const label = (s) => s === "accepted" ? "Aceitou" : s === "declined" ? "Recusou" : "Aguardando";
-  const dot   = (s) => s === "accepted" ? "bg-emerald-400" : s === "declined" ? "bg-red-400" : "bg-white/20";
-
-  return (
-    <div className="flex flex-col gap-5">
-      <motion.button whileTap={{ scale: 0.97 }} onClick={onCreatePoll} className="w-full py-3 rounded-2xl bg-purple-500/15 border border-purple-500/25 text-purple-400 font-semibold text-sm hover:bg-purple-500/25 transition flex items-center justify-center gap-2">
-        <span>🗳️</span> Criar enquete (Bora?)
-      </motion.button>
-
-      {isLoggedIn && <MyPolls userId={userId} showToast={showToast} />}
-
-      <div className="flex flex-col gap-3">
-
-      {invites.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl bg-white/[0.03] border border-white/[0.06] p-12 text-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-xl text-white/20">↑</div>
-          <div>
-            <p className="text-sm font-medium text-white/40">Nenhum convite enviado ainda</p>
-            <p className="text-xs text-white/20 mt-1">Use o card de envio em massa ou arraste um card pra cima para delegar.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {invites.map((invite) => {
-            const isExpanded = expandedId === invite.id;
-            const recips = invite.recipients || [];
-            const accepted = recips.filter(r => statusOf(r) === "accepted").length;
-            const declined = recips.filter(r => statusOf(r) === "declined").length;
-            const pending  = recips.filter(r => statusOf(r) === "pending").length;
-
-            return (
-              <div key={invite.id} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] overflow-hidden">
-                <div className={`h-1 w-full bg-gradient-to-r ${invite.gradient || "from-blue-600 to-purple-700"}`} />
-                <div className="p-4">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${invite.gradient || "from-blue-600 to-purple-700"} flex items-center justify-center text-lg flex-shrink-0 shadow-lg`}>
-                      {invite.emoji}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/30">{invite.category}</span>
-                        {invite.audience === "close" && <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,0.15)", color: FAV_GREEN }}>⭐ favoritos</span>}
-                      </div>
-                      <p className="text-sm font-semibold text-white leading-tight">{invite.title}</p>
-                      {invite.description && <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{invite.description}</p>}
-                    </div>
-                    {onShareTask && (
-                      <button onClick={() => onShareTask({ title: invite.title, description: invite.description, category: invite.category, emoji: invite.emoji, gradient: invite.gradient, accent: invite.accent })} className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition" title="Compartilhar como imagem">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5 text-white/50"><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" /></svg>
-                      </button>
-                    )}
-                  </div>
-
-                  <LinkResponseBadge inviteId={invite.id} />
-
-                  {/* Avatares empilhados + status */}
-                  {recips.length > 0 && (
-                    <div className="flex items-center gap-3 mb-3 flex-wrap">
-                      <div className="flex">
-                        {recips.slice(0, 6).map((r, i) => (
-                          <div key={r.id} className="w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 border-[#15151a]" style={{ marginLeft: i > 0 ? "-7px" : 0, zIndex: 10 - i, background: "linear-gradient(135deg, rgba(124,58,237,0.3), rgba(37,99,235,0.3))" }}>
-                            {r.avatar || r.name?.[0]?.toUpperCase() || "👤"}
-                          </div>
-                        ))}
-                        {recips.length > 6 && <div className="w-7 h-7 rounded-full bg-white/[0.08] border-2 border-[#15151a] flex items-center justify-center text-[10px] text-white/50" style={{ marginLeft: "-7px" }}>+{recips.length - 6}</div>}
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {accepted > 0 && <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{accepted}</span>}
-                        {declined > 0 && <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />{declined}</span>}
-                        {pending  > 0 && <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white/30 bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-white/25" />{pending}</span>}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button onClick={() => setExpandedId(isExpanded ? null : invite.id)} className="flex items-center gap-1.5 text-[12px] text-white/40 hover:text-white/70 transition">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                      {recips.length === 0 ? "Adicionar destinatários" : `${recips.length} destinatário${recips.length > 1 ? "s" : ""}`}
-                    </button>
-                    {onResendFavorites && favoritesCount > 0 && (
-                      <button onClick={() => onResendFavorites(invite)} className="ml-auto flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg transition" style={{ background: "rgba(52,211,153,0.12)", color: FAV_GREEN, border: "1px solid rgba(52,211,153,0.25)" }}>
-                        ⭐ Reenviar pros favoritos
-                      </button>
-                    )}
-                  </div>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
-                        <div className="pt-3 flex flex-col gap-2">
-                          {recips.map((r) => {
-                            const s = statusOf(r);
-                            return (
-                              <div key={r.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0" style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.3), rgba(37,99,235,0.3))" }}>{r.avatar || r.name?.[0]?.toUpperCase() || "👤"}</div>
-                                <span className="flex-1 text-sm text-white/70 truncate">{r.name}</span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${dot(s)}`} />
-                                  <span className={`text-[11px] font-medium ${color(s)}`}>{label(s)}</span>
-                                </div>
-                                {s === "pending" && updateRecipientStatus && (
-                                  <div className="flex gap-1 ml-1">
-                                    <button onClick={() => updateRecipientStatus(invite.id, r.id, "accepted")} className="w-6 h-6 rounded-lg bg-emerald-400/15 border border-emerald-400/25 flex items-center justify-center hover:bg-emerald-400/25 transition" title="Simular aceitar">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3 text-emerald-400"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    </button>
-                                    <button onClick={() => updateRecipientStatus(invite.id, r.id, "declined")} className="w-6 h-6 rounded-lg bg-red-400/15 border border-red-400/25 flex items-center justify-center hover:bg-red-400/25 transition" title="Simular recusar">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3 text-red-400"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {addRecipient && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <input
-                                value={inputValues[invite.id] || ""}
-                                onChange={(e) => setInputValues((v) => ({ ...v, [invite.id]: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === "Enter") { addRecipient(invite.id, inputValues[invite.id] || ""); setInputValues((v) => ({ ...v, [invite.id]: "" })); } }}
-                                placeholder="Nome do destinatário..."
-                                className="flex-1 rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/50 transition"
-                              />
-                              <button onClick={() => { addRecipient(invite.id, inputValues[invite.id] || ""); setInputValues((v) => ({ ...v, [invite.id]: "" })); }} aria-label="Adicionar destinatário" className="w-9 h-9 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center hover:bg-[#2563eb]/30 transition flex-shrink-0">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                              </button>
-                              <button onClick={() => shareInvite(invite)} className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.09] transition flex-shrink-0" title="Compartilhar link">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4 text-white/40"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      </div>
-    </div>
-  );
-}
-
 // ── Componente principal ─────────────────────────────────────────
 export function SocialExplore({
-  isDesktop, isLoggedIn, userId, social, tasks,
-  invites, addRecipient, updateRecipientStatus, shareInvite, onMassSend, onResendFavorites,
-  showToast, unreadCount, onCreatePoll, onShareTask, onRequireLogin, initialTab = "amigos",
+  isDesktop, isLoggedIn, userId, social, splits, cob, finance, nome,
+  showToast, onCreatePoll, onRequireLogin, initialTab = "cobrancas",
 }) {
-  const [subTab, setSubTab] = useState(initialTab); // "amigos" | "enviados"
-  const favoritesCount = social.friends.filter(f => f.isCloseFriend).length;
+  const [subTab, setSubTab] = useState(initialTab); // "cobrancas" | "dividir" | "amigos"
+  const cobrancasAbertas = cob.cobrancas.filter(c => !c.arquivada).length;
 
   const tabs = [
-    { id: "amigos",   label: "Amigos",   badge: social.pendingIncoming.length },
-    { id: "enviados", label: "Convites enviados", badge: unreadCount },
+    { id: "cobrancas", label: "Cobranças", count: cobrancasAbertas },
+    { id: "dividir",   label: "Dividir" },
+    { id: "amigos",    label: "Amigos & Bora", badge: social.pendingIncoming.length },
   ];
 
   return (
@@ -666,24 +336,25 @@ export function SocialExplore({
       className={`flex flex-col h-full overflow-y-auto ${isDesktop ? "px-8 pt-8" : "px-5 pt-4"}`}
     >
       <div className={`w-full ${isDesktop ? "max-w-[720px] mx-auto" : ""} pb-10`}>
-        {/* Header */}
         <div className="mb-4">
           <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Social</p>
-          <h2 className={`font-bold text-white ${isDesktop ? "text-2xl" : "text-lg"}`}>Interagir</h2>
-          <p className="text-sm text-white/40 mt-0.5">Amigos, favoritos, delegações e enquetes.</p>
+          <h2 className={`font-bold text-white ${isDesktop ? "text-2xl" : "text-lg"}`}>Dividir e cobrar</h2>
+          <p className="text-sm text-white/40 mt-0.5">Só o que você escolhe dividir sai do seu aparelho.</p>
         </div>
 
-        {/* Toggle pill de sub-abas */}
-        <div className="inline-flex gap-1 bg-white/[0.05] border border-white/[0.07] p-1 rounded-xl mb-6">
+        <div className="flex gap-1 bg-white/[0.05] border border-white/[0.07] p-1 rounded-xl mb-6 overflow-x-auto" role="tablist">
           {tabs.map(tab => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={subTab === tab.id}
               onClick={() => setSubTab(tab.id)}
-              className={`relative px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+              className={`relative flex-1 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-sm font-medium transition ${
                 subTab === tab.id ? "bg-white/[0.12] text-white" : "text-white/40 hover:text-white/60"
               }`}
             >
               {tab.label}
+              {tab.count > 0 && <span className="ml-1 text-[11px] text-white/35 tabular-nums">{tab.count}</span>}
               {tab.badge > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-[3px]">
                   {tab.badge > 9 ? "9+" : tab.badge}
@@ -693,43 +364,38 @@ export function SocialExplore({
           ))}
         </div>
 
-        {/* Conteúdo */}
-        {subTab === "amigos" ? (
-          !isLoggedIn ? (
-            <LoginPrompt onRequireLogin={onRequireLogin} />
-          ) : (
-            <div className="flex flex-col gap-6">
-              <FriendsPanel social={social} showToast={showToast} isDesktop={isDesktop} />
-              <MassSendCard tasks={tasks} social={social} onMassSend={onMassSend} showToast={showToast} isDesktop={isDesktop} />
+        {subTab === "cobrancas" && <CobrancasPanel cob={cob} finance={finance} nome={nome} showToast={showToast} />}
+        {subTab === "dividir" && (
+          !isLoggedIn
+            ? <LoginPrompt onRequireLogin={onRequireLogin} texto="Entre pra criar grupos com amigos, lançar despesas divididas e ver quem deve pra quem. Seus saldos, contas e extrato continuam só neste aparelho." />
+            : <DividirPanel splits={splits} social={social} userId={userId} finance={finance} showToast={showToast} />
+        )}
+        {subTab === "amigos" && (
+          <div className="flex flex-col gap-6">
+            {isLoggedIn
+              ? <FriendsPanel social={social} showToast={showToast} isDesktop={isDesktop} />
+              : <LoginPrompt onRequireLogin={onRequireLogin} texto="Entre pra adicionar amigos e dividir contas com eles." />}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30">Bora? — decidir o rolê</h3>
+                <button onClick={onCreatePoll} className="px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-semibold text-purple-300 hover:bg-purple-500/30 transition">🗳️ Nova enquete</button>
+              </div>
+              <MyPolls userId={userId} showToast={showToast} />
             </div>
-          )
-        ) : (
-          <SentInvitesPanel
-            invites={invites}
-            addRecipient={addRecipient}
-            updateRecipientStatus={updateRecipientStatus}
-            shareInvite={shareInvite}
-            onResendFavorites={isLoggedIn ? onResendFavorites : null}
-            favoritesCount={favoritesCount}
-            onCreatePoll={onCreatePoll}
-            onShareTask={onShareTask}
-            isLoggedIn={isLoggedIn}
-            userId={userId}
-            showToast={showToast}
-          />
+          </div>
         )}
       </div>
     </motion.div>
   );
 }
 
-function LoginPrompt({ onRequireLogin }) {
+function LoginPrompt({ onRequireLogin, texto }) {
   return (
     <div className="rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.12), rgba(124,58,237,0.12))", border: "1px solid rgba(255,255,255,0.08)" }}>
       <div className="text-4xl mb-3">👥</div>
-      <p className="text-base font-semibold text-white mb-1">Conecte com amigos</p>
+      <p className="text-base font-semibold text-white mb-1">Entre pra dividir com amigos</p>
       <p className="text-[13px] text-white/40 leading-relaxed mb-4 max-w-xs mx-auto">
-        Entre para adicionar amigos, marcar favoritos e enviar tasks em massa. Suas decisões e convites locais continuam aqui.
+        {texto}
       </p>
       <button onClick={onRequireLogin} className="px-5 py-2.5 rounded-2xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-500 transition">
         Entrar com email

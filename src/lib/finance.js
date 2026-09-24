@@ -8,6 +8,11 @@ import {
 export const DECK_HORIZON_DAYS = 7;
 export const JUROS_ALTO_MES = 5; // % a.m. a partir do qual a dívida ganha destaque
 
+// Id imprevisível pra coisas que viram link público (cobrança).
+export function randomId() {
+  try { return crypto.randomUUID(); } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`; }
+}
+
 let _seq = 0;
 export function makeId(prefix) {
   _seq = (_seq + 1) % 1e6;

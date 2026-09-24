@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { formatBRL } from "../lib/money.js";
 
 /*
  * Torneio (duelo de cards) pra enquetes de ESCOLHA ÚNICA.
@@ -33,6 +34,7 @@ function DuelCard({ option, state, onPick, slide }) {
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-5">
         <h3 className="text-xl font-bold text-white leading-tight">{option.label}</h3>
+        {option.budget_cents > 0 && <span className="inline-block mt-1 text-[11px] font-semibold bg-black/30 text-white/85 px-2 py-0.5 rounded-full">💸 {formatBRL(option.budget_cents)}/pessoa</span>}
       </div>
       {winning && (
         <motion.div initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} className="absolute top-4 right-4 text-3xl filter drop-shadow-lg">🏆</motion.div>

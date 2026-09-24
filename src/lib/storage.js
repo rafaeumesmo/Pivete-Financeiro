@@ -17,10 +17,10 @@ export const SK = {
   conquistas:    "fin_conquistas",     // { [id]: data em que desbloqueou } — nunca "perde" uma conquista
   // Engajamento / app
   stats:         "fin_stats",
-  invites:       "fin_invites",
+  cobrancas:     "fin_cobrancas",      // cobranças de contas divididas (links enviados + o que já recebi)
+  pixKey:        "fin_pix_key",        // chave Pix que vai no link de cobrança (opcional)
   profile:       "fin_profile",
   decisions:     "fin_decisions",      // histórico imutável de swipes
-  exploreSeenAt: "fin_explore_seen_at",
   streak:        "fin_streak",
   notifs:        "fin_notifs",
   snoozeDefault: "fin_snooze_default", // "1h" | "1d"

@@ -6,11 +6,12 @@ import { getAnonId } from "./anon";
  * pela página pública de voto quanto pelo app logado.
  */
 
-// Cria a enquete + opções. options: [{ emoji, label }]. Retorna o id.
+// Cria a enquete + opções. options: [{ emoji, label, budget? }] — budget é o
+// orçamento por pessoa em centavos (opcional). Retorna o id.
 export async function createPoll({ title, type, options, userId = null }) {
   if (!supabase) throw new Error("Supabase não configurado");
   const clean = options
-    .map((o) => ({ emoji: (o.emoji || "").trim() || null, label: (o.label || "").trim() }))
+    .map((o) => ({ emoji: (o.emoji || "").trim() || null, label: (o.label || "").trim(), budget: o.budget > 0 ? o.budget : null }))
     .filter((o) => o.label);
   if (!title.trim()) throw new Error("Dê um título à enquete");
   if (clean.length < 2) throw new Error("Adicione ao menos 2 opções");
@@ -38,9 +39,17 @@ export async function createPoll({ title, type, options, userId = null }) {
     throw error;
   }
 
-  const rows = clean.map((o, i) => ({ poll_id: poll.id, emoji: o.emoji, label: o.label, position: i }));
+  // budget_cents só vai no insert se alguma opção tiver orçamento — assim o
+  // Bora continua funcionando em bancos sem a coluna (03_bora_budget.sql).
+  const comOrcamento = clean.some((o) => o.budget);
+  const rows = clean.map((o, i) => ({ poll_id: poll.id, emoji: o.emoji, label: o.label, position: i, ...(comOrcamento ? { budget_cents: o.budget } : {}) }));
   const { error: optErr } = await supabase.from("poll_options").insert(rows);
-  if (optErr) throw optErr;
+  if (optErr) {
+    if (comOrcamento && (optErr.code === "PGRST204" || optErr.message?.includes("budget_cents"))) {
+      throw new Error("O orçamento por pessoa precisa da coluna budget_cents: aplique supabase/policies/03_bora_budget.sql no Supabase.");
+    }
+    throw optErr;
+  }
 
   return poll.id;
 }

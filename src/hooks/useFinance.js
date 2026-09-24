@@ -3,7 +3,7 @@ import { SK, usePersistedState } from "../lib/storage.js";
 import { DEFAULT_CATEGORIAS } from "../lib/categories.js";
 import { todayKey, addDays } from "../lib/dates.js";
 import {
-  materializar, mergeNovos, adiamentoExpirado, aplicarPagamento, makeId, custoEfetivo, gerarParcelamento,
+  materializar, mergeNovos, adiamentoExpirado, aplicarPagamento, makeId, randomId, custoEfetivo, gerarParcelamento,
 } from "../lib/finance.js";
 import { splitCents } from "../lib/money.js";
 
@@ -96,7 +96,7 @@ export function useFinance() {
     const l = lancamentos.find(x => x.id === lancamentoId);
     if (!l) return null;
     const [minhaParte, ...outras] = splitCents(l.valor, partes);
-    const divisao = { partes, minhaParte, porPessoa: outras[0] ?? 0, aReceber: outras.reduce((a, b) => a + b, 0), cobrancaId: makeId("cob") };
+    const divisao = { partes, minhaParte, porPessoa: outras[0] ?? 0, aReceber: outras.reduce((a, b) => a + b, 0), cobrancaId: randomId() };
     pagar(lancamentoId, contaId, { divisao });
     return { ...l, divisao };
   }

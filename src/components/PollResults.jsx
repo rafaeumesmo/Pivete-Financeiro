@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { APP_NAME } from "../config.js";
+import { formatBRL } from "../lib/money.js";
 
 const ACCENT = "#7c3aed";
 
@@ -131,7 +132,7 @@ export function PollResults({ poll, tally, totalVoters, isCreator, onClosePoll, 
           return (
             <div key={t.id}>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm text-white/90 font-medium truncate">{t.emoji ? `${t.emoji} ` : ""}{t.label}</span>
+                <span className="text-sm text-white/90 font-medium truncate">{t.emoji ? `${t.emoji} ` : ""}{t.label}{t.budget_cents > 0 && <span className="text-white/40 font-normal"> · 💸 {formatBRL(t.budget_cents)}/pessoa</span>}</span>
                 <span className={`text-[12px] font-semibold flex-shrink-0 ml-2 ${isWin ? "text-emerald-400" : "text-white/40"}`}>{t.count} · {p}%</span>
               </div>
               <div className="h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
