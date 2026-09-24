@@ -65,22 +65,23 @@ export function useFinance() {
     if (!l) return {};
     const conta = contaDe(contaId);
     const pagoEm = new Date().toISOString();
+    const d = l.dividaId ? dividas.find(x => x.id === l.dividaId) : null;
+    const pgto = d ? aplicarPagamento(d, l.valor) : null;
+    // Guarda quanto a parcela amortizou pra poder desfazer (estorno/exclusão).
+    const amort = pgto ? { amortizacao: d.saldoDevedor - pgto.saldoDevedor } : {};
     setLancamentos(prev => prev.map(x => x.id === lancamentoId
-      ? { ...x, ...extra, status: "pago", pagoEm, contaId: conta?.id ?? null, adiadoAte: null, voltou: false }
+      ? { ...x, ...extra, ...amort, status: "pago", pagoEm, contaId: conta?.id ?? null, adiadoAte: null, voltou: false }
       : x));
     moverSaldo(conta?.id, l.tipo === "entrada" ? l.valor : -l.valor);
     if (conta) setContaPadrao(conta.id);
 
     let quitouDivida = false;
-    if (l.dividaId) {
-      const d = dividas.find(x => x.id === l.dividaId);
-      if (d) {
-        const { saldoDevedor } = aplicarPagamento(d, l.valor);
-        quitouDivida = d.saldoDevedor > 0 && saldoDevedor === 0;
-        setDividas(prev => prev.map(x => x.id === d.id ? { ...x, saldoDevedor, ...(quitouDivida ? { quitadaEm: pagoEm } : {}) } : x));
-        // Dívida quitada: some com as parcelas futuras que já tinham sido geradas.
-        if (quitouDivida) setLancamentos(prev => prev.filter(x => !(x.dividaId === d.id && x.status !== "pago" && x.id !== lancamentoId)));
-      }
+    if (d) {
+      const { saldoDevedor } = pgto;
+      quitouDivida = d.saldoDevedor > 0 && saldoDevedor === 0;
+      setDividas(prev => prev.map(x => x.id === d.id ? { ...x, saldoDevedor, ...(quitouDivida ? { quitadaEm: pagoEm } : {}) } : x));
+      // Dívida quitada: some com as parcelas futuras que já tinham sido geradas.
+      if (quitouDivida) setLancamentos(prev => prev.filter(x => !(x.dividaId === d.id && x.status !== "pago" && x.id !== lancamentoId)));
     }
     return { quitouDivida, lancamento: l };
   }
@@ -229,21 +230,36 @@ export function useFinance() {
     setLancamentos(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
   }
 
-  // Desfaz um pagamento: volta a pendente e devolve o valor à conta. Parcela
-  // de dívida não pode ser estornada (a amortização já mexeu no saldo devedor).
+  // Volta o dinheiro de um lançamento pago pra conta e, se for parcela de
+  // dívida, devolve a amortização ao saldo devedor (pagamentos antigos, sem
+  // `amortizacao` gravada, devolvem o valor cheio). Dívida que tinha sido
+  // quitada por ela volta a gerar as parcelas de hoje em diante.
+  function desfazerPagamento(l) {
+    moverSaldo(l.contaId, l.tipo === "entrada" ? -l.valor : l.valor);
+    const d = l.dividaId && dividas.find(x => x.id === l.dividaId);
+    if (!d) return;
+    const volta = l.amortizacao ?? l.valor;
+    const reabriu = d.saldoDevedor <= 0 && volta > 0;
+    setDividas(prev => prev.map(x => x.id === d.id
+      ? { ...x, saldoDevedor: x.saldoDevedor + volta, ...(reabriu ? { quitadaEm: null, geradoAte: regerarDeHoje() } : {}) }
+      : x));
+  }
+
+  // Desfaz um pagamento: volta a pendente e devolve o valor à conta (e à dívida).
   function estornar(id) {
     const l = lancamentos.find(x => x.id === id);
-    if (!l || l.status !== "pago" || l.dividaId) return false;
-    moverSaldo(l.contaId, l.tipo === "entrada" ? -l.valor : l.valor);
-    setLancamentos(prev => prev.map(x => x.id === id ? { ...x, status: "pendente", pagoEm: null, contaId: null, divisao: undefined } : x));
+    if (!l || l.status !== "pago") return false;
+    desfazerPagamento(l);
+    setLancamentos(prev => prev.map(x => x.id === id ? { ...x, status: "pendente", pagoEm: null, contaId: null, divisao: undefined, amortizacao: undefined } : x));
     return true;
   }
 
-  // Excluir um lançamento pago devolve o valor à conta (exceto parcela de dívida).
+  // Excluir um lançamento pago desfaz o pagamento: saldo das contas, dívidas
+  // e gráficos voltam a ficar como se ele nunca tivesse sido lançado.
   function removerLancamento(id) {
     const l = lancamentos.find(x => x.id === id);
     if (!l) return;
-    if (l.status === "pago" && !l.dividaId) moverSaldo(l.contaId, l.tipo === "entrada" ? -l.valor : l.valor);
+    if (l.status === "pago") desfazerPagamento(l);
     setLancamentos(prev => prev.filter(x => x.id !== id));
   }
 

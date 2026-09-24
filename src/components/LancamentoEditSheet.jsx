@@ -24,7 +24,7 @@ export function LancamentoEditSheet({ lancamento: l, categorias, contas, finance
   }
 
   function excluir() {
-    const aviso = pago && !l.dividaId ? `\n\nO valor (${formatBRL(l.valor)}) volta pra conta ${conta?.nome || ""}.` : "";
+    const aviso = pago ? `\n\nO valor (${formatBRL(l.valor)}) volta pra conta ${conta?.nome || ""}${l.dividaId ? " e pro saldo da dívida" : ""}.` : "";
     if (!window.confirm(`Excluir "${l.descricao}"?${aviso}`)) return;
     finance.removerLancamento(l.id);
     showToast("Lançamento excluído", "bg-white/10");
@@ -70,10 +70,9 @@ export function LancamentoEditSheet({ lancamento: l, categorias, contas, finance
         )}
         <button type="button" onClick={salvar} className="w-full rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Salvar</button>
         <div className="flex gap-2">
-          {pago && !l.dividaId && <button type="button" onClick={estornar} className="flex-1 rounded-2xl border border-amber-500/25 bg-amber-500/10 py-2.5 text-[13px] text-amber-300 hover:bg-amber-500/20 transition">Desfazer pagamento</button>}
+          {pago && <button type="button" onClick={estornar} className="flex-1 rounded-2xl border border-amber-500/25 bg-amber-500/10 py-2.5 text-[13px] text-amber-300 hover:bg-amber-500/20 transition">Desfazer pagamento</button>}
           <button type="button" onClick={excluir} className="flex-1 rounded-2xl border border-red-500/25 bg-red-500/10 py-2.5 text-[13px] text-red-300 hover:bg-red-500/20 transition">Excluir</button>
         </div>
-        {pago && l.dividaId && <p className="text-[11px] text-white/30 text-center">Parcela de dívida paga não pode ser desfeita — o saldo devedor já foi amortizado.</p>}
       </div>
     </Sheet>
   );
