@@ -236,10 +236,15 @@ export function comprometimento({ recorrentes, dividas, renda }) {
   return (fixosMensais(recorrentes) + parcelasDividasMensais(dividas)) / renda;
 }
 
+// Tenho = saldos positivos das contas (tudo que entrou − saiu) + caixinhas;
+// nunca fica abaixo de zero. Conta no vermelho não abate o "tenho": entra no
+// "devo", junto com o saldo devedor das dívidas. `caixa` é a soma crua dos
+// saldos (pode ser negativa), pra projeção partir do dinheiro real.
 export function patrimonio({ contas, metas, dividas }) {
-  const tenho = sum(contas, c => c.saldo) + sum(metas, m => m.guardado);
-  const devo = sum(dividas, d => Math.max(0, d.saldoDevedor));
-  return { tenho, devo, liquido: tenho - devo };
+  const caixa = sum(contas, c => c.saldo);
+  const tenho = sum(contas, c => Math.max(0, c.saldo)) + sum(metas, m => Math.max(0, m.guardado));
+  const devo = sum(contas, c => Math.max(0, -c.saldo)) + sum(dividas, d => Math.max(0, d.saldoDevedor));
+  return { tenho, devo, liquido: tenho - devo, caixa: caixa + sum(metas, m => Math.max(0, m.guardado)) };
 }
 
 // Média mensal das saídas avulsas (sem recorrência nem dívida) nos últimos

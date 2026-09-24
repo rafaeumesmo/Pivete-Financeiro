@@ -129,7 +129,12 @@ describe("resumos", () => {
     expect(r.porCategoria).toEqual({ transporte: 45000, lazer: 5000 });
   });
   it("patrimônio = contas + caixinhas − dívidas", () => {
-    expect(patrimonio({ contas: [{ saldo: 1000 }], metas: [{ guardado: 500 }], dividas: [{ saldoDevedor: 300 }] })).toEqual({ tenho: 1500, devo: 300, liquido: 1200 });
+    expect(patrimonio({ contas: [{ saldo: 1000 }], metas: [{ guardado: 500 }], dividas: [{ saldoDevedor: 300 }] })).toEqual({ tenho: 1500, devo: 300, liquido: 1200, caixa: 1500 });
+  });
+  it("patrimônio: conta no vermelho vai pro devo, tenho nunca fica negativo", () => {
+    const p = patrimonio({ contas: [{ saldo: 1000 }, { saldo: -400 }], metas: [], dividas: [{ saldoDevedor: 300 }] });
+    expect(p).toEqual({ tenho: 1000, devo: 700, liquido: 300, caixa: 600 });
+    expect(patrimonio({ contas: [{ saldo: -200 }], metas: [], dividas: [] }).tenho).toBe(0);
   });
   it("comprometimento = (fixos + parcelas) / renda", () => {
     const recorrentes = [{ ativo: true, tipo: "saida", valor: 50000, frequencia: "mensal" }];

@@ -77,13 +77,13 @@ export function PainelPanel({ finance, isDesktop }) {
   const comp = comprometimento({ recorrentes, dividas, renda });
   const pat = patrimonio({ contas, metas, dividas });
   const variavel = gastoVariavelMedio(lancamentos, hoje);
-  const proj = projecao12m({ tenho: pat.tenho, dividas, renda: rendaFixa || resumo.entradas, fixos: fixosMensais(recorrentes), variavel })
+  const proj = projecao12m({ tenho: pat.caixa, dividas, renda: rendaFixa || resumo.entradas, fixos: fixosMensais(recorrentes), variavel })
     .map(p => ({ ...p, label: p.mes === 0 ? "hoje" : MESES[Number(addMonths(hoje, p.mes, 1).slice(5, 7)) - 1] }));
   const fatias = fatiasRenda(resumo, categorias);
   const baseFatias = fatias.reduce((a, f) => a + f.value, 0);
   const barras = [
     { name: "Tenho", value: pat.tenho, fill: COR_TENHO },
-    { name: "Devo", value: pat.devo, fill: COR_DEVO },
+    { name: "Devo", value: -pat.devo, fill: COR_DEVO },
     { name: "Patrimônio líquido", value: pat.liquido, fill: pat.liquido >= 0 ? COR_TENHO : COR_DEVO },
   ];
   const adiados = lancamentos.filter(l => l.status === "adiado");
@@ -164,7 +164,7 @@ export function PainelPanel({ finance, isDesktop }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-[11px] text-white/30 mt-1.5 px-1">Tenho = saldo das contas + caixinhas. Devo = saldo devedor das dívidas.</p>
+        <p className="text-[11px] text-white/30 mt-1.5 px-1">Tenho = tudo que entrou − saiu nas contas + caixinhas (nunca abaixo de zero). Devo = dívidas + contas no vermelho.</p>
       </div>
 
       {/* Linha */}
