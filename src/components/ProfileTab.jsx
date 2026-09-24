@@ -1,19 +1,28 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ContasSection, ReservaSection, ConquistasSection, CategoriasSection } from "./ProfileFinance.jsx";
+import { formatBRL } from "../lib/money.js";
+import { todayKey } from "../lib/dates.js";
+import { rendaMensal } from "../lib/finance.js";
+import { xpTotal, nivel, taxaEmDia, custoMensal, reservaAtual } from "../lib/conquistas.js";
 
 export function ProfileTab({
   profile, stats, streak, notifSettings,
   openProfileEditor, setShowNotifSettings, setShowAboutModal,
   handleLogout, clearAllData, isDesktop = false,
   snoozeDefault, onSnoozeDefaultChange,
+  finance, conquistas, reservaMeses, setReservaMeses, onNavigate, showToast,
 }) {
   const [showDanger, setShowDanger] = useState(false);
 
   const totalDecisions = stats.accepted + stats.rejected + stats.shared;
-  const totalXP        = totalDecisions * 10;
-  const level          = Math.floor(totalXP / 1000) + 1;
-  const xpInLevel      = totalXP % 1000;
-  const xpProgress     = (xpInLevel / 1000) * 100;
+  const { nivel: level, noNivel: xpInLevel, porNivel } = nivel(xpTotal(totalDecisions, conquistas));
+  const xpProgress     = (xpInLevel / porNivel) * 100;
+  const hoje           = todayKey();
+  const renda          = rendaMensal(finance.recorrentes);
+  const emDia          = taxaEmDia(finance.lancamentos);
+  const custo          = custoMensal(finance, hoje);
+  const reserva        = reservaAtual(finance.metas);
 
   const IconBell = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4">
@@ -30,24 +39,33 @@ export function ProfileTab({
   // ── Section builders (px removed when desktop — parent provides it) ──
 
   const statsSection = (
-    <div className={`${isDesktop ? "" : "px-5"} grid grid-cols-3 gap-2 mb-5`}>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={1.8} className={isDesktop ? "w-[18px] h-[18px] flex-shrink-0" : "w-4.5 h-4.5"}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        <div className={`${isDesktop ? "text-[32px]" : "text-[22px]"} font-bold text-[#3b82f6] leading-none`}>{totalDecisions}</div>
-        <div className="text-[10px] text-white/30 font-medium">Decididas</div>
+    <div className={`${isDesktop ? "" : "px-5"} grid grid-cols-3 gap-2 mb-6`}>
+      <motion.button type="button" onClick={() => onNavigate("activity")} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-left rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex flex-col gap-1.5 min-w-0">
+        <span className="text-base" aria-hidden>💰</span>
+        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-emerald-400 leading-none tabular-nums truncate`}>{formatBRL(renda, { compact: true })}</div>
+        <div className="text-[10px] text-white/30 font-medium">Renda mensal</div>
+      </motion.button>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
+        <span className="text-base" aria-hidden>⏱️</span>
+        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-[#60a5fa] leading-none tabular-nums`}>{emDia ? `${Math.round(emDia.pct * 100)}%` : "—"}</div>
+        <div className="text-[10px] text-white/30 font-medium">Pagas em dia{emDia ? ` (${emDia.emDia}/${emDia.total})` : ""}</div>
       </motion.div>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.8} className={isDesktop ? "w-[18px] h-[18px] flex-shrink-0" : "w-4.5 h-4.5"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" /></svg>
-        <div className={`${isDesktop ? "text-[32px]" : "text-[22px]"} font-bold text-amber-400 leading-none`}>{streak.count}</div>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
+        <span className="text-base" aria-hidden>🔥</span>
+        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-amber-400 leading-none tabular-nums`}>{streak.count}</div>
         <div className="text-[10px] text-white/30 font-medium">Dias seguidos</div>
       </motion.div>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex flex-col gap-1.5">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={1.8} className={isDesktop ? "w-[18px] h-[18px] flex-shrink-0" : "w-4.5 h-4.5"}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-        <div className={`${isDesktop ? "text-[32px]" : "text-[22px]"} font-bold text-emerald-400 leading-none`}>
-          {totalDecisions > 0 ? `${Math.round((stats.accepted / totalDecisions) * 100)}%` : "—"}
-        </div>
-        <div className="text-[10px] text-white/30 font-medium">Aceite</div>
-      </motion.div>
+    </div>
+  );
+
+  const financeSections = (
+    <div className={`${isDesktop ? "" : "px-5"} flex flex-col gap-6 mb-8`}>
+      <ContasSection finance={finance} showToast={showToast} />
+      <ReservaSection custo={custo} reserva={reserva} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses}
+        temCaixinhaReserva={finance.metas.some(m => /reserva/i.test(m.nome))}
+        onCriarCaixinha={(alvo) => { finance.salvarMeta({ nome: "Reserva de emergência", alvo }); showToast("Caixinha de reserva criada 🛟", "bg-emerald-600/90"); }} />
+      <ConquistasSection desbloqueadas={conquistas} />
+      <CategoriasSection finance={finance} showToast={showToast} />
     </div>
   );
 
@@ -186,7 +204,7 @@ export function ProfileTab({
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/20">Nível {level}</span>
-            <span className="text-[10px] text-white/20">{xpInLevel} / 1000 XP</span>
+            <span className="text-[10px] text-white/20">{xpInLevel} / {porNivel} XP</span>
           </div>
           <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
             <motion.div
@@ -205,6 +223,7 @@ export function ProfileTab({
       {/* ── Content ───────────────────────────────────────────── */}
       <div className={isDesktop ? "px-5 pb-4 max-w-xl" : ""}>
         {statsSection}
+        {financeSections}
         {settingsSection}
       </div>
     </motion.div>

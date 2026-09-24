@@ -27,6 +27,7 @@ import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
 import { SK, load, save, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { APP_NAME, APP_TAGLINE } from "./config.js";
+import { avaliarConquistas, CONQUISTAS } from "./lib/conquistas.js";
 
 // Anti-spam keys for notifications (1 dispatch per type per day)
 const NOTIF_LAST_PEAK   = "fin_notif_last_peak";
@@ -111,6 +112,8 @@ export default function MainApp() {
   const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@voce", avatar: "👤" });
   const [_decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
   const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
+  const [reservaMeses,  setReservaMeses]  = usePersistedState(SK.reservaMeses, 6);
+  const [conquistas,    setConquistas]    = usePersistedState(SK.conquistas, {});
   const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, inviteReplies: true, permission: "default" });
 
   // ── Camada social (Supabase) ──────────────────────────────
@@ -183,6 +186,21 @@ export default function MainApp() {
     const id = setInterval(checkNotifications, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [notifSettings.enabled]);
+
+  // Conquistas: reavalia quando os dados mudam; as novas ficam gravadas com
+  // a data e ganham um toast. Uma vez desbloqueada, não some.
+  useEffect(() => {
+    const ids = avaliarConquistas({
+      lancamentos: finance.lancamentos, dividas: finance.dividas, metas: finance.metas, revisoes: finance.revisoes,
+      recorrentes: finance.recorrentes, streak, reservaMeses, hoje: todayKey(),
+    });
+    const novas = ids.filter(id => !conquistas[id]);
+    if (!novas.length) return;
+    const agora = new Date().toISOString();
+    setConquistas(prev => ({ ...prev, ...Object.fromEntries(novas.map(id => [id, agora])) }));
+    const q = CONQUISTAS.find(x => x.id === novas[0]);
+    setTimeout(() => showToast(`${q.icon} Conquista: ${q.nome} · +${q.xp} XP`, "bg-amber-600/90 backdrop-blur-md"), 900);
+  }, [finance.lancamentos, finance.dividas, finance.metas, finance.revisoes, finance.recorrentes, streak, reservaMeses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const unreadCount = computeUnreadCount(invites, exploreSeenAt);
 
@@ -309,6 +327,8 @@ export default function MainApp() {
     finance.setMetas([]);
     finance.setCategorias(DEFAULT_CATEGORIAS);
     finance.setRevisoes({});
+    setConquistas({});
+    setReservaMeses(6);
     setStats({ accepted: 0, rejected: 0, shared: 0 });
     setInvites([]);
     setDecisions([]);
@@ -554,6 +574,7 @@ export default function MainApp() {
                   handleLogout={handleLogout}
                   clearAllData={clearAllData}
                   snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
+                  finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
                 />
               </div>
             )}
@@ -634,6 +655,7 @@ export default function MainApp() {
                     handleLogout={handleLogout}
                     clearAllData={clearAllData} isDesktop={true}
                     snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
+                  finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
                   />
                 </div>
               </div>

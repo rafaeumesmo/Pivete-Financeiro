@@ -13,6 +13,8 @@ export const SK = {
   categorias:    "fin_categorias",
   revisoes:      "fin_revisoes",       // { [itemKey]: { veredito: "valeu" | "cortar", em } }
   contaPadrao:   "fin_conta_padrao",   // id da última conta usada pra pagar
+  reservaMeses:  "fin_reserva_meses",  // meta de reserva de emergência, em meses de custo
+  conquistas:    "fin_conquistas",     // { [id]: data em que desbloqueou } — nunca "perde" uma conquista
   // Engajamento / app
   stats:         "fin_stats",
   invites:       "fin_invites",
