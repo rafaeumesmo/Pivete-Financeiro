@@ -29,6 +29,7 @@ import { useFinance, CONTA_INICIAL } from "./hooks/useFinance.js";
 import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
 import { SK, load, save, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
+import { decisoesDoMes } from "./lib/finance.js";
 import { APP_NAME, APP_TAGLINE } from "./config.js";
 import { avaliarConquistas, CONQUISTAS } from "./lib/conquistas.js";
 
@@ -96,13 +97,17 @@ export default function MainApp() {
   const finance = useFinance();
   const [stats,     setStats]     = usePersistedState(SK.stats,   { accepted: 0, rejected: 0, shared: 0 });
   const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@voce", avatar: "👤" });
-  const [_decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
+  const [decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
   const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
   const [reservaMeses,  setReservaMeses]  = usePersistedState(SK.reservaMeses, 6);
   const [conquistas,    setConquistas]    = usePersistedState(SK.conquistas, {});
   const [notifSettings, setNotifSettings] = usePersistedState(SK.notifs, { enabled: false, peakReminder: true, streakAlert: true, permission: "default" });
 
   // ── Camada social (Supabase) ──────────────────────────────
+  // Números do deck (pagas/adiadas/divididas) são do mês atual; `stats` segue
+  // acumulado só pro XP do perfil.
+  const statsMes = decisoesDoMes(decisions, finance.lancamentos, todayKey().slice(0, 7));
+
   const auth   = useAuth();
   const social = useSocial(auth.user?.id);
   const splits = useSplits(auth.user?.id);
@@ -426,7 +431,7 @@ export default function MainApp() {
           </AnimatePresence>
 
           <div className="flex-1 min-h-0 overflow-hidden relative">
-            {activeTab === "home" && <FinDeck isDesktop={false} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} />}
+            {activeTab === "home" && <FinDeck isDesktop={false} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes} />}
             {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
             {activeTab === "activity" && (
               <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
@@ -473,10 +478,10 @@ export default function MainApp() {
               {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
-              <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Decisões no deck</p>
-              {[{ label: "Pagas", value: stats.accepted, color: "text-emerald-400" }, { label: "Divididas", value: stats.shared, color: "text-blue-400" }, { label: "Adiadas", value: stats.rejected, color: "text-amber-400" }].map(({ label, value, color }) => (<div key={label} className="flex items-center justify-between"><span className="text-[12px] text-white/40">{label}</span><AnimatePresence mode="wait"><motion.span key={value} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className={`text-[14px] font-semibold ${color}`}>{value}</motion.span></AnimatePresence></div>))}
-              <div className="flex items-center justify-between mt-1"><span className="text-[12px] text-white/40">Pagas sem adiar</span><span className="text-[13px] font-semibold text-emerald-400">{stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "—"}</span></div>
-              <div className="h-[3px] bg-white/[0.08] rounded-full overflow-hidden mt-0.5"><motion.div className="h-full bg-[#2563eb] rounded-full" animate={{ width: stats.accepted + stats.rejected + stats.shared > 0 ? `${Math.round((stats.accepted / (stats.accepted + stats.rejected + stats.shared)) * 100)}%` : "0%" }} transition={{ type: "spring", stiffness: 100, damping: 20 }} /></div>
+              <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Decisões do mês</p>
+              {[{ label: "Pagas", value: statsMes.accepted, color: "text-emerald-400" }, { label: "Divididas", value: statsMes.shared, color: "text-blue-400" }, { label: "Adiadas", value: statsMes.rejected, color: "text-amber-400" }].map(({ label, value, color }) => (<div key={label} className="flex items-center justify-between"><span className="text-[12px] text-white/40">{label}</span><AnimatePresence mode="wait"><motion.span key={value} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className={`text-[14px] font-semibold ${color}`}>{value}</motion.span></AnimatePresence></div>))}
+              <div className="flex items-center justify-between mt-1"><span className="text-[12px] text-white/40">Pagas sem adiar</span><span className="text-[13px] font-semibold text-emerald-400">{statsMes.accepted + statsMes.rejected + statsMes.shared > 0 ? `${Math.round((statsMes.accepted / (statsMes.accepted + statsMes.rejected + statsMes.shared)) * 100)}%` : "—"}</span></div>
+              <div className="h-[3px] bg-white/[0.08] rounded-full overflow-hidden mt-0.5"><motion.div className="h-full bg-[#2563eb] rounded-full" animate={{ width: statsMes.accepted + statsMes.rejected + statsMes.shared > 0 ? `${Math.round((statsMes.accepted / (statsMes.accepted + statsMes.rejected + statsMes.shared)) * 100)}%` : "0%" }} transition={{ type: "spring", stiffness: 100, damping: 20 }} /></div>
             </div>
           </aside>
 
@@ -500,7 +505,7 @@ export default function MainApp() {
                   <button onClick={() => setShowCreatePollModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">🗳️ Bora?</button>
                   <button onClick={() => setActiveTab("create")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Novo lançamento</button>
                 </div>
-                <div className="flex-1 min-h-0"><FinDeck isDesktop={true} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={stats} /></div>
+                <div className="flex-1 min-h-0"><FinDeck isDesktop={true} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes} /></div>
               </>
             )}
             {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}

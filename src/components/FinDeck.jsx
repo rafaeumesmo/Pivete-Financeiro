@@ -286,6 +286,7 @@ function DeckVazio({ stats, onNavigate, onRevisar }) {
       <div className="text-6xl mb-5">🎉</div>
       <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Tudo em dia!</h3>
       <p className="text-white/40 text-sm mb-6 leading-relaxed">Nenhuma conta vencendo nos próximos 7 dias.</p>
+      <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-2">Neste mês</p>
       <div className="flex gap-3 mb-6">
         {[{ label: "Pagas", value: stats.accepted, color: "text-emerald-400" }, { label: "Adiadas", value: stats.rejected, color: "text-amber-400" }, { label: "Divididas", value: stats.shared, color: "text-blue-400" }].map(({ label, value, color }) => (
           <div key={label} className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl px-4 py-3">

@@ -200,6 +200,20 @@ export function lancamentosDoMes(lancamentos, ym) {
   return lancamentos.filter(l => l.data && monthKey(l.data) === ym);
 }
 
+// Contagem dos swipes do mês (pagas / adiadas / divididas). Só conta decisão
+// cujo lançamento ainda existe: apagou do histórico, some da contagem.
+export function decisoesDoMes(decisions, lancamentos, ym) {
+  const ids = new Set(lancamentos.map(l => l.id));
+  const out = { accepted: 0, rejected: 0, shared: 0 };
+  const chave = { right: "accepted", left: "rejected", up: "shared" };
+  for (const d of decisions) {
+    const k = chave[d.direction];
+    if (!k || !ids.has(d.lancamentoId) || !d.decidedAt) continue;
+    if (toDateStr(new Date(d.decidedAt)).slice(0, 7) === ym) out[k]++;
+  }
+  return out;
+}
+
 export function resumoMes(lancamentos, ym) {
   const doMes = lancamentosDoMes(lancamentos, ym);
   const entradas = doMes.filter(l => l.tipo === "entrada");

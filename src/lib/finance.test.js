@@ -5,6 +5,7 @@ import {
   deckLancamentos, vencimentoInfo, gerarParcelamento, ocorrencias, valorMensal,
   materializar, aplicarPagamento, parcelasRestantes, resumoMes, patrimonio,
   projecao12m, itensRevisao, revisaoPendente, economiaPotencial, comprometimento,
+  decisoesDoMes,
 } from "./finance.js";
 
 describe("money", () => {
@@ -166,5 +167,24 @@ describe("revisar gastos", () => {
     const revisoes = { "rec:r1": { veredito: "cortar", em: new Date(2025, 5, 9).toISOString() } };
     expect(economiaPotencial(itens, revisoes).total).toBe(2000);
     expect(revisaoPendente(itens, revisoes, new Date(2025, 5, 10)).map(i => i.key)).toEqual(["lan:a"]);
+  });
+});
+
+describe("decisoesDoMes", () => {
+  const lancs = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  const d = (lancamentoId, direction, decidedAt) => ({ lancamentoId, direction, decidedAt });
+
+  it("zera sem histórico", () => {
+    expect(decisoesDoMes([], [], "2026-09")).toEqual({ accepted: 0, rejected: 0, shared: 0 });
+  });
+
+  it("conta só o mês pedido e só lançamentos que ainda existem", () => {
+    const decs = [
+      d("a", "right", new Date(2026, 8, 3, 10).toISOString()),
+      d("b", "left",  new Date(2026, 8, 20, 10).toISOString()),
+      d("c", "up",    new Date(2026, 7, 31, 10).toISOString()), // agosto
+      d("x", "right", new Date(2026, 8, 5, 10).toISOString()),  // lançamento apagado
+    ];
+    expect(decisoesDoMes(decs, lancs, "2026-09")).toEqual({ accepted: 1, rejected: 1, shared: 0 });
   });
 });
