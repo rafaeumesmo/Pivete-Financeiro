@@ -25,7 +25,7 @@ npm run build
 
 **Tudo funciona sem login e sem Supabase.** Lançamentos, fixos, dívidas, contas, caixinhas, categorias, histórico, streak e conquistas ficam no `localStorage` do aparelho (chaves em `SK`, `src/lib/storage.js`).
 
-**Sem login, saldos, contas, extrato, dívidas e caixinhas nunca saem do aparelho.** Logado, esses dados são espelhados na tabela `user_data` (só o próprio usuário lê, via RLS) pra aparecerem em qualquer navegador; a lógica está em `src/lib/sync.js`. Configurações do aparelho (notificações, onboarding) não sincronizam.
+**Sem login, saldos, contas, extrato, dívidas e caixinhas nunca saem do aparelho.** Logado, esses dados são espelhados na tabela `user_data` (só o próprio usuário lê, via RLS) pra aparecerem em qualquer navegador; a lógica está em `src/lib/sync.js`. Ao sair da conta, o app envia o que falta e apaga esses dados do navegador (continuam na conta). Configurações do aparelho (notificações, onboarding) não sincronizam.
 
 Além disso, sai do aparelho o que o usuário escolhe compartilhar:
 

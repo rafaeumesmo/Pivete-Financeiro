@@ -13,7 +13,7 @@ import { SetupProfile } from "./components/SetupProfile.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
 import { migrateAnonPolls } from "./lib/polls.js";
-import { startSync, stopSync } from "./lib/sync.js";
+import { startSync, stopSync, finishSync } from "./lib/sync.js";
 import { todayKey, daysBetween, addDays } from "./lib/dates.js";
 import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
@@ -296,10 +296,17 @@ export default function MainApp() {
     setProfile({ ...profile, name, handle, avatar });
     setShowProfileEditor(false);
   }
-  function handleLogout() {
-    if (!window.confirm(`Deseja sair do ${APP_NAME}?`)) return;
-    if (auth.isLoggedIn) { auth.signOut(); showToast("Sessão encerrada.", "bg-white/10"); }
-    else showToast("Não há sessão ativa.", "bg-white/10");
+  async function handleLogout() {
+    if (!auth.isLoggedIn) { showToast("Não há sessão ativa.", "bg-white/10"); return; }
+    if (!window.confirm(`Deseja sair do ${APP_NAME}? Seus dados saem deste aparelho e continuam salvos na sua conta.`)) return;
+    // Sobe o que falta e limpa o aparelho antes de encerrar a sessão (depois
+    // do signOut não dá mais pra gravar em user_data).
+    if (!(await finishSync())) {
+      if (!window.confirm("Não foi possível salvar suas últimas alterações na conta (sem conexão?). Sair mesmo assim? O que não foi salvo será perdido.")) return;
+      await finishSync({ force: true });
+    }
+    await auth.signOut();
+    showToast("Sessão encerrada.", "bg-white/10");
   }
 
   function clearAllData() {

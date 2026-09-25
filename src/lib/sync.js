@@ -27,6 +27,7 @@ const PUSH_DELAY_MS = 800;
 const PULL_THROTTLE_MS = 15_000;
 
 let userId = null;
+let ready = false;          // startSync terminou (conta e aparelho alinhados)
 let session = 0;            // invalida respostas de um login anterior
 let lastPull = 0;
 const timers = new Map();   // key → timeout do envio agendado
@@ -52,16 +53,19 @@ function applyRemote(key, value) {
   notify(key);
 }
 
+// Retorna true se as chaves chegaram ao servidor.
 async function push(keys) {
-  if (!supabase || !userId || keys.length === 0) return;
+  if (!supabase || !userId) return false;
+  if (keys.length === 0) return true;
   const mySession = session;
   const updatedAt = new Date().toISOString();
   const rows = keys.map((key) => ({ user_id: userId, key, value: load(key, null), updated_at: updatedAt }));
   const { error } = await supabase.from("user_data").upsert(rows, { onConflict: "user_id,key" });
-  if (mySession !== session) return;
-  if (error) { console.warn("[sync] falha ao enviar:", error.message); return; }
+  if (mySession !== session) return false;
+  if (error) { console.warn("[sync] falha ao enviar:", error.message); return false; }
   // Só limpa o que não voltou a mudar enquanto o envio estava no ar.
   setDirty(getDirty().filter((k) => !keys.includes(k) || timers.has(k)));
+  return true;
 }
 
 function schedulePush(key) {
@@ -140,6 +144,8 @@ export async function startSync(uid) {
   plan.apply.forEach((k) => applyRemote(k, byKey.get(k)));
   save(OWNER_KEY, uid);
   await push(plan.push);
+  if (mySession !== session) return;
+  ready = true;
 
   document.addEventListener("visibilitychange", onVisibility);
 }
@@ -149,5 +155,25 @@ export function stopSync() {
   flushPending();
   document.removeEventListener("visibilitychange", onVisibility);
   userId = null;
+  ready = false;
   session++;
+}
+
+// Logout: envia o que ainda não subiu e apaga os dados pessoais deste
+// navegador (continuam na conta). Se não der pra garantir que está tudo no
+// servidor, retorna false sem apagar nada; com force: true apaga mesmo assim.
+export async function finishSync({ force = false } = {}) {
+  if (userId && !force) {
+    if (!ready) return false;
+    timers.forEach((t) => clearTimeout(t));
+    timers.clear();
+    if (!(await push(getDirty().filter((k) => SYNC_KEYS.includes(k))))) return false;
+  }
+  timers.forEach((t) => clearTimeout(t));
+  timers.clear();
+  stopSync();
+  SYNC_KEYS.forEach((k) => applyRemote(k, null));
+  setDirty([]);
+  try { localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
+  return true;
 }
