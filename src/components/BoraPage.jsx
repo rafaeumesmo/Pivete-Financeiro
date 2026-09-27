@@ -16,7 +16,7 @@ function getPollId() {
 function Shell({ children }) {
   return (
     <div
-      className="min-h-screen bg-[#0d0d0f] flex flex-col items-center px-4"
+      className="min-h-screen bg-deep flex flex-col items-center px-4"
       style={{ paddingTop: "max(env(safe-area-inset-top), 20px)", paddingBottom: "max(env(safe-area-inset-bottom), 20px)" }}
     >
       <div className="w-full max-w-md flex-1 flex flex-col">{children}</div>
@@ -38,7 +38,7 @@ function CreateCTA() {
     <a
       href={`${window.location.origin}${window.location.pathname}`}
       className="mt-6 block rounded-2xl px-5 py-4 text-center transition hover:brightness-110"
-      style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.15), rgba(124,58,237,0.15))", border: "1px solid rgba(255,255,255,0.08)" }}
+      style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.15), rgba(124,58,237,0.15))", border: "1px solid rgb(var(--ink) / 0.08)" }}
     >
       <p className="text-sm font-semibold text-white">Gostou? Crie seu Bora no {APP_NAME}</p>
       <p className="text-[12px] text-white/40 mt-0.5">Decisões em grupo no swipe — de graça, sem complicação.</p>

@@ -275,7 +275,7 @@ function DividirSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
       </div>
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Sua parte</p><p className="text-base font-bold text-white tabular-nums">{formatBRL(minha)}</p></div>
-        <div className="rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/25 px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-[#93c5fd]/60 mb-1">A receber</p><p className="text-base font-bold text-[#93c5fd] tabular-nums">{formatBRL(outras.reduce((a, b) => a + b, 0))}</p><p className="text-[10px] text-white/35">{formatBRL(outras[0])} por pessoa</p></div>
+        <div className="rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/25 px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-blue-300/60 mb-1">A receber</p><p className="text-base font-bold text-blue-300 tabular-nums">{formatBRL(outras.reduce((a, b) => a + b, 0))}</p><p className="text-[10px] text-white/35">{formatBRL(outras[0])} por pessoa</p></div>
       </div>
       {contas.length > 1 && (
         <div className="flex flex-col gap-2 mb-4">

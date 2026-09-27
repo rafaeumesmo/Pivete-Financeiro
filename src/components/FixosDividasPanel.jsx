@@ -145,7 +145,7 @@ function RecorrenteSheet({ rec, categorias, onClose, onSave, onDelete }) {
         <div><label className={labelCls} htmlFor="r-nome">Nome</label><input id="r-nome" value={f.nome} maxLength={40} onChange={e => setF(p => ({ ...p, nome: e.target.value }))} className={inputCls} placeholder={entrada ? "Ex: Salário" : "Ex: Internet"} /></div>
         <div><label className={labelCls} htmlFor="r-valor">Valor</label><MoneyInput id="r-valor" value={f.valor} onChange={valor => setF(p => ({ ...p, valor }))} className={`${inputCls} text-lg font-bold`} /></div>
         <div><label className={labelCls} htmlFor="r-cat">Categoria</label>
-          <select id="r-cat" value={f.categoria} onChange={e => setF(p => ({ ...p, categoria: e.target.value }))} className={`${inputCls} bg-[#18191f]`}>
+          <select id="r-cat" value={f.categoria} onChange={e => setF(p => ({ ...p, categoria: e.target.value }))} className={`${inputCls} bg-sheet`}>
             {categorias.filter(c => c.id !== (entrada ? "dividas" : "renda")).map(c => <option key={c.id} value={c.id}>{c.icon} {c.nome}</option>)}
           </select>
         </div>
@@ -153,7 +153,7 @@ function RecorrenteSheet({ rec, categorias, onClose, onSave, onDelete }) {
           <p className={labelCls}>Frequência</p>
           <div className="flex gap-2 mb-2">
             {[{ id: "mensal", l: "Mensal" }, { id: "semanal", l: "Semanal" }].map(o => (
-              <button key={o.id} type="button" aria-pressed={f.frequencia === o.id} onClick={() => setF(p => ({ ...p, frequencia: o.id }))} className={`flex-1 py-2 rounded-xl text-[13px] border transition ${f.frequencia === o.id ? "bg-[#2563eb]/15 border-[#2563eb]/40 text-[#93c5fd]" : "bg-white/[0.03] border-white/[0.07] text-white/40"}`}>{o.l}</button>
+              <button key={o.id} type="button" aria-pressed={f.frequencia === o.id} onClick={() => setF(p => ({ ...p, frequencia: o.id }))} className={`flex-1 py-2 rounded-xl text-[13px] border transition ${f.frequencia === o.id ? "bg-[#2563eb]/15 border-[#2563eb]/40 text-blue-300" : "bg-white/[0.03] border-white/[0.07] text-white/40"}`}>{o.l}</button>
             ))}
           </div>
           {f.frequencia === "mensal" ? (
@@ -161,7 +161,7 @@ function RecorrenteSheet({ rec, categorias, onClose, onSave, onDelete }) {
               <input type="number" min={1} max={31} value={f.dia} onChange={e => setF(p => ({ ...p, dia: Math.max(1, Math.min(31, Number(e.target.value) || 1)) }))} className="w-20 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-white" aria-label="Dia do mês" />
             </label>
           ) : (
-            <select aria-label="Dia da semana" value={f.diaSemana} onChange={e => setF(p => ({ ...p, diaSemana: Number(e.target.value) }))} className={`${inputCls} bg-[#18191f]`}>
+            <select aria-label="Dia da semana" value={f.diaSemana} onChange={e => setF(p => ({ ...p, diaSemana: Number(e.target.value) }))} className={`${inputCls} bg-sheet`}>
               {DAY_NAMES.map((n, i) => <option key={i} value={i}>{n}</option>)}
             </select>
           )}

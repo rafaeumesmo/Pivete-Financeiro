@@ -40,7 +40,7 @@ export function SetupProfile({ onCreate, onCheckUsername, localProfile }) {
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 26 }}
-        className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
+        className="w-full max-w-sm bg-sheet rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
       >
         <div className="px-6 pt-6 pb-5 border-b border-white/[0.06]">
           <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-0.5">Bem-vindo ao</p>

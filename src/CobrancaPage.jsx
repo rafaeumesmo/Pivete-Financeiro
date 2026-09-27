@@ -31,7 +31,7 @@ export default function CobrancaPage() {
 
   if (!charge) {
     return (
-      <div className="min-h-screen bg-[#111114] flex flex-col items-center justify-center px-4 gap-3">
+      <div className="min-h-screen bg-app flex flex-col items-center justify-center px-4 gap-3">
         <div className="text-5xl">🔗</div>
         <p className="text-white/50 text-sm text-center">Link de cobrança inválido.</p>
       </div>
@@ -55,14 +55,14 @@ export default function CobrancaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111114] flex flex-col items-center justify-center px-4 py-10" style={{ paddingTop: "max(env(safe-area-inset-top), 40px)" }}>
+    <div className="min-h-screen bg-app flex flex-col items-center justify-center px-4 py-10" style={{ paddingTop: "max(env(safe-area-inset-top), 40px)" }}>
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
         <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-1.5">Cobrança</p>
         <h1 className="text-xl font-bold text-white">{charge.de ? `${charge.de} dividiu uma conta com você` : "Dividiram uma conta com você"}</h1>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.08, type: "spring", stiffness: 240, damping: 24 }}
-        className="w-full max-w-sm rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800 p-6 shadow-2xl mb-6 text-center">
+        className="tema-escuro w-full max-w-sm rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800 p-6 shadow-2xl mb-6 text-center">
         <p className="text-sm text-white/70 mb-1 truncate">{charge.titulo}</p>
         <p className="text-[11px] uppercase tracking-[0.14em] text-white/55">Sua parte</p>
         <p className="text-[44px] font-black text-white tabular-nums leading-tight">{formatBRL(charge.porPessoa)}</p>

@@ -6,7 +6,7 @@ import { formatBRL } from "../lib/money.js";
 import { todayKey, monthKey, formatMonth, fromDateStr } from "../lib/dates.js";
 import { custoEfetivo } from "../lib/finance.js";
 
-const selectCls = "rounded-xl border border-white/[0.08] bg-[#18191f] px-3 py-2 text-[13px] text-white outline-none focus:border-[#2563eb]/60 min-w-0";
+const selectCls = "rounded-xl border border-white/[0.08] bg-sheet px-3 py-2 text-[13px] text-white outline-none focus:border-[#2563eb]/60 min-w-0";
 
 export function ExtratoPanel({ finance, onEditar }) {
   const { lancamentos, categorias } = finance;

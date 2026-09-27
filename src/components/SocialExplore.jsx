@@ -23,7 +23,7 @@ function Avatar({ emoji, close, size = "md" }) {
       className={`${dim} rounded-full flex items-center justify-center flex-shrink-0 border-2`}
       style={{
         background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(37,99,235,0.25))",
-        borderColor: close ? FAV_GREEN : "rgba(255,255,255,0.1)",
+        borderColor: close ? FAV_GREEN : "rgb(var(--ink) / 0.1)",
       }}
     >
       {emoji || "👤"}
@@ -43,7 +43,7 @@ function StarButton({ active, onClick, disabled, big = false }) {
           ? "bg-emerald-500/20 border border-emerald-500/40"
           : "bg-white/[0.05] border border-white/[0.08] hover:border-emerald-500/30"
       }`}
-      style={{ color: active ? FAV_GREEN : "rgba(255,255,255,0.3)" }}
+      style={{ color: active ? FAV_GREEN : "rgb(var(--ink) / 0.3)" }}
     >
       {active ? "⭐" : "☆"}
     </motion.button>
@@ -319,7 +319,7 @@ function MyPolls({ userId, showToast }) {
           <button onClick={() => { navigator.clipboard?.writeText(pollLink(p.id)); showToast?.("Link copiado!", "bg-emerald-600/90"); }} title="Copiar link" className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white transition flex-shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
           </button>
-          <a href={pollLink(p.id)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[12px] font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition flex-shrink-0">Resultados</a>
+          <a href={pollLink(p.id)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[12px] font-medium text-blue-300 hover:bg-[#2563eb]/25 transition flex-shrink-0">Resultados</a>
           <button onClick={() => apagar(p)} title="Apagar enquete" aria-label={`Apagar enquete ${p.title}`} className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-red-400 hover:border-red-400/30 transition flex-shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
           </button>
@@ -405,7 +405,7 @@ export function SocialExplore({
 
 function LoginPrompt({ onRequireLogin, texto }) {
   return (
-    <div className="rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.12), rgba(124,58,237,0.12))", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(29,78,216,0.12), rgba(124,58,237,0.12))", border: "1px solid rgb(var(--ink) / 0.08)" }}>
       <div className="text-4xl mb-3">👥</div>
       <p className="text-base font-semibold text-white mb-1">Entre pra dividir com amigos</p>
       <p className="text-[13px] text-white/40 leading-relaxed mb-4 max-w-xs mx-auto">

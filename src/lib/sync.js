@@ -18,7 +18,7 @@ import { planSync } from "./syncPlan.js";
 export const SYNC_KEYS = [
   SK.lancamentos, SK.recorrentes, SK.dividas, SK.contas, SK.metas, SK.categorias,
   SK.revisoes, SK.contaPadrao, SK.reservaMeses, SK.conquistas, SK.stats,
-  SK.cobrancas, SK.pixKey, SK.profile, SK.decisions, SK.streak,
+  SK.cobrancas, SK.pixKey, SK.profile, SK.decisions, SK.streak, SK.tema,
 ];
 
 const OWNER_KEY = "fin_sync_owner"; // id do usuário dono dos dados deste navegador

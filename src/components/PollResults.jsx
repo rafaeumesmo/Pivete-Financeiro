@@ -149,7 +149,7 @@ export function PollResults({ poll, tally, totalVoters, isCreator, onClosePoll, 
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <div className="flex">
                     {t.voters.slice(0, 6).map((nick, i) => (
-                      <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] text-white/70 border border-[#15151a]"
+                      <div key={i} className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] text-white/70 border border-sheet"
                         style={{ marginLeft: i > 0 ? "-5px" : 0, zIndex: 10 - i, background: "linear-gradient(135deg, rgba(124,58,237,0.4), rgba(37,99,235,0.4))" }}>
                         {nick?.[0]?.toUpperCase() || "?"}
                       </div>
@@ -176,7 +176,7 @@ export function PollResults({ poll, tally, totalVoters, isCreator, onClosePoll, 
               Encerrar enquete
             </button>
           )}
-          <button onClick={shareImage} className="flex-1 py-2.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-sm font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition flex items-center justify-center gap-1.5">
+          <button onClick={shareImage} className="flex-1 py-2.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-sm font-medium text-blue-300 hover:bg-[#2563eb]/25 transition flex items-center justify-center gap-1.5">
             🖼️ Compartilhar resultado
           </button>
         </div>

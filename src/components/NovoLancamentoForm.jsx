@@ -123,7 +123,7 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
               <div className="mt-3 flex gap-2">
                 {[{ id: "mensal", label: `Todo dia ${dia.getDate()}` }, { id: "semanal", label: diaSemanaLabel(dia.getDay()) }].map(o => (
                   <button key={o.id} type="button" aria-pressed={f.frequencia === o.id} onClick={() => set({ frequencia: o.id })}
-                    className={`flex-1 py-2 rounded-xl text-[13px] transition border ${f.frequencia === o.id ? "bg-[#2563eb]/15 border-[#2563eb]/40 text-[#93c5fd]" : "bg-white/[0.03] border-white/[0.07] text-white/40"}`}>{o.label}</button>
+                    className={`flex-1 py-2 rounded-xl text-[13px] transition border ${f.frequencia === o.id ? "bg-[#2563eb]/15 border-[#2563eb]/40 text-blue-300" : "bg-white/[0.03] border-white/[0.07] text-white/40"}`}>{o.label}</button>
                 ))}
               </div>
             )}
@@ -147,7 +147,7 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
               <input type="checkbox" checked={f.pago} onChange={e => set({ pago: e.target.checked, semData: false })} className="w-5 h-5 accent-emerald-500" />
             </label>
             {f.pago && contas.length > 1 && (
-              <select aria-label="Conta" value={f.contaId || ""} onChange={e => set({ contaId: e.target.value })} className="mt-3 w-full rounded-xl border border-white/[0.08] bg-[#18191f] px-3 py-2.5 text-sm text-white outline-none">
+              <select aria-label="Conta" value={f.contaId || ""} onChange={e => set({ contaId: e.target.value })} className="mt-3 w-full rounded-xl border border-white/[0.08] bg-sheet px-3 py-2.5 text-sm text-white outline-none">
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {formatBRL(c.saldo)}</option>)}
               </select>
             )}

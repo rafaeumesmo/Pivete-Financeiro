@@ -6,7 +6,7 @@ export function SnoozeSetupModal({ onChoose }) {
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
+        className="w-full max-w-sm bg-sheet rounded-3xl border border-white/10 shadow-2xl overflow-hidden"
       >
         <div className="px-6 pt-6 pb-6">
           <div className="flex flex-col items-center text-center mb-6">
@@ -31,7 +31,7 @@ export function SnoozeSetupModal({ onChoose }) {
             >
               <span className="text-xl">🌅</span>
               <span className="text-sm font-semibold text-white">No dia seguinte</span>
-              <span className="text-[10px] text-[#93c5fd]/70">Recomendado</span>
+              <span className="text-[10px] text-blue-300/70">Recomendado</span>
             </motion.button>
           </div>
         </div>

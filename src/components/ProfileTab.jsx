@@ -5,6 +5,7 @@ import { formatBRL } from "../lib/money.js";
 import { todayKey } from "../lib/dates.js";
 import { rendaMensal } from "../lib/finance.js";
 import { xpTotal, nivel, taxaEmDia, custoMensal, reservaAtual } from "../lib/conquistas.js";
+import { useTema } from "../lib/theme.js";
 
 export function ProfileTab({
   profile, stats, streak, notifSettings,
@@ -13,6 +14,7 @@ export function ProfileTab({
   snoozeDefault, onSnoozeDefaultChange,
   finance, conquistas, reservaMeses, setReservaMeses, onNavigate, showToast,
 }) {
+  const [tema, setTema] = useTema();
   const [showDanger, setShowDanger] = useState(false);
 
   const totalDecisions = stats.accepted + stats.rejected + stats.shared;
@@ -47,7 +49,7 @@ export function ProfileTab({
       </motion.button>
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
         <span className="text-base" aria-hidden>⏱️</span>
-        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-[#60a5fa] leading-none tabular-nums`}>{emDia ? `${Math.round(emDia.pct * 100)}%` : "—"}</div>
+        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-blue-400 leading-none tabular-nums`}>{emDia ? `${Math.round(emDia.pct * 100)}%` : "—"}</div>
         <div className="text-[10px] text-white/30 font-medium">Pagas em dia{emDia ? ` (${emDia.emDia}/${emDia.total})` : ""}</div>
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
@@ -83,6 +85,25 @@ export function ProfileTab({
     <div className={isDesktop ? "" : "px-5"}>
       <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-3">Configurações</h3>
       <div className="flex flex-col">
+        {/* Tema — salvo na conta quando logado (SK.tema em SYNC_KEYS) */}
+        <div className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl border-b border-white/[0.04]">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-500/20">
+            <span className="text-base">{tema === "claro" ? "☀️" : "🌙"}</span>
+          </div>
+          <span className="flex-1 text-[13px] text-white/70">Tema</span>
+          <div className="flex gap-1.5" role="radiogroup" aria-label="Tema">
+            {[{ id: "escuro", label: "Escuro" }, { id: "claro", label: "Claro" }].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={tema === t.id}
+                onClick={() => setTema(t.id)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition ${tema === t.id ? "bg-blue-500/25 border-blue-400/50 text-blue-200" : "bg-white/[0.05] border-white/10 text-white/40 hover:text-white/60"}`}
+              >{t.label}</button>
+            ))}
+          </div>
+        </div>
         {/* Snooze default setting */}
         <div className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl border-b border-white/[0.04]">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-500/20">
@@ -175,7 +196,7 @@ export function ProfileTab({
 
       {/* ── Capa + Avatar ─────────────────────────────────────── */}
       <div className="relative mb-14">
-        <div className="h-24 relative overflow-hidden bg-gradient-to-br from-[#1d4ed8] via-[#7c3aed] to-[#0891b2]">
+        <div className="tema-escuro h-24 relative overflow-hidden bg-gradient-to-br from-[#1d4ed8] via-[#7c3aed] to-[#0891b2]">
           <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
         </div>
         <button
@@ -183,10 +204,10 @@ export function ProfileTab({
           onClick={openProfileEditor}
           className="absolute left-5 -bottom-10 group"
         >
-          <div className="w-[84px] h-[84px] rounded-3xl bg-gradient-to-br from-[#1d4ed8] to-[#7c3aed] border-[3px] border-[#0d0d0f] flex items-center justify-center text-[42px] shadow-2xl group-hover:brightness-110 transition select-none">
+          <div className="w-[84px] h-[84px] tema-escuro rounded-3xl bg-gradient-to-br from-[#1d4ed8] to-[#7c3aed] border-[3px] border-deep flex items-center justify-center text-[42px] shadow-2xl group-hover:brightness-110 transition select-none">
             {profile.avatar}
           </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#2563eb] border-2 border-[#0d0d0f] flex items-center justify-center text-[10px] shadow">✏️</div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#2563eb] border-2 border-deep flex items-center justify-center text-[10px] shadow">✏️</div>
         </button>
         <button
           type="button"

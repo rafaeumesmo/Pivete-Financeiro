@@ -58,7 +58,7 @@ export function LancamentoEditSheet({ lancamento: l, categorias, contas, finance
         </div>
         <div>
           <label className={labelCls} htmlFor="ed-cat">Categoria</label>
-          <select id="ed-cat" value={f.categoria} onChange={e => setF(p => ({ ...p, categoria: e.target.value }))} className={`${inputCls} bg-[#18191f]`}>
+          <select id="ed-cat" value={f.categoria} onChange={e => setF(p => ({ ...p, categoria: e.target.value }))} className={`${inputCls} bg-sheet`}>
             {categorias.map(c => <option key={c.id} value={c.id}>{c.icon} {c.nome}</option>)}
           </select>
         </div>

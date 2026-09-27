@@ -248,7 +248,7 @@ function DespesaSheet({ grupo, userId, contas, contaPadrao, onClose, onSave }) {
           <input type="checkbox" checked={espelhar} onChange={e => setEspelhar(e.target.checked)} className="w-5 h-5 accent-emerald-500" />
         </label>
         {espelhar && contas.length > 1 && (
-          <select aria-label="Pago com" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-[#18191f]`}>
+          <select aria-label="Pago com" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-sheet`}>
             {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         )}
@@ -273,7 +273,7 @@ function QuitarSheet({ pessoa, valor: saldo, contas, contaPadrao, onClose, onSav
           <input type="checkbox" checked={espelhar} onChange={e => setEspelhar(e.target.checked)} className="w-5 h-5 accent-emerald-500" />
         </label>
         {espelhar && contas.length > 1 && (
-          <select aria-label="Conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-[#18191f]`}>
+          <select aria-label="Conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-sheet`}>
             {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         )}

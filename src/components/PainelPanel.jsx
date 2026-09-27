@@ -5,18 +5,20 @@ import {
 import { SectionTitle, SmallButton, ProgressBar } from "./ui.jsx";
 import { findCategoria, CHART_ORDER } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
+import { useTema } from "../lib/theme.js";
 import { todayKey, monthKey, addMonths, formatSnoozeReturn } from "../lib/dates.js";
 import {
   resumoMes, comprometimento, patrimonio, projecao12m, fixosMensais, rendaMensal, gastoVariavelMedio,
 } from "../lib/finance.js";
 
-// Cores de papel (não de série) do tema escuro dos gráficos.
-const INK_MUTED = "rgba(255,255,255,0.4)";
-const GRID = "rgba(255,255,255,0.06)";
-const SURFACE = "#111114";
+// Cores de papel (não de série) dos gráficos, por tema. O Recharts grava cor
+// em atributo SVG, que não aceita var(--…), então vêm do JS.
+const PAPEL = {
+  escuro: { ink: "rgba(255,255,255,0.8)", muted: "rgba(255,255,255,0.4)", grid: "rgba(255,255,255,0.06)", zero: "rgba(255,255,255,0.2)", hover: "rgba(255,255,255,0.04)", cursor: "rgba(255,255,255,0.25)", surface: "#111114", sobra: "#34343b" },
+  claro:  { ink: "rgba(17,17,20,0.8)",    muted: "rgba(17,17,20,0.5)",    grid: "rgba(17,17,20,0.08)",    zero: "rgba(17,17,20,0.25)",   hover: "rgba(17,17,20,0.04)",    cursor: "rgba(17,17,20,0.25)",    surface: "#f4f5f7", sobra: "#d4d4d8" },
+};
 const COR_TENHO = "#3987e5";
 const COR_DEVO = "#e66767";
-const COR_SOBRA = "#34343b"; // parte da renda ainda livre: trilho neutro, não uma "categoria"
 const COR_OUTROS = "#7c7b76";
 const MAX_FATIAS = 4;        // + "Outros" + "Sobra" = no máximo 6 fatias
 
@@ -29,7 +31,7 @@ const brlExato = (v) => formatBRL(v).replace(" ", "\u00a0");
 function ChartTooltip({ active, payload, label, labelFmt }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl bg-[#1f2027] border border-white/10 px-3 py-2 shadow-xl text-[12px]">
+    <div className="rounded-xl bg-raised border border-white/10 px-3 py-2 shadow-xl text-[12px]">
       {label !== undefined && <p className="text-white/50 mb-1">{labelFmt ? labelFmt(label) : label}</p>}
       {payload.map(p => (
         <p key={p.dataKey ?? p.name} className="flex items-center gap-2 text-white">
@@ -54,7 +56,8 @@ function Tile({ label, value, sub, tone = "text-white" }) {
 
 // Fatias da pizza "pra onde vai a renda": categorias em ordem fixa (cor
 // segue a categoria), as menores dobradas em "Outros", e a sobra no fim.
-function fatiasRenda(resumo, categorias) {
+// A sobra (parte da renda ainda livre) é um trilho neutro, não uma "categoria".
+function fatiasRenda(resumo, categorias, corSobra) {
   const cats = Object.entries(resumo.porCategoria).filter(([, v]) => v > 0);
   const top = [...cats].sort((a, b) => b[1] - a[1]).slice(0, MAX_FATIAS).map(([id]) => id);
   const ordem = (id) => { const i = CHART_ORDER.indexOf(id); return i === -1 ? 99 : i; };
@@ -62,7 +65,7 @@ function fatiasRenda(resumo, categorias) {
     .map(([id, v]) => { const c = findCategoria(categorias, id); return { id, name: c.nome, value: v, fill: c.cor }; });
   const resto = cats.filter(([id]) => !top.includes(id) || id === "outros").reduce((a, [, v]) => a + v, 0);
   if (resto > 0) fatias.push({ id: "outros", name: "Outros", value: resto, fill: COR_OUTROS });
-  if (resumo.sobra > 0) fatias.push({ id: "sobra", name: "Sobra", value: resumo.sobra, fill: COR_SOBRA });
+  if (resumo.sobra > 0) fatias.push({ id: "sobra", name: "Sobra", value: resumo.sobra, fill: corSobra });
   return fatias;
 }
 
@@ -70,6 +73,8 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 
 export function PainelPanel({ finance, isDesktop }) {
   const { lancamentos, recorrentes, dividas, contas, metas, categorias } = finance;
+  const [tema] = useTema();
+  const P = PAPEL[tema];
   const hoje = todayKey();
   const ym = monthKey(hoje);
   const resumo = resumoMes(lancamentos, ym);
@@ -80,7 +85,7 @@ export function PainelPanel({ finance, isDesktop }) {
   const variavel = gastoVariavelMedio(lancamentos, hoje);
   const proj = projecao12m({ tenho: pat.caixa, dividas, renda: rendaFixa || resumo.entradas, fixos: fixosMensais(recorrentes), variavel, aPagar: pat.aPagar })
     .map(p => ({ ...p, label: p.mes === 0 ? "hoje" : MESES[Number(addMonths(hoje, p.mes, 1).slice(5, 7)) - 1] }));
-  const fatias = fatiasRenda(resumo, categorias);
+  const fatias = fatiasRenda(resumo, categorias, P.sobra);
   const baseFatias = fatias.reduce((a, f) => a + f.value, 0);
   const barras = [
     { name: "Tenho", value: pat.tenho, fill: COR_TENHO },
@@ -138,7 +143,7 @@ export function PainelPanel({ finance, isDesktop }) {
             <div className="relative mx-auto" style={{ width: 180, height: 180 }}>
               <ResponsiveContainer>
                 <PieChart>
-                  <Pie data={fatias} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86} startAngle={90} endAngle={-270} stroke={SURFACE} strokeWidth={2} isAnimationActive={false}>
+                  <Pie data={fatias} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86} startAngle={90} endAngle={-270} stroke={P.surface} strokeWidth={2} isAnimationActive={false}>
                     {fatias.map(f => <Cell key={f.id} fill={f.fill} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} />
@@ -155,7 +160,7 @@ export function PainelPanel({ finance, isDesktop }) {
               <tbody>
                 {fatias.map(f => (
                   <tr key={f.id} className="border-b border-white/[0.04] last:border-0">
-                    <td className="py-1.5 pr-2"><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-2" style={{ background: f.fill, outline: f.id === "sobra" ? "1px solid rgba(255,255,255,0.25)" : undefined }} /><span className="text-white/75">{f.name}</span></td>
+                    <td className="py-1.5 pr-2"><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-2" style={{ background: f.fill, outline: f.id === "sobra" ? `1px solid ${P.cursor}` : undefined }} /><span className="text-white/75">{f.name}</span></td>
                     <td className="py-1.5 text-right text-white/45 tabular-nums">{Math.round((f.value / baseFatias) * 100)}%</td>
                     <td className="py-1.5 pl-3 text-right text-white tabular-nums">{brl(f.value)}</td>
                   </tr>
@@ -173,14 +178,14 @@ export function PainelPanel({ finance, isDesktop }) {
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3" style={{ height: chartH + 24 }}>
           <ResponsiveContainer>
             <BarChart data={barras} margin={{ top: 22, right: 8, left: 8, bottom: 0 }} barCategoryGap="28%">
-              <CartesianGrid vertical={false} stroke={GRID} />
-              <XAxis dataKey="name" tick={{ fill: INK_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
+              <CartesianGrid vertical={false} stroke={P.grid} />
+              <XAxis dataKey="name" tick={{ fill: P.muted, fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
               <YAxis hide domain={[(min) => Math.min(0, min), "auto"]} />
-              <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />
-              <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={<ChartTooltip />} />
+              <ReferenceLine y={0} stroke={P.zero} />
+              <Tooltip cursor={{ fill: P.hover }} content={<ChartTooltip />} />
               <Bar dataKey="value" name="Valor" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                 {barras.map(b => <Cell key={b.name} fill={b.fill} />)}
-                <LabelList dataKey="value" position="top" formatter={brlExato} style={{ fill: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 600 }} />
+                <LabelList dataKey="value" position="top" formatter={brlExato} style={{ fill: P.ink, fontSize: 11, fontWeight: 600 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -194,13 +199,13 @@ export function PainelPanel({ finance, isDesktop }) {
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3" style={{ height: chartH + 40 }}>
           <ResponsiveContainer>
             <LineChart data={proj} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke={GRID} />
-              <XAxis dataKey="label" tick={{ fill: INK_MUTED, fontSize: 10 }} axisLine={false} tickLine={false} interval={isDesktop ? 0 : 2} />
-              <YAxis tick={{ fill: INK_MUTED, fontSize: 10 }} axisLine={false} tickLine={false} width={56} tickFormatter={brlCompact} />
-              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(255,255,255,0.25)" }} />
-              <Legend iconType="plainline" wrapperStyle={{ fontSize: 11, color: INK_MUTED }} />
-              <Line type="monotone" dataKey="tenho" name="Tenho" stroke={COR_TENHO} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: SURFACE, strokeWidth: 2 }} isAnimationActive={false} />
-              <Line type="monotone" dataKey="divida" name="Dívida" stroke={COR_DEVO} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, stroke: SURFACE, strokeWidth: 2 }} isAnimationActive={false} />
+              <CartesianGrid vertical={false} stroke={P.grid} />
+              <XAxis dataKey="label" tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} interval={isDesktop ? 0 : 2} />
+              <YAxis tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={56} tickFormatter={brlCompact} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: P.cursor }} />
+              <Legend iconType="plainline" wrapperStyle={{ fontSize: 11, color: P.muted }} />
+              <Line type="monotone" dataKey="tenho" name="Tenho" stroke={COR_TENHO} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
+              <Line type="monotone" dataKey="divida" name="Dívida" stroke={COR_DEVO} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

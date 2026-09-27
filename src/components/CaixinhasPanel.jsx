@@ -119,7 +119,7 @@ function AporteSheet({ meta, modo, contas, contaPadrao, onClose, onConfirm }) {
         {contas.length > 1 && (
           <div>
             <label className={labelCls} htmlFor="ap-conta">{retirar ? "Devolver pra" : "Tirar de"}</label>
-            <select id="ap-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-[#18191f]`}>
+            <select id="ap-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-sheet`}>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {formatBRL(c.saldo)}</option>)}
             </select>
           </div>

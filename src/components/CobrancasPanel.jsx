@@ -44,7 +44,7 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
             <p className="text-[11px] text-white/35">{formatDateShort(c.criadaEm.slice(0, 10))} · {formatBRL(c.total)} ÷ {c.partes} · {formatBRL(c.porPessoa)} cada</p>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className={`text-sm font-bold tabular-nums ${falta ? "text-[#93c5fd]" : "text-emerald-400"}`}>{falta ? formatBRL(falta) : "Quitada"}</p>
+            <p className={`text-sm font-bold tabular-nums ${falta ? "text-blue-300" : "text-emerald-400"}`}>{falta ? formatBRL(falta) : "Quitada"}</p>
             {falta > 0 && <p className="text-[11px] text-white/35">a receber</p>}
           </div>
         </div>
@@ -117,7 +117,7 @@ function ReceberSheet({ cobranca, nome: nomeInicial, valor: valorInicial, contas
         <div><label className={labelCls} htmlFor="rc-valor">Valor</label><MoneyInput id="rc-valor" value={valor} onChange={setValor} className={`${inputCls} text-lg font-bold`} /></div>
         {contas.length > 1 && (
           <div><label className={labelCls} htmlFor="rc-conta">Entrou em</label>
-            <select id="rc-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-[#18191f]`}>
+            <select id="rc-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-sheet`}>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>

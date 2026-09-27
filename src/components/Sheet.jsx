@@ -13,7 +13,7 @@ export function Sheet({ title, kicker, onClose, children, maxWidth = "max-w-sm",
         role="dialog" aria-modal="true" aria-label={title}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-        className={`bg-[#18191f] rounded-3xl w-full ${maxWidth} border border-white/10 shadow-2xl max-h-[88dvh] flex flex-col`}
+        className={`bg-sheet rounded-3xl w-full ${maxWidth} border border-white/10 shadow-2xl max-h-[88dvh] flex flex-col`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">

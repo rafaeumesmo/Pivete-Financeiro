@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#111114" />
     <title>%APP_NAME%</title>
+    <script>
+      // Aplica o tema antes do primeiro paint (sem piscar escuro → claro).
+      try { if (JSON.parse(localStorage.getItem("fin_tema")) === "claro") { document.documentElement.dataset.theme = "light"; document.documentElement.style.colorScheme = "light"; } } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

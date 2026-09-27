@@ -24,7 +24,7 @@ function DuelCard({ option, state, onPick, slide }) {
       animate={targets[state]}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       whileTap={state === "idle" ? { scale: 0.97 } : undefined}
-      className={`relative w-full sm:w-[260px] h-[30vh] sm:h-[400px] rounded-3xl overflow-hidden shadow-2xl select-none bg-gradient-to-br ${option.gradient} cursor-pointer`}
+      className={`tema-escuro relative w-full sm:w-[260px] h-[30vh] sm:h-[400px] rounded-3xl overflow-hidden shadow-2xl select-none bg-gradient-to-br ${option.gradient} cursor-pointer`}
       style={winning ? { boxShadow: "0 0 0 3px #34d399, 0 0 44px rgba(52,211,153,0.55)" } : undefined}
     >
       <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />

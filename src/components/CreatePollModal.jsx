@@ -74,7 +74,7 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
+        className="w-full max-w-md bg-sheet rounded-3xl border border-white/10 shadow-2xl overflow-hidden max-h-[88vh] flex flex-col"
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0 border-b border-white/[0.06]">
           <div>
@@ -110,7 +110,7 @@ export function CreatePollModal({ onClose, userId, showToast, isDesktop }) {
                     ].map((o) => (
                       <button key={o.v} type="button" onClick={() => setType(o.v)}
                         className={`p-3 rounded-2xl border text-left transition ${type === o.v ? "bg-[#2563eb]/15 border-[#2563eb]/40" : "bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]"}`}>
-                        <p className={`text-[13px] font-semibold ${type === o.v ? "text-[#93c5fd]" : "text-white/70"}`}>{o.t}</p>
+                        <p className={`text-[13px] font-semibold ${type === o.v ? "text-blue-300" : "text-white/70"}`}>{o.t}</p>
                         <p className="text-[11px] text-white/30 mt-0.5">{o.d}</p>
                       </button>
                     ))}

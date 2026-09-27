@@ -27,6 +27,7 @@ export const SK = {
   snoozeDefault: "fin_snooze_default", // "1h" | "1d"
   snoozeAsked:   "fin_snooze_asked",
   onboarded:     "fin_onboarded",
+  tema:          "fin_tema",           // "escuro" | "claro" — acompanha a conta (SYNC_KEYS)
 };
 
 export function load(key, fallback) {

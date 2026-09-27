@@ -15,7 +15,7 @@ export function SectionTitle({ children, action }) {
 export function SmallButton({ children, onClick, tone = "neutral", className = "", ...rest }) {
   const tones = {
     neutral: "bg-white/[0.06] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.1]",
-    blue:    "bg-[#2563eb]/15 border-[#2563eb]/30 text-[#93c5fd] hover:bg-[#2563eb]/25",
+    blue:    "bg-[#2563eb]/15 border-[#2563eb]/30 text-blue-300 hover:bg-[#2563eb]/25",
     green:   "bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25",
     red:     "bg-red-500/10 border-red-500/25 text-red-300 hover:bg-red-500/20",
   };

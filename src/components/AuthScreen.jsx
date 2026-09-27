@@ -70,7 +70,7 @@ export function AuthScreen({ onSendLink, onGoogle }) {
                 onClick={handleGoogle}
                 disabled={googleLoading}
                 whileTap={{ scale: 0.97 }}
-                className="w-full py-3.5 rounded-2xl bg-white text-sm font-semibold text-neutral-900 hover:bg-white/90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[#fff] border border-black/10 text-sm font-semibold text-neutral-900 hover:bg-[#fff]/90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {googleLoading ? (
                   <span className="w-4 h-4 rounded-full border-2 border-neutral-300 border-t-neutral-900 animate-spin" />

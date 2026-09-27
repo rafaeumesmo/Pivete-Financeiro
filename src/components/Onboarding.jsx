@@ -9,7 +9,7 @@ function OBMiniCard({ cardX, cardY }) {
   const blueOp  = useTransform(cardY, [-90, 0], [1, 0]);
   return (
     <motion.div className="rounded-2xl overflow-hidden shadow-2xl relative flex-shrink-0" style={{ x: cardX, y: cardY, rotate: rotateZ, width: 192, height: 256 }}>
-      <div className="w-full h-full bg-gradient-to-br from-amber-600 via-orange-600 to-orange-700 relative">
+      <div className="tema-escuro w-full h-full bg-gradient-to-br from-amber-600 via-orange-600 to-orange-700 relative">
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute top-3 left-3 z-10"><span className="text-[8px] font-semibold tracking-widest uppercase bg-white/20 text-white/90 px-2 py-0.5 rounded-full border border-white/20">Casa/Contas</span></div>
         <div className="absolute top-3 right-3 z-10 text-2xl">🏠</div>
@@ -120,8 +120,8 @@ export function Onboarding({ onFinish }) {
   const [step, setStep] = useState(0);
   const TOTAL = 3;
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center px-5 bg-black/60 backdrop-blur-[2px]">
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/[0.09] shadow-2xl overflow-hidden">
+    <div className="tema-escuro fixed inset-0 z-[60] flex flex-col items-center justify-center px-5 bg-black/60 backdrop-blur-[2px]">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="w-full max-w-sm bg-sheet rounded-3xl border border-white/[0.09] shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-5 pb-4 border-b border-white/[0.06] flex items-center justify-between">
           <div><p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-0.5">Bem-vindo ao</p><h2 className="text-[20px] font-black text-white leading-none"><Brand /></h2></div>

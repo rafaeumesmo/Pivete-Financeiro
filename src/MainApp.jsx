@@ -400,17 +400,17 @@ export default function MainApp() {
 
   // ════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen w-full bg-[#111114]">
+    <div className="min-h-screen w-full bg-app">
 
       {/* ── MOBILE ── */}
       {!isDesktop && (
-        <div className="flex flex-col w-full bg-[#111114] overflow-hidden" style={{ height: "100dvh" }}>
-          <div className="flex-shrink-0 flex items-center justify-between px-5 pb-3 bg-[#111114]" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
+        <div className="flex flex-col w-full bg-app overflow-hidden" style={{ height: "100dvh" }}>
+          <div className="flex-shrink-0 flex items-center justify-between px-5 pb-3 bg-app" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
             <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-0.5 whitespace-nowrap max-[400px]:hidden">{APP_TAGLINE}</p></div>
             <div className="flex items-center gap-1">
               <StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} />
               {!auth.isLoggedIn && (
-                <button onClick={() => setShowAuthModal(true)} className="px-2.5 h-9 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[11px] font-semibold text-[#93c5fd] hover:bg-[#2563eb]/25 transition">Entrar</button>
+                <button onClick={() => setShowAuthModal(true)} className="px-2.5 h-9 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[11px] font-semibold text-blue-300 hover:bg-[#2563eb]/25 transition">Entrar</button>
               )}
               <button onClick={() => setShowCreatePollModal(true)} className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center" title="Bora? — enquete de grupo"><span className="text-base leading-none">🗳️</span></button>
               <button onClick={() => setActiveTab("create")} aria-label="Novo lançamento" className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
@@ -463,19 +463,19 @@ export default function MainApp() {
             )}
           </div>
 
-          <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-[#111114]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className="relative"><svg viewBox="0 0 24 24" fill="none" stroke={isActive ? "#3b82f6" : "rgba(255,255,255,0.22)"} strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[10px] font-medium" style={{ color: isActive ? "#3b82f6" : "rgba(255,255,255,0.2)" }}>{tab.label}</span></button>); })}
+          <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-app" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
+            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className={`relative ${isActive ? "text-[#3b82f6]" : "text-white/30"}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className={`text-[10px] font-medium ${isActive ? "text-[#3b82f6]" : "text-white/30"}`}>{tab.label}</span></button>); })}
           </div>
         </div>
       )}
 
       {/* ── DESKTOP ── */}
       {isDesktop && (
-        <div className="w-full h-screen flex bg-[#111114]">
-          <aside className="w-[220px] flex-shrink-0 bg-[#18181c] flex flex-col px-4 py-6 border-r border-white/[0.05]">
+        <div className="w-full h-screen flex bg-app">
+          <aside className="w-[220px] flex-shrink-0 bg-sidebar flex flex-col px-4 py-6 border-r border-white/[0.05]">
             <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-1 leading-snug">{APP_TAGLINE}</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
             <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-[#93c5fd]" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
+              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-blue-300" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>
             <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
               <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Decisões do mês</p>
@@ -501,7 +501,7 @@ export default function MainApp() {
                   )}
                 </AnimatePresence>
                 <div className="flex items-center justify-end gap-3 px-10 pt-5 flex-shrink-0">
-                  {!auth.isLoggedIn && <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/25 text-[12px] font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition">Entrar</button>}
+                  {!auth.isLoggedIn && <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/25 text-[12px] font-medium text-blue-300 hover:bg-[#2563eb]/25 transition">Entrar</button>}
                   <button onClick={() => setShowCreatePollModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">🗳️ Bora?</button>
                   <button onClick={() => setActiveTab("create")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Novo lançamento</button>
                 </div>
@@ -592,7 +592,7 @@ export default function MainApp() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              className="bg-[#18181c] rounded-3xl w-full max-w-sm border border-white/10 overflow-hidden"
+              className="bg-sidebar rounded-3xl w-full max-w-sm border border-white/10 overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-6 pt-5 pb-2">
@@ -608,7 +608,7 @@ export default function MainApp() {
 
       {showProfileEditor && (
         <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
-          <div className="w-full max-w-md rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+          <div className="w-full max-w-md rounded-[28px] bg-sheet border border-white/10 p-5 shadow-2xl">
             <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Editar perfil</div><div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div></div><button type="button" onClick={closeProfileEditor} aria-label="Fechar" className="text-white/40 hover:text-white text-lg">✕</button></div>
             <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">{editedProfile.avatar}</div></div>
             <div className="space-y-3 mb-4">
@@ -631,7 +631,7 @@ export default function MainApp() {
 
       {showAboutModal && (
         <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
-          <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 p-5 shadow-2xl">
+          <div className="w-full max-w-sm rounded-[28px] bg-sheet border border-white/10 p-5 shadow-2xl">
             <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Sobre o {APP_NAME}</div><div className="text-[12px] text-white/40">Informações do app</div></div><button type="button" onClick={() => setShowAboutModal(false)} aria-label="Fechar" className="text-white/40 hover:text-white text-lg">✕</button></div>
             <div className="space-y-3 text-sm text-white/60 mb-5"><div><div className="text-white font-semibold">{APP_NAME}</div><div className="text-[12px] text-white/35">Versão 0.0.0</div></div><p>Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Seus dados ficam neste aparelho.</p></div>
             <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Fechar</button>
@@ -641,7 +641,7 @@ export default function MainApp() {
 
       {showNotifSettings && (
         <div className={`fixed inset-0 z-50 flex bg-black/70 backdrop-blur-sm px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
-          <div className="w-full max-w-sm rounded-[28px] bg-[#18191f] border border-white/10 shadow-2xl overflow-hidden">
+          <div className="w-full max-w-sm rounded-[28px] bg-sheet border border-white/10 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
               <div><p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mb-0.5">Configurar</p><h3 className="text-base font-bold text-white">Notificações</h3></div>
               <button type="button" onClick={() => setShowNotifSettings(false)} aria-label="Fechar" className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>

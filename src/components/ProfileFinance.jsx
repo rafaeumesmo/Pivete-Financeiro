@@ -68,7 +68,7 @@ export function ReservaSection({ custo, reserva, reservaMeses, setReservaMeses, 
           <span className="text-[12px] text-white/50">Meta</span>
           <div className="flex gap-1.5" role="radiogroup" aria-label="Meses de reserva">
             {[3, 6, 12].map(n => (
-              <button key={n} type="button" role="radio" aria-checked={reservaMeses === n} onClick={() => setReservaMeses(n)} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition ${reservaMeses === n ? "bg-[#2563eb]/25 border-[#2563eb]/50 text-[#bfdbfe]" : "bg-white/[0.05] border-white/10 text-white/40"}`}>{n} meses</button>
+              <button key={n} type="button" role="radio" aria-checked={reservaMeses === n} onClick={() => setReservaMeses(n)} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition ${reservaMeses === n ? "bg-[#2563eb]/25 border-[#2563eb]/50 text-blue-200" : "bg-white/[0.05] border-white/10 text-white/40"}`}>{n} meses</button>
             ))}
           </div>
         </div>

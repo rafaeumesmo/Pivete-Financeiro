@@ -79,7 +79,7 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
           </button>
           <div className="flex items-center gap-2">
             <span className="text-[13px] font-semibold text-white">{formatMonth(toDateStr(view).slice(0, 7))}</span>
-            {!(noMesAtual && sel === hoje) && <button onClick={() => { const t = new Date(); setView(new Date(t.getFullYear(), t.getMonth(), 1)); setSel(hoje); }} className="text-[10px] font-semibold text-[#93c5fd] hover:text-white transition">Hoje</button>}
+            {!(noMesAtual && sel === hoje) && <button onClick={() => { const t = new Date(); setView(new Date(t.getFullYear(), t.getMonth(), 1)); setSel(hoje); }} className="text-[10px] font-semibold text-blue-300 hover:text-white transition">Hoje</button>}
           </div>
           <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>

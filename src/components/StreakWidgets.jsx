@@ -58,7 +58,7 @@ export function StreakDetailModal({ streak, onClose }) {
   ];
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm px-4 pb-6 sm:pb-0">
-      <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 30, scale: 0.96 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 30, scale: 0.96 }} className="w-full max-w-sm bg-sheet rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
         <div className="px-5 pt-6 pb-5">
           {/* Flame */}
           <div className="flex flex-col items-center mb-5">
@@ -126,7 +126,7 @@ export function StreakBrokenModal({ oldCount, best, hasFreeze, onUseFreeze, onLe
   if (!hasFreeze) {
     return (
       <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/88 backdrop-blur-sm px-4">
-        <motion.div initial={{ opacity: 0, scale: 0.86, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl">
+        <motion.div initial={{ opacity: 0, scale: 0.86, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} className="w-full max-w-sm bg-sheet rounded-3xl border border-white/10 shadow-2xl">
           <div className="px-5 pt-8 pb-6 text-center">
             <motion.div animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 2.2, repeat: Infinity }} className="text-6xl mb-4 leading-none grayscale">🔥</motion.div>
             <h2 className="text-xl font-black text-white mb-2">Streak acabou 💀</h2>
@@ -143,7 +143,7 @@ export function StreakBrokenModal({ oldCount, best, hasFreeze, onUseFreeze, onLe
   }
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/88 backdrop-blur-sm px-4">
-      <motion.div initial={{ opacity: 0, scale: 0.86, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} className="w-full max-w-sm bg-[#18191f] rounded-3xl border border-white/10 shadow-2xl">
+      <motion.div initial={{ opacity: 0, scale: 0.86, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} className="w-full max-w-sm bg-sheet rounded-3xl border border-white/10 shadow-2xl">
         <div className="px-5 pt-8 pb-6 text-center">
           <motion.div animate={relit ? { scale: [1, 1.35, 1] } : { opacity: [1, 0.5, 1] }} transition={{ duration: relit ? 0.5 : 2, repeat: relit ? 0 : Infinity, ease: "easeInOut" }} className={`text-6xl mb-4 leading-none ${relit ? "" : "opacity-70"}`}>🔥</motion.div>
           <h2 className="text-xl font-black text-white mb-2">Quase perdeu! 😅</h2>
