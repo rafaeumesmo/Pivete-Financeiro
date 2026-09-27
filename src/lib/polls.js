@@ -74,6 +74,20 @@ export async function fetchMyPolls(userId = null) {
   }));
 }
 
+// Apaga a enquete (com opções e votos) se eu sou o criador — via RPC
+// delete_poll (supabase/policies/05_polls_delete.sql).
+export async function deletePoll(pollId) {
+  if (!supabase) throw new Error("Supabase não configurado");
+  const { data, error } = await supabase.rpc("delete_poll", { p_poll_id: pollId, p_anon_id: getAnonId() });
+  if (error) {
+    if (error.code === "PGRST202" || error.code === "42883") {
+      throw new Error("Pra apagar enquetes, aplique supabase/policies/05_polls_delete.sql no Supabase.");
+    }
+    throw error;
+  }
+  if (!data) throw new Error("Só quem criou a enquete pode apagar.");
+}
+
 // Vincula enquetes criadas anonimamente à conta após login.
 export async function migrateAnonPolls(userId) {
   if (!supabase || !userId) return;

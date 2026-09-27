@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchMyPolls } from "../lib/polls";
+import { fetchMyPolls, deletePoll } from "../lib/polls";
 import { CobrancasPanel } from "./CobrancasPanel.jsx";
 import { DividirPanel } from "./DividirPanel.jsx";
 
@@ -278,6 +278,17 @@ function MyPolls({ userId, showToast }) {
 
   function pollLink(id) { return `${window.location.origin}${window.location.pathname}#/bora/${id}`; }
 
+  async function apagar(p) {
+    if (!window.confirm(`Apagar a enquete "${p.title}"? Os votos somem junto e o link para de funcionar.`)) return;
+    try {
+      await deletePoll(p.id);
+      setPolls((prev) => prev.filter((x) => x.id !== p.id));
+      showToast?.("Enquete apagada", "bg-red-600/90");
+    } catch (e) {
+      showToast?.(e.message || "Não deu pra apagar", "bg-red-600/90");
+    }
+  }
+
   if (loading) {
     return <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 flex justify-center"><div className="w-6 h-6 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" /></div>;
   }
@@ -309,6 +320,9 @@ function MyPolls({ userId, showToast }) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
           </button>
           <a href={pollLink(p.id)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[12px] font-medium text-[#93c5fd] hover:bg-[#2563eb]/25 transition flex-shrink-0">Resultados</a>
+          <button onClick={() => apagar(p)} title="Apagar enquete" aria-label={`Apagar enquete ${p.title}`} className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-red-400 hover:border-red-400/30 transition flex-shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+          </button>
         </div>
       ))}
     </div>

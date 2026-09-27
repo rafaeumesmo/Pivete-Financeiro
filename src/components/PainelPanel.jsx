@@ -24,6 +24,7 @@ const brl = (v) => formatBRL(v);
 // Espaço não separável: o Recharts quebra rótulos SVG em espaço comum
 // ("R$" numa linha, número na outra).
 const brlCompact = (v) => formatBRL(v, { compact: true }).replace(" ", "\u00a0");
+const brlExato = (v) => formatBRL(v).replace(" ", "\u00a0");
 
 function ChartTooltip({ active, payload, label, labelFmt }) {
   if (!active || !payload?.length) return null;
@@ -145,7 +146,7 @@ export function PainelPanel({ finance, isDesktop }) {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <p className="text-[10px] uppercase tracking-widest text-white/35">{resumo.sobra >= 0 ? "Renda" : "Saídas"}</p>
-                <p className="text-[15px] font-bold text-white tabular-nums">{brlCompact(baseFatias)}</p>
+                <p className="text-[15px] font-bold text-white tabular-nums">{brlExato(baseFatias)}</p>
               </div>
             </div>
             {/* Legenda = tabela com todos os valores */}
@@ -179,7 +180,7 @@ export function PainelPanel({ finance, isDesktop }) {
               <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={<ChartTooltip />} />
               <Bar dataKey="value" name="Valor" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                 {barras.map(b => <Cell key={b.name} fill={b.fill} />)}
-                <LabelList dataKey="value" position="top" formatter={brlCompact} style={{ fill: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 600 }} />
+                <LabelList dataKey="value" position="top" formatter={brlExato} style={{ fill: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 600 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
