@@ -130,12 +130,29 @@ describe("resumos", () => {
     expect(r.porCategoria).toEqual({ transporte: 45000, lazer: 5000 });
   });
   it("patrimônio = contas + caixinhas − dívidas", () => {
-    expect(patrimonio({ contas: [{ saldo: 1000 }], metas: [{ guardado: 500 }], dividas: [{ saldoDevedor: 300 }] })).toEqual({ tenho: 1500, devo: 300, liquido: 1200, caixa: 1500 });
+    expect(patrimonio({ contas: [{ saldo: 1000 }], metas: [{ guardado: 500 }], dividas: [{ saldoDevedor: 300 }] })).toEqual({ tenho: 1500, devo: 300, liquido: 1200, caixa: 1500, aPagar: 0 });
   });
   it("patrimônio: conta no vermelho vai pro devo, tenho nunca fica negativo", () => {
     const p = patrimonio({ contas: [{ saldo: 1000 }, { saldo: -400 }], metas: [], dividas: [{ saldoDevedor: 300 }] });
-    expect(p).toEqual({ tenho: 1000, devo: 700, liquido: 300, caixa: 600 });
+    expect(p).toEqual({ tenho: 1000, devo: 700, liquido: 300, caixa: 600, aPagar: 0 });
     expect(patrimonio({ contas: [{ saldo: -200 }], metas: [], dividas: [] }).tenho).toBe(0);
+  });
+  it("patrimônio: saídas não pagas até o fim do mês entram no devo (parcela de dívida não)", () => {
+    const lancs = [
+      { tipo: "saida", valor: 100, data: "2025-05-20", status: "adiado" },
+      { tipo: "saida", valor: 200, data: "2025-06-30", status: "pendente" },
+      { tipo: "saida", valor: 400, data: "2025-07-01", status: "pendente" },
+      { tipo: "saida", valor: 800, data: "2025-06-10", status: "pago" },
+      { tipo: "entrada", valor: 1600, data: "2025-06-10", status: "pendente" },
+      { tipo: "saida", valor: 3200, data: "2025-06-10", status: "pendente", dividaId: "d1" },
+    ];
+    const p = patrimonio({ contas: [{ saldo: 1000 }], metas: [], dividas: [{ saldoDevedor: 3200 }], lancamentos: lancs, hoje: "2025-06-15" });
+    expect(p).toMatchObject({ aPagar: 300, devo: 3500, liquido: -2500 });
+  });
+  it("projeção: contas não pagas são dívida hoje e saem do caixa no mês 1", () => {
+    const [m0, m1] = projecao12m({ tenho: 1000, dividas: [], renda: 0, fixos: 0, aPagar: 300 });
+    expect(m0).toEqual({ mes: 0, tenho: 1000, divida: 300 });
+    expect(m1).toEqual({ mes: 1, tenho: 700, divida: 0 });
   });
   it("comprometimento = (fixos + parcelas) / renda", () => {
     const recorrentes = [{ ativo: true, tipo: "saida", valor: 50000, frequencia: "mensal" }];

@@ -254,11 +254,20 @@ export function comprometimento({ recorrentes, dividas, renda }) {
 // nunca fica abaixo de zero. Conta no vermelho não abate o "tenho": entra no
 // "devo", junto com o saldo devedor das dívidas. `caixa` é a soma crua dos
 // saldos (pode ser negativa), pra projeção partir do dinheiro real.
-export function patrimonio({ contas, metas, dividas }) {
+// Saídas ainda não pagas (pendentes ou adiadas) vencidas ou do mês de `hoje`.
+// Parcelas de dívida ficam de fora: já estão no saldo devedor.
+export function aPagarAteFimDoMes(lancamentos, hoje) {
+  const limite = endOfMonth(hoje);
+  return sum(lancamentos.filter(l => l.tipo === "saida" && !l.dividaId && l.data && l.data <= limite
+    && (l.status === "pendente" || l.status === "adiado")), l => l.valor);
+}
+
+export function patrimonio({ contas, metas, dividas, lancamentos = [], hoje }) {
   const caixa = sum(contas, c => c.saldo);
+  const aPagar = hoje ? aPagarAteFimDoMes(lancamentos, hoje) : 0;
   const tenho = sum(contas, c => Math.max(0, c.saldo)) + sum(metas, m => Math.max(0, m.guardado));
-  const devo = sum(contas, c => Math.max(0, -c.saldo)) + sum(dividas, d => Math.max(0, d.saldoDevedor));
-  return { tenho, devo, liquido: tenho - devo, caixa: caixa + sum(metas, m => Math.max(0, m.guardado)) };
+  const devo = sum(contas, c => Math.max(0, -c.saldo)) + sum(dividas, d => Math.max(0, d.saldoDevedor)) + aPagar;
+  return { tenho, devo, liquido: tenho - devo, caixa: caixa + sum(metas, m => Math.max(0, m.guardado)), aPagar };
 }
 
 // Média mensal das saídas avulsas (sem recorrência nem dívida) nos últimos
@@ -276,10 +285,12 @@ export function gastoVariavelMedio(lancamentos, hoje, meses = 3) {
 // Projeção de 12 meses sem juros extras (só os juros contratados, sem atraso
 // nem dívida nova): a cada mês entra a renda, saem fixos + variável + parcelas;
 // quando uma dívida termina, a parcela dela vira sobra.
-export function projecao12m({ tenho, dividas, renda, fixos, variavel = 0, meses = 12 }) {
-  let t = tenho;
+// `aPagar` (contas não pagas de hoje) conta como dívida no ponto de partida e
+// sai do caixa no mês seguinte.
+export function projecao12m({ tenho, dividas, renda, fixos, variavel = 0, aPagar = 0, meses = 12 }) {
+  let t = tenho - aPagar;
   const ds = dividas.filter(d => d.saldoDevedor > 0).map(d => ({ S: d.saldoDevedor, i: (d.jurosMes || 0) / 100, P: d.parcela }));
-  const out = [{ mes: 0, tenho: t, divida: sum(ds, d => d.S) }];
+  const out = [{ mes: 0, tenho, divida: sum(ds, d => d.S) + aPagar }];
   for (let m = 1; m <= meses; m++) {
     let pago = 0;
     for (const d of ds) {

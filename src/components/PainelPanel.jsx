@@ -75,9 +75,9 @@ export function PainelPanel({ finance, isDesktop }) {
   const rendaFixa = rendaMensal(recorrentes);
   const renda = resumo.entradas || rendaFixa;
   const comp = comprometimento({ recorrentes, dividas, renda });
-  const pat = patrimonio({ contas, metas, dividas });
+  const pat = patrimonio({ contas, metas, dividas, lancamentos, hoje });
   const variavel = gastoVariavelMedio(lancamentos, hoje);
-  const proj = projecao12m({ tenho: pat.caixa, dividas, renda: rendaFixa || resumo.entradas, fixos: fixosMensais(recorrentes), variavel })
+  const proj = projecao12m({ tenho: pat.caixa, dividas, renda: rendaFixa || resumo.entradas, fixos: fixosMensais(recorrentes), variavel, aPagar: pat.aPagar })
     .map(p => ({ ...p, label: p.mes === 0 ? "hoje" : MESES[Number(addMonths(hoje, p.mes, 1).slice(5, 7)) - 1] }));
   const fatias = fatiasRenda(resumo, categorias);
   const baseFatias = fatias.reduce((a, f) => a + f.value, 0);
@@ -89,8 +89,28 @@ export function PainelPanel({ finance, isDesktop }) {
   const adiados = lancamentos.filter(l => l.status === "adiado");
   const chartH = isDesktop ? 240 : 200;
 
+  const saldoContas = contas.reduce((a, c) => a + c.saldo, 0);
+  const guardado = metas.reduce((a, m) => a + Math.max(0, m.guardado), 0);
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Saldo nas contas */}
+      <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#3987e5]/20 to-white/[0.02] px-5 py-4">
+        <p className="text-[11px] uppercase tracking-widest text-white/45">Saldo nas contas</p>
+        <p className={`text-3xl font-bold tabular-nums mt-1 ${saldoContas < 0 ? "text-red-400" : "text-white"}`}>{brl(saldoContas)}</p>
+        {guardado > 0 && <p className="text-[12px] text-white/45 mt-0.5">+ {brl(guardado)} nas caixinhas · total {brl(saldoContas + guardado)}</p>}
+        {contas.length > 1 && (
+          <div className="mt-3 pt-3 border-t border-white/[0.08] flex flex-col gap-1.5">
+            {contas.map(c => (
+              <div key={c.id} className="flex items-center justify-between text-[13px]">
+                <span className="text-white/65 truncate pr-3">{c.nome}</span>
+                <span className={`tabular-nums font-medium ${c.saldo < 0 ? "text-red-400" : "text-white"}`}>{brl(c.saldo)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Números do mês */}
       <div>
         <SectionTitle>Este mês</SectionTitle>
@@ -164,7 +184,7 @@ export function PainelPanel({ finance, isDesktop }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-[11px] text-white/30 mt-1.5 px-1">Tenho = tudo que entrou − saiu nas contas + caixinhas (nunca abaixo de zero). Devo = dívidas + contas no vermelho.</p>
+        <p className="text-[11px] text-white/30 mt-1.5 px-1">Tenho = tudo que entrou − saiu nas contas + caixinhas (nunca abaixo de zero). Devo = dívidas + contas no vermelho + contas ainda não pagas{pat.aPagar > 0 && <> (<span className="text-red-300/80 tabular-nums">{brl(pat.aPagar)}</span> vencidas ou deste mês)</>}.</p>
       </div>
 
       {/* Linha */}
@@ -184,7 +204,7 @@ export function PainelPanel({ finance, isDesktop }) {
           </ResponsiveContainer>
         </div>
         <p className="text-[11px] text-white/30 mt-1.5 px-1 leading-relaxed">
-          Sem juros extras: todo mês entra a renda fixa ({brl(rendaFixa || resumo.entradas)}) e saem os fixos ({brl(fixosMensais(recorrentes))}), o gasto variável médio dos últimos 3 meses ({brl(variavel)}) e as parcelas das dívidas até acabarem.
+          Sem juros extras: as contas não pagas de hoje saem do caixa no 1º mês; depois, todo mês entra a renda fixa ({brl(rendaFixa || resumo.entradas)}) e saem os fixos ({brl(fixosMensais(recorrentes))}), o gasto variável médio dos últimos 3 meses ({brl(variavel)}) e as parcelas das dívidas até acabarem.
         </p>
       </div>
 

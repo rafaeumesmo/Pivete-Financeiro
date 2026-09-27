@@ -39,6 +39,7 @@ export function FinDeck({
   const totalPagar = deck.filter(l => l.tipo === "saida").reduce((a, l) => a + l.valor, 0);
   const totalReceber = deck.filter(l => l.tipo === "entrada").reduce((a, l) => a + l.valor, 0);
   const modalOpen = !!(payCtx || splitCtx || snoozeCtx);
+  const saldoContas = contas.reduce((a, c) => a + c.saldo, 0);
 
   function exit(dir, vel = {}) {
     setSwipeExit({ vx: 0, vy: 0, ...vel, dir });
@@ -141,6 +142,13 @@ export function FinDeck({
               </button>
             ))}
           </div>
+          {mode !== "painel" && (
+            <button type="button" onClick={() => setMode("painel")} title={contas.map(c => `${c.nome}: ${formatBRL(c.saldo)}`).join("\n")} className="flex items-baseline justify-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-2 hover:bg-white/[0.07] transition">
+              <span className="text-[10px] uppercase tracking-widest text-white/40">Saldo</span>
+              <span className={`text-lg font-bold tabular-nums ${saldoContas < 0 ? "text-red-400" : "text-white"}`}>{formatBRL(saldoContas)}</span>
+              {contas.length > 1 && <span className="text-[10px] text-white/30">{contas.length} contas</span>}
+            </button>
+          )}
           {mode === "contas" && deck.length > 0 && (
             <p className="text-[11px] text-white/35 text-center">
               {deck.length} {deck.length === 1 ? "lançamento" : "lançamentos"} até daqui 7 dias
