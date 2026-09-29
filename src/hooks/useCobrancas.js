@@ -61,9 +61,23 @@ export function useCobrancas(finance) {
     setCobrancas(prev => prev.map(c => c.id === cobrancaId ? { ...c, arquivada } : c));
   }
 
-  function remover(cobrancaId) {
-    setCobrancas(prev => prev.filter(c => c.id !== cobrancaId));
+  // Apagar recebimento lançado errado: tira o valor da conta de volta.
+  function removerRecebimento(cobrancaId, recebimentoId) {
+    const r = cobrancas.find(c => c.id === cobrancaId)?.recebidos.find(x => x.id === recebimentoId);
+    if (!r) return;
+    finance.moverSaldo(r.contaId, -r.valor);
+    setCobrancas(prev => prev.map(c => c.id === cobrancaId ? { ...c, recebidos: c.recebidos.filter(x => x.id !== recebimentoId) } : c));
   }
 
-  return { cobrancas, setCobrancas, pixKey, setPixKey, criar, link, compartilhar, registrarRecebimento, arquivar, remover };
+  // Apagar cobrança feita por engano: estorna o que já tinha entrado por ela e
+  // tira a divisão do lançamento de origem (ele volta a contar o valor cheio).
+  function remover(cobrancaId) {
+    const c = cobrancas.find(x => x.id === cobrancaId);
+    if (!c) return;
+    c.recebidos.forEach(r => finance.moverSaldo(r.contaId, -r.valor));
+    finance.setLancamentos(prev => prev.map(l => l.id === c.lancamentoId && l.divisao?.cobrancaId === c.id ? { ...l, divisao: undefined } : l));
+    setCobrancas(prev => prev.filter(x => x.id !== cobrancaId));
+  }
+
+  return { cobrancas, setCobrancas, pixKey, setPixKey, criar, link, compartilhar, registrarRecebimento, removerRecebimento, arquivar, remover };
 }

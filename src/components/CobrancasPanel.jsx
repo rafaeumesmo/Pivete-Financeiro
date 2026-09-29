@@ -31,6 +31,19 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
   const avisos = useAvisos(abertas.map(c => c.id));
   const totalAberto = abertas.reduce((a, c) => a + Math.max(0, c.aReceber - c.recebidos.reduce((x, r) => x + r.valor, 0)), 0);
 
+  function apagar(c) {
+    const recebido = c.recebidos.reduce((a, r) => a + r.valor, 0);
+    const extra = recebido > 0 ? ` Os ${formatBRL(recebido)} já marcados como recebidos saem do saldo da conta.` : "";
+    if (!window.confirm(`Apagar a cobrança "${c.titulo}"?${extra} A conta deixa de ficar dividida e passa a contar o valor cheio. O link enviado para de mostrar avisos aqui.`)) return;
+    cob.remover(c.id);
+    showToast("Cobrança apagada", "bg-red-600/90");
+  }
+
+  function apagarRecebimento(c, r) {
+    if (!window.confirm(`Apagar o recebimento de ${r.nome} (${formatBRL(r.valor)})? O valor sai do saldo da conta.`)) return;
+    cob.removerRecebimento(c.id, r.id);
+  }
+
   function Card({ c }) {
     const recebido = c.recebidos.reduce((a, r) => a + r.valor, 0);
     const falta = Math.max(0, c.aReceber - recebido);
@@ -56,9 +69,18 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
           </div>
         ))}
         {c.recebidos.length > 0 && (
-          <p className="text-[11px] text-white/40 mt-2">Recebido: {c.recebidos.map(r => `${r.nome} ${formatBRL(r.valor)}`).join(" · ")}</p>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px] text-white/40">
+            <span>Recebido:</span>
+            {c.recebidos.map(r => (
+              <span key={r.id} className="inline-flex items-center gap-1 rounded-lg bg-white/[0.05] pl-2 pr-1 py-0.5">
+                {r.nome} {formatBRL(r.valor)}
+                <button type="button" aria-label={`Apagar recebimento de ${r.nome}`} onClick={() => apagarRecebimento(c, r)} className="px-1 text-white/30 hover:text-red-300">✕</button>
+              </span>
+            ))}
+          </div>
         )}
         <div className="flex gap-2 mt-3 justify-end flex-wrap">
+          <SmallButton tone="red" className="mr-auto" onClick={() => apagar(c)}>Apagar</SmallButton>
           {c.arquivada
             ? <SmallButton onClick={() => cob.arquivar(c.id, false)}>Reabrir</SmallButton>
             : <>
