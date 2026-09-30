@@ -307,6 +307,21 @@ export function projecao12m({ tenho, dividas, renda, fixos, variavel = 0, aPagar
   return out;
 }
 
+// Entradas e saídas de cada mês do ano de `hoje` (jan–dez), pelo mesmo
+// critério de resumoMes. Meses depois do atual ainda não têm lançamentos
+// (a geração só vai até o fim do mês), então saem null: a linha para no mês
+// atual em vez de despencar pra zero.
+export function entradasSaidasAno(lancamentos, hoje) {
+  const ano = hoje.slice(0, 4);
+  const atual = monthKey(hoje);
+  return Array.from({ length: 12 }, (_, i) => {
+    const ym = `${ano}-${String(i + 1).padStart(2, "0")}`;
+    if (ym > atual) return { mes: i, entradas: null, saidas: null };
+    const r = resumoMes(lancamentos, ym);
+    return { mes: i, entradas: r.entradas, saidas: r.saidas };
+  });
+}
+
 // ── Revisar gastos ───────────────────────────────────────────
 // Itens a revisar: fixos de saída ativos (valor mensal) + saídas avulsas pagas
 // nos últimos 30 dias. Um item revisado há menos de 30 dias não volta.

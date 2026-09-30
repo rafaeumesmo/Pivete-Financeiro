@@ -4,7 +4,7 @@ import { addMonths, dateInMonth, todayKey } from "./dates.js";
 import {
   deckLancamentos, vencimentoInfo, gerarParcelamento, ocorrencias, valorMensal,
   materializar, aplicarPagamento, parcelasRestantes, resumoMes, patrimonio,
-  projecao12m, itensRevisao, revisaoPendente, economiaPotencial, comprometimento,
+  projecao12m, entradasSaidasAno, itensRevisao, revisaoPendente, economiaPotencial, comprometimento,
   decisoesDoMes,
 } from "./finance.js";
 
@@ -166,6 +166,19 @@ describe("resumos", () => {
     expect(p[1]).toEqual({ mes: 1, tenho: 40000, divida: 10000 });
     expect(p[2]).toEqual({ mes: 2, tenho: 80000, divida: 0 });
     expect(p[3]).toEqual({ mes: 3, tenho: 130000, divida: 0 });
+  });
+  it("entradas × saídas do ano: soma por mês e para no mês atual", () => {
+    const lancs = [
+      { tipo: "entrada", valor: 100000, data: "2025-01-05", status: "pago" },
+      { tipo: "saida", valor: 30000, data: "2025-01-10", status: "pago" },
+      { tipo: "saida", valor: 5000, data: "2025-06-02", status: "pendente" },
+      { tipo: "entrada", valor: 999, data: "2024-06-01", status: "pago" },
+    ];
+    const a = entradasSaidasAno(lancs, "2025-06-15");
+    expect(a).toHaveLength(12);
+    expect(a[0]).toEqual({ mes: 0, entradas: 100000, saidas: 30000 });
+    expect(a[5]).toEqual({ mes: 5, entradas: 0, saidas: 5000 });
+    expect(a[6]).toEqual({ mes: 6, entradas: null, saidas: null });
   });
 });
 

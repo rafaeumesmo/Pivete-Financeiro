@@ -7,9 +7,9 @@ import { findCategoria, CHART_ORDER } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
 import { useTema } from "../lib/theme.js";
 import { useOcultarValores } from "../lib/privacy.js";
-import { todayKey, monthKey, addMonths, formatSnoozeReturn } from "../lib/dates.js";
+import { todayKey, monthKey, formatSnoozeReturn } from "../lib/dates.js";
 import {
-  resumoMes, comprometimento, patrimonio, projecao12m, fixosMensais, rendaMensal, gastoVariavelMedio,
+  resumoMes, comprometimento, patrimonio, rendaMensal, entradasSaidasAno,
 } from "../lib/finance.js";
 
 // Cores de papel (não de série) dos gráficos, por tema. O Recharts grava cor
@@ -20,6 +20,8 @@ const PAPEL = {
 };
 const COR_TENHO = "#3987e5";
 const COR_DEVO = "#e66767";
+const COR_ENTRADA = COR_TENHO;
+const COR_SAIDA = COR_DEVO;
 const COR_OUTROS = "#7c7b76";
 const MAX_FATIAS = 4;        // + "Outros" + "Sobra" = no máximo 6 fatias
 
@@ -34,7 +36,8 @@ function formatadores(oculto) {
   };
 }
 
-function ChartTooltip({ active, payload, label, labelFmt, brl }) {
+function ChartTooltip({ active, payload: todos, label, labelFmt, brl }) {
+  const payload = todos?.filter(p => p.value != null); // mês sem dado (linha parada) não vira "R$ 0,00"
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl bg-raised border border-white/10 px-3 py-2 shadow-xl text-[12px]">
@@ -90,9 +93,7 @@ export function PainelPanel({ finance, isDesktop }) {
   const renda = resumo.entradas || rendaFixa;
   const comp = comprometimento({ recorrentes, dividas, renda });
   const pat = patrimonio({ contas, metas, dividas, lancamentos, hoje });
-  const variavel = gastoVariavelMedio(lancamentos, hoje);
-  const proj = projecao12m({ tenho: pat.caixa, dividas, renda: rendaFixa || resumo.entradas, fixos: fixosMensais(recorrentes), variavel, aPagar: pat.aPagar })
-    .map(p => ({ ...p, label: p.mes === 0 ? "hoje" : MESES[Number(addMonths(hoje, p.mes, 1).slice(5, 7)) - 1] }));
+  const ano = entradasSaidasAno(lancamentos, hoje).map(m => ({ ...m, label: MESES[m.mes] }));
   const fatias = fatiasRenda(resumo, categorias, P.sobra);
   const baseFatias = fatias.reduce((a, f) => a + f.value, 0);
   const barras = [
@@ -206,22 +207,22 @@ export function PainelPanel({ finance, isDesktop }) {
 
       {/* Linha */}
       <div>
-        <SectionTitle>Projeção de 12 meses</SectionTitle>
+        <SectionTitle>Entradas × saídas em {hoje.slice(0, 4)}</SectionTitle>
         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3" style={{ height: chartH + 40 }}>
           <ResponsiveContainer>
-            <LineChart data={proj} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+            <LineChart data={ano} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke={P.grid} />
-              <XAxis dataKey="label" tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} interval={isDesktop ? 0 : 2} />
+              <XAxis dataKey="label" tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} interval={isDesktop ? 0 : 1} />
               <YAxis tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={56} tickFormatter={brlCompact} />
               <Tooltip content={<ChartTooltip brl={brl} />} cursor={{ stroke: P.cursor }} />
               <Legend iconType="plainline" wrapperStyle={{ fontSize: 11, color: P.muted }} />
-              <Line type="monotone" dataKey="tenho" name="Tenho" stroke={COR_TENHO} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
-              <Line type="monotone" dataKey="divida" name="Dívida" stroke={COR_DEVO} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
+              <Line type="monotone" dataKey="entradas" name="Entradas" stroke={COR_ENTRADA} strokeWidth={2} dot={{ r: 2.5, fill: COR_ENTRADA, strokeWidth: 0 }} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
+              <Line type="monotone" dataKey="saidas" name="Saídas" stroke={COR_SAIDA} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 2.5, fill: COR_SAIDA, strokeWidth: 0 }} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
         <p className="text-[11px] text-white/30 mt-1.5 px-1 leading-relaxed">
-          Sem juros extras: as contas não pagas de hoje saem do caixa no 1º mês; depois, todo mês entra a renda fixa ({brl(rendaFixa || resumo.entradas)}) e saem os fixos ({brl(fixosMensais(recorrentes))}), o gasto variável médio dos últimos 3 meses ({brl(variavel)}) e as parcelas das dívidas até acabarem.
+          Soma dos lançamentos de cada mês, pagos ou não (o mesmo critério de "Este mês"). A linha para em {MESES[Number(ym.slice(5, 7)) - 1]}: os meses seguintes ainda não têm lançamentos.
         </p>
       </div>
 
