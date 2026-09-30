@@ -38,11 +38,10 @@ const NOTIF_LAST_PEAK   = "fin_notif_last_peak";
 const NOTIF_LAST_STREAK = "fin_notif_last_streak";
 
 // ── Notification helpers ──────────────────────────────────────
-// NOTE: Notifications only fire while the app tab is open. There is no service
-// worker / Push API integration here, so they cannot wake a closed tab.
-// To evolve: register a SW, use PushManager.subscribe(), send server-side push
-// via Web Push (Supabase edge function or similar) — then call notify() in the
-// SW's 'push' event handler instead of directly here.
+// NOTE: Notifications only fire while the app is open. The PWA service worker
+// only precaches assets — there is no Push API integration, so it cannot wake a
+// closed app. To evolve: PushManager.subscribe() + server-side Web Push
+// (Supabase edge function or similar) handled in the SW's 'push' event.
 function calcPeakHour(decisions) {
   if (decisions.length < 5) return 9; // fallback
   const counts = new Array(24).fill(0);
@@ -51,7 +50,13 @@ function calcPeakHour(decisions) {
 }
 function notify(title, body, tag) {
   if (Notification.permission !== "granted") return;
-  try { new Notification(title, { body, tag, icon: "/icon-192.png", badge: "/badge.png" }); } catch {}
+  const opts = { body, tag, icon: "/icon-192.png", badge: "/badge.png" };
+  // Installed PWAs on Android reject `new Notification()` — go through the SW when there is one.
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts)).catch(() => {});
+    return;
+  }
+  try { new Notification(title, opts); } catch {}
 }
 // Reads state from localStorage directly — safe to call from setInterval without stale-closure issues.
 function checkNotifications() {
