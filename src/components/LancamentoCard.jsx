@@ -1,9 +1,11 @@
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey } from "../lib/dates.js";
 import { vencimentoInfo } from "../lib/finance.js";
+import { useOcultarValores } from "../lib/privacy.js";
 
 // Conteúdo do card de lançamento no deck (vai dentro de <SwipeCard>).
 export function LancamentoCardContent({ lancamento: l, categoria }) {
+  const [ocultar] = useOcultarValores();
   const venc = vencimentoInfo(l.data, todayKey(), l.tipo);
   const entrada = l.tipo === "entrada";
   return (
@@ -25,7 +27,7 @@ export function LancamentoCardContent({ lancamento: l, categoria }) {
 
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 text-center px-6 pointer-events-none">
         <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/55 mb-1">{entrada ? "Entrada" : "A pagar"}</p>
-        <p className="text-[44px] leading-none font-black text-white tracking-tight tabular-nums drop-shadow-lg">{formatBRL(l.valor)}</p>
+        <p className="text-[44px] leading-none font-black text-white tracking-tight tabular-nums drop-shadow-lg">{formatBRL(l.valor, { oculto: ocultar })}</p>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
@@ -43,6 +45,7 @@ export function LancamentoCardContent({ lancamento: l, categoria }) {
 
 // Conteúdo do card no modo "Revisar gastos".
 export function RevisaoCardContent({ item, categoria }) {
+  const [ocultar] = useOcultarValores();
   return (
     <>
       <div className="absolute top-5 left-5 z-10 flex flex-col items-start gap-1.5">
@@ -54,7 +57,7 @@ export function RevisaoCardContent({ item, categoria }) {
       <div className="absolute right-5 top-5 z-10 text-4xl filter drop-shadow-lg">{categoria.icon}</div>
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 text-center px-6 pointer-events-none">
         <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/55 mb-1">{item.origem === "fixo" ? "Por mês" : "Gasto"}</p>
-        <p className="text-[44px] leading-none font-black text-white tracking-tight tabular-nums drop-shadow-lg">{formatBRL(item.valorMensal)}</p>
+        <p className="text-[44px] leading-none font-black text-white tracking-tight tabular-nums drop-shadow-lg">{formatBRL(item.valorMensal, { oculto: ocultar })}</p>
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
         <h2 className="text-2xl font-bold text-white tracking-tight mb-1.5 leading-tight truncate">{item.nome || categoria.nome}</h2>

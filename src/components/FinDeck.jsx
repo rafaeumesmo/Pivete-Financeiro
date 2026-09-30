@@ -6,7 +6,9 @@ import { ActionButtons } from "./ActionButtons.jsx";
 import { SnoozeSetupModal } from "./SnoozeSetupModal.jsx";
 import { Sheet } from "./Sheet.jsx";
 import { PainelPanel } from "./PainelPanel.jsx";
+import { EyeButton } from "./ui.jsx";
 import { findCategoria } from "../lib/categories.js";
+import { useOcultarValores } from "../lib/privacy.js";
 import { formatBRL, splitCents } from "../lib/money.js";
 import { computeSnoozeUntil, todayKey } from "../lib/dates.js";
 import { deckLancamentos, itensRevisao, revisaoPendente, economiaPotencial } from "../lib/finance.js";
@@ -40,6 +42,8 @@ export function FinDeck({
   const totalReceber = deck.filter(l => l.tipo === "entrada").reduce((a, l) => a + l.valor, 0);
   const modalOpen = !!(payCtx || splitCtx || snoozeCtx);
   const saldoContas = contas.reduce((a, c) => a + c.saldo, 0);
+  const [ocultar] = useOcultarValores();
+  const brl = (v) => formatBRL(v, { oculto: ocultar });
 
   function exit(dir, vel = {}) {
     setSwipeExit({ vx: 0, vy: 0, ...vel, dir });
@@ -56,7 +60,7 @@ export function FinDeck({
     const willEmpty = deck.length === 1;
     const { quitouDivida } = finance.pagar(l.id, contaId);
     registrar(l, l.tipo === "entrada" ? "Recebi" : "Paguei", "right");
-    showToast(l.tipo === "entrada" ? `✓ Recebido ${formatBRL(l.valor)}` : `✓ Pago ${formatBRL(l.valor)}`, "bg-emerald-600/90 backdrop-blur-md");
+    showToast(l.tipo === "entrada" ? `✓ Recebido ${brl(l.valor)}` : `✓ Pago ${brl(l.valor)}`, "bg-emerald-600/90 backdrop-blur-md");
     try { navigator.vibrate?.([30, 50, 30]); } catch {}
     if (quitouDivida) onQuitouDivida?.(l);
     if (willEmpty) onDeckComplete?.();
@@ -74,7 +78,7 @@ export function FinDeck({
     exit("up", vel);
     const dividido = finance.dividir(l.id, partes, contaId);
     registrar(l, "Dividi", "up");
-    showToast(`↑ Dividido em ${partes} · ${formatBRL(dividido.divisao.porPessoa)} por pessoa`, "bg-blue-600/90 backdrop-blur-md");
+    showToast(`↑ Dividido em ${partes} · ${brl(dividido.divisao.porPessoa)} por pessoa`, "bg-blue-600/90 backdrop-blur-md");
     try { navigator.vibrate?.(80); } catch {}
     onDividido?.(dividido);
     if (deck.length === 1) onDeckComplete?.();
@@ -87,7 +91,7 @@ export function FinDeck({
       exit(direction, vel);
       finance.revisar(item.key, direction === "right" ? "valeu" : "cortar");
       onActivity();
-      showToast(direction === "right" ? "👍 Valeu a pena" : `✂️ Cortar · ${formatBRL(item.valorMensal)}`, direction === "right" ? "bg-emerald-600/90 backdrop-blur-md" : "bg-red-600/90 backdrop-blur-md");
+      showToast(direction === "right" ? "👍 Valeu a pena" : `✂️ Cortar · ${brl(item.valorMensal)}`, direction === "right" ? "bg-emerald-600/90 backdrop-blur-md" : "bg-red-600/90 backdrop-blur-md");
       return true;
     }
     const l = item;
@@ -143,17 +147,20 @@ export function FinDeck({
             ))}
           </div>
           {mode !== "painel" && (
-            <button type="button" onClick={() => setMode("painel")} title={contas.map(c => `${c.nome}: ${formatBRL(c.saldo)}`).join("\n")} className="flex items-baseline justify-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-2 hover:bg-white/[0.07] transition">
-              <span className="text-[10px] uppercase tracking-widest text-white/40">Saldo</span>
-              <span className={`text-lg font-bold tabular-nums ${saldoContas < 0 ? "text-red-400" : "text-white"}`}>{formatBRL(saldoContas)}</span>
-              {contas.length > 1 && <span className="text-[10px] text-white/30">{contas.length} contas</span>}
-            </button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setMode("painel")} title={contas.map(c => `${c.nome}: ${brl(c.saldo)}`).join("\n")} className="flex-1 flex items-baseline justify-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-2 hover:bg-white/[0.07] transition">
+                <span className="text-[10px] uppercase tracking-widest text-white/40">Saldo</span>
+                <span className={`text-lg font-bold tabular-nums ${saldoContas < 0 && !ocultar ? "text-red-400" : "text-white"}`}>{brl(saldoContas)}</span>
+                {contas.length > 1 && <span className="text-[10px] text-white/30">{contas.length} contas</span>}
+              </button>
+              <EyeButton />
+            </div>
           )}
           {mode === "contas" && deck.length > 0 && (
             <p className="text-[11px] text-white/35 text-center">
               {deck.length} {deck.length === 1 ? "lançamento" : "lançamentos"} até daqui 7 dias
-              {totalPagar > 0 && <> · <span className="text-white/60 font-semibold tabular-nums">{formatBRL(totalPagar)}</span> a pagar</>}
-              {totalReceber > 0 && <> · <span className="text-emerald-400/80 font-semibold tabular-nums">{formatBRL(totalReceber)}</span> a receber</>}
+              {totalPagar > 0 && <> · <span className="text-white/60 font-semibold tabular-nums">{brl(totalPagar)}</span> a pagar</>}
+              {totalReceber > 0 && <> · <span className="text-emerald-400/80 font-semibold tabular-nums">{brl(totalReceber)}</span> a receber</>}
             </p>
           )}
           {mode === "revisar" && revisaoDeck.length > 0 && (
@@ -235,10 +242,11 @@ export function FinDeck({
 }
 
 function ContaOption({ conta, selected, onSelect }) {
+  const [ocultar] = useOcultarValores();
   return (
     <button type="button" onClick={onSelect} className={`w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${selected ? "border-[#2563eb] bg-[#2563eb]/15" : "border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07]"}`}>
       <span className="text-sm font-medium text-white">{conta.nome}</span>
-      <span className={`text-[12px] tabular-nums ${conta.saldo < 0 ? "text-red-400" : "text-white/45"}`}>{formatBRL(conta.saldo)}</span>
+      <span className={`text-[12px] tabular-nums ${conta.saldo < 0 && !ocultar ? "text-red-400" : "text-white/45"}`}>{formatBRL(conta.saldo, { oculto: ocultar })}</span>
     </button>
   );
 }
@@ -246,13 +254,14 @@ function ContaOption({ conta, selected, onSelect }) {
 export function ContaPickerSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
   const [contaId, setContaId] = useState(contas.some(c => c.id === contaPadrao) ? contaPadrao : contas[0]?.id);
   const entrada = lancamento.tipo === "entrada";
+  const [ocultar] = useOcultarValores();
   return (
     <Sheet title={entrada ? "Recebeu em qual conta?" : "Pagou com qual conta?"} kicker={lancamento.descricao} onClose={onClose}>
       <div className="flex flex-col gap-2 mb-4">
         {contas.map(c => <ContaOption key={c.id} conta={c} selected={c.id === contaId} onSelect={() => setContaId(c.id)} />)}
       </div>
       <button type="button" onClick={() => onConfirm(contaId)} className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition">
-        {entrada ? "Recebi" : "Paguei"} {formatBRL(lancamento.valor)}
+        {entrada ? "Recebi" : "Paguei"} {formatBRL(lancamento.valor, { oculto: ocultar })}
       </button>
     </Sheet>
   );
@@ -262,8 +271,10 @@ function DividirSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
   const [partes, setPartes] = useState(2);
   const [contaId, setContaId] = useState(contas.some(c => c.id === contaPadrao) ? contaPadrao : contas[0]?.id);
   const [minha, ...outras] = splitCents(lancamento.valor, partes);
+  const [ocultar] = useOcultarValores();
+  const brl = (v) => formatBRL(v, { oculto: ocultar });
   return (
-    <Sheet title="Dividir conta" kicker={`${lancamento.descricao} · ${formatBRL(lancamento.valor)}`} onClose={onClose}>
+    <Sheet title="Dividir conta" kicker={`${lancamento.descricao} · ${brl(lancamento.valor)}`} onClose={onClose}>
       <p className="text-[12px] text-white/40 mb-4 leading-relaxed">Você paga o total agora e cobra a parte dos outros. Só a sua parte entra nos seus gastos.</p>
       <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] border border-white/[0.08] px-4 py-3 mb-3">
         <span className="text-sm text-white/70">Dividir entre</span>
@@ -274,8 +285,8 @@ function DividirSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Sua parte</p><p className="text-base font-bold text-white tabular-nums">{formatBRL(minha)}</p></div>
-        <div className="rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/25 px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-blue-300/60 mb-1">A receber</p><p className="text-base font-bold text-blue-300 tabular-nums">{formatBRL(outras.reduce((a, b) => a + b, 0))}</p><p className="text-[10px] text-white/35">{formatBRL(outras[0])} por pessoa</p></div>
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Sua parte</p><p className="text-base font-bold text-white tabular-nums">{brl(minha)}</p></div>
+        <div className="rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/25 px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-blue-300/60 mb-1">A receber</p><p className="text-base font-bold text-blue-300 tabular-nums">{brl(outras.reduce((a, b) => a + b, 0))}</p><p className="text-[10px] text-white/35">{brl(outras[0])} por pessoa</p></div>
       </div>
       {contas.length > 1 && (
         <div className="flex flex-col gap-2 mb-4">
@@ -317,6 +328,7 @@ function DeckVazio({ stats, onNavigate, onRevisar }) {
 function ResumoRevisao({ itens, revisoes, onRecomecar, onVoltar }) {
   const { total, cortes } = economiaPotencial(itens, revisoes);
   const revisados = itens.filter(it => revisoes[it.key]).length;
+  const [ocultar] = useOcultarValores();
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, type: "spring" }} className="flex-1 flex flex-col items-center justify-center px-8 text-center max-w-md mx-auto w-full overflow-y-auto py-6">
       {itens.length === 0 ? (
@@ -329,14 +341,14 @@ function ResumoRevisao({ itens, revisoes, onRecomecar, onVoltar }) {
         <>
           <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-white/35 mb-2">Revisão concluída · {revisados} {revisados === 1 ? "item" : "itens"}</p>
           <p className="text-white/55 text-sm mb-1">Você poderia economizar</p>
-          <p className={`text-[44px] font-black tabular-nums leading-none mb-1 ${total > 0 ? "text-emerald-400" : "text-white/70"}`}>{formatBRL(total)}</p>
+          <p className={`text-[44px] font-black tabular-nums leading-none mb-1 ${total > 0 ? "text-emerald-400" : "text-white/70"}`}>{formatBRL(total, { oculto: ocultar })}</p>
           <p className="text-white/40 text-sm mb-5">por mês</p>
           {cortes.length > 0 ? (
             <div className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.07] divide-y divide-white/[0.05] mb-5 text-left">
               {cortes.map(c => (
                 <div key={c.key} className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-[13px] text-white/75 truncate">✂️ {c.nome}</span>
-                  <span className="text-[13px] text-white/55 tabular-nums flex-shrink-0 ml-3">{formatBRL(c.valorMensal)}</span>
+                  <span className="text-[13px] text-white/55 tabular-nums flex-shrink-0 ml-3">{formatBRL(c.valorMensal, { oculto: ocultar })}</span>
                 </div>
               ))}
             </div>
