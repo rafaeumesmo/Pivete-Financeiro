@@ -101,7 +101,7 @@ function isStandalone() {
   catch { return false; }
 }
 
-export function Landing({ onStart }) {
+export function Landing({ onStart, saiu = false }) {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [showAuth, setShowAuth] = useState(false);
   const [standalone] = useState(isStandalone);
@@ -114,13 +114,21 @@ export function Landing({ onStart }) {
     </div>
   );
 
+  // Depois do logout a ordem inverte: entrar de novo é o principal.
+  const principal = saiu ? { label: "Entrar", onClick: () => setShowAuth(true) } : { label: "Começar", onClick: onStart };
+  const secundario = saiu ? { label: "Usar sem conta", onClick: onStart } : { label: "Já tenho conta", onClick: () => setShowAuth(true) };
   const ctas = (
     <div className={`flex flex-col gap-2.5 w-full max-w-sm ${isDesktop ? "" : "mx-auto"}`}>
-      <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={onStart} className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition">
-        Começar
+      {saiu && (
+        <p className={`text-[13px] text-white/60 leading-relaxed rounded-2xl bg-white/[0.04] border border-white/[0.07] px-4 py-3 mb-1 ${isDesktop ? "" : "text-center"}`}>
+          👋 Você saiu da sua conta. Seus dados continuam salvos nela: é só entrar de novo.
+        </p>
+      )}
+      <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={principal.onClick} className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition">
+        {principal.label}
       </motion.button>
-      <button type="button" onClick={() => setShowAuth(true)} className="w-full py-3 rounded-2xl text-sm font-medium text-white/60 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition">
-        Já tenho conta
+      <button type="button" onClick={secundario.onClick} className="w-full py-3 rounded-2xl text-sm font-medium text-white/60 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition">
+        {secundario.label}
       </button>
       {!standalone && (
         <p className={`text-[11px] text-white/25 mt-1 ${isDesktop ? "" : "text-center"}`}>
@@ -165,9 +173,7 @@ export function Landing({ onStart }) {
       ) : (
         <div className="max-w-md mx-auto flex flex-col gap-6">
           {hero}
-          <Demo />
-          {destaques}
-          {ctas}
+          {saiu ? <>{ctas}<Demo />{destaques}</> : <><Demo />{destaques}{ctas}</>}
         </div>
       )}
       <AnimatePresence>{showAuth && <AuthSheet key="auth" onClose={() => setShowAuth(false)} />}</AnimatePresence>

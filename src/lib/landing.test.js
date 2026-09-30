@@ -25,6 +25,12 @@ describe("regra de exibição da Landing", () => {
     expect(telaInicial({ session: undefined, temDados: false })).toBe("carregando");
   });
 
+  it("saiu da conta → Landing mesmo com dados locais; logou de novo → app", () => {
+    expect(telaInicial({ session: null, temDados: true, saiu: true })).toBe("landing");
+    expect(telaInicial({ session: undefined, temDados: true, saiu: true })).toBe("carregando");
+    expect(telaInicial({ session: { user: { id: "a" } }, temDados: true, saiu: true })).toBe("app");
+  });
+
   it("storage que lança erro conta como vazio", () => {
     const quebrado = { get length() { throw new Error("blocked"); } };
     expect(temDadosLocais(quebrado)).toBe(false);

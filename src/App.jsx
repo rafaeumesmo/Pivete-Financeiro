@@ -4,7 +4,7 @@ import CobrancaPage from "./CobrancaPage.jsx";
 import BoraPage from "./components/BoraPage.jsx";
 import { Landing } from "./components/Landing.jsx";
 import { supabase } from "./supabaseClient";
-import { SK, save } from "./lib/storage.js";
+import { SK, load, save } from "./lib/storage.js";
 import { temDadosLocais, telaInicial } from "./lib/landing.js";
 
 function getRoute() {
@@ -15,10 +15,10 @@ function getRoute() {
 }
 
 // Só lê a sessão pra decidir entre Landing e app — o resto do auth continua no
-// useAuth do MainApp. Com dados locais nem consulta (vai direto pro app).
-// Se o Supabase não responder (ex.: offline com token vencido), desiste em 4s e
-// segue como sem login: a Landing não depende de rede e "Começar" entra no app.
-function useSessaoInicial(ativo) {
+// useAuth do MainApp. Se o Supabase não responder (ex.: offline com token
+// vencido), desiste em 4s e segue como sem login: a Landing não depende de rede.
+// onSaiu: qualquer logout (botão Sair, outra aba, sessão invalidada).
+function useSessao(ativo, onSaiu) {
   const [session, setSession] = useState(undefined);
   useEffect(() => {
     if (!ativo) return;
@@ -26,19 +26,29 @@ function useSessaoInicial(ativo) {
     let vivo = true;
     const timer = setTimeout(() => { if (vivo) setSession(s => (s === undefined ? null : s)); }, 4000);
     supabase.auth.getSession().then(({ data }) => { if (vivo) setSession(data.session ?? null); }).catch(() => { if (vivo) setSession(null); });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => { if (vivo) setSession(s ?? null); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, s) => {
+      if (!vivo) return;
+      setSession(s ?? null);
+      if (evento === "SIGNED_OUT") onSaiu();
+    });
     return () => { vivo = false; clearTimeout(timer); subscription.unsubscribe(); };
-  }, [ativo]);
+  }, [ativo]); // eslint-disable-line react-hooks/exhaustive-deps -- onSaiu só mexe em estado/storage, não precisa reassinar
   return session;
 }
 
 export default function App() {
   const [route, setRoute] = useState(getRoute);
-  // Vira true de vez quando o app abre (dados locais, "Começar" ou login): um
-  // logout depois não devolve ninguém pra Landing.
+  // noApp: já usa o app neste aparelho (dados locais, "Começar" ou login).
+  // saiu: deslogou — volta pra Landing, com "Entrar" em destaque, até logar
+  // de novo ou escolher usar sem conta. Fica salvo pra sobreviver a reload.
   const [noApp, setNoApp] = useState(temDadosLocais);
-  const session = useSessaoInicial(route === "app" && !noApp);
-  useEffect(() => { if (session) setNoApp(true); }, [session]);
+  const [saiu, setSaiu] = useState(() => load(SK.saiuDaConta, false));
+  const session = useSessao(route === "app", () => { save(SK.saiuDaConta, true); setSaiu(true); });
+  useEffect(() => {
+    if (!session) return;
+    setNoApp(true);
+    if (load(SK.saiuDaConta, false)) { save(SK.saiuDaConta, false); setSaiu(false); }
+  }, [session]);
 
   useEffect(() => {
     function onHash() { setRoute(getRoute()); }
@@ -49,10 +59,15 @@ export default function App() {
   if (route === "cobranca") return <CobrancaPage />;
   if (route === "bora")   return <BoraPage />;
 
-  const tela = telaInicial({ session, temDados: noApp });
+  const tela = telaInicial({ session, temDados: noApp, saiu });
   if (tela === "carregando") return <div className="min-h-[100dvh] bg-app" />;
   if (tela === "landing") {
-    return <Landing onStart={() => { save(SK.landingSeen, true); setNoApp(true); }} />;
+    return (
+      <Landing
+        saiu={saiu}
+        onStart={() => { save(SK.landingSeen, true); save(SK.saiuDaConta, false); setSaiu(false); setNoApp(true); }}
+      />
+    );
   }
   return <MainApp />;
 }

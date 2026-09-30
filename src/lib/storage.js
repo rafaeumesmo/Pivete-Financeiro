@@ -30,6 +30,7 @@ export const SK = {
   tema:          "fin_tema",           // "escuro" | "claro" — acompanha a conta (SYNC_KEYS)
   ocultarValores: "fin_ocultar_valores", // botão de olho do perfil — por aparelho, fora de SYNC_KEYS
   landingSeen:   "fin_landing_seen",   // clicou "Começar" na Landing — por aparelho, fora de SYNC_KEYS
+  saiuDaConta:   "fin_saiu_da_conta",  // deslogou: abre na Landing (modo "entrar de novo") até logar ou escolher usar sem conta
 };
 
 export function load(key, fallback) {

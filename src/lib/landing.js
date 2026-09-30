@@ -1,6 +1,7 @@
-// Quem vê a Landing: só o visitante "zerado" — sem sessão do Supabase e sem
-// nenhuma chave fin_* neste aparelho. Quem já usa o app em modo local nunca é
-// barrado, e com dados locais nem esperamos a sessão (não depende de rede).
+// Quem vê a Landing: o visitante "zerado" — sem sessão do Supabase e sem
+// nenhuma chave fin_* neste aparelho — e quem acabou de sair da conta (o
+// logout já apaga os dados sincronizados do aparelho). Quem usa o app em modo
+// local nunca é barrado, e com dados locais nem esperamos a sessão.
 
 export function temDadosLocais(storage = globalThis.localStorage) {
   try {
@@ -13,8 +14,8 @@ export function temDadosLocais(storage = globalThis.localStorage) {
 
 // session: undefined = ainda carregando, null = sem login, objeto = logado.
 // → "app" | "landing" | "carregando" (fundo vazio, sem flash de conteúdo)
-export function telaInicial({ session, temDados }) {
-  if (temDados) return "app";
+export function telaInicial({ session, temDados, saiu = false }) {
+  if (temDados && !saiu) return "app";
   if (session === undefined) return "carregando";
   return session ? "app" : "landing";
 }
