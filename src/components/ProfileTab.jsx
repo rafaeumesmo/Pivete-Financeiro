@@ -6,6 +6,22 @@ import { todayKey } from "../lib/dates.js";
 import { rendaMensal } from "../lib/finance.js";
 import { xpTotal, nivel, taxaEmDia, custoMensal, reservaAtual } from "../lib/conquistas.js";
 import { useTema } from "../lib/theme.js";
+import { useOcultarValores } from "../lib/privacy.js";
+import { EyeButton } from "./ui.jsx";
+
+// Cabeçalho dos blocos Público / Privado do perfil.
+function BlockHeader({ icon, title, sub, action, isDesktop }) {
+  return (
+    <div className={`${isDesktop ? "" : "px-5"} flex items-start gap-3 mb-4`}>
+      <span className="text-base mt-0.5" aria-hidden>{icon}</span>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-[13px] font-semibold text-white leading-tight">{title}</h3>
+        <p className="text-[11px] text-white/35 leading-snug mt-0.5">{sub}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
 
 export function ProfileTab({
   profile, stats, streak, notifSettings,
@@ -16,6 +32,7 @@ export function ProfileTab({
 }) {
   const [tema, setTema] = useTema();
   const [showDanger, setShowDanger] = useState(false);
+  const [ocultar] = useOcultarValores();
 
   const totalDecisions = stats.accepted + stats.rejected + stats.shared;
   const { nivel: level, noNivel: xpInLevel, porNivel } = nivel(xpTotal(totalDecisions, conquistas));
@@ -40,22 +57,32 @@ export function ProfileTab({
 
   // ── Section builders (px removed when desktop — parent provides it) ──
 
+  // ── Público x privado ──
+  // Público: identidade, nível, ofensiva e conquistas — nenhum valor em R$.
+  // Privado: tudo que é dinheiro. Fica em user_data (RLS: só o dono lê) e nunca
+  // entra em profiles, que é o que a aba Social enxerga. O olho só mascara a tela.
+
+
+  const publicSection = (
+    <div className="mb-8">
+      <BlockHeader isDesktop={isDesktop} icon="🌐" title="Público" sub="Seus amigos veem nível, ofensiva e conquistas — nada de valores em R$." />
+      <div className={isDesktop ? "" : "px-5"}>
+        <ConquistasSection desbloqueadas={conquistas} />
+      </div>
+    </div>
+  );
+
   const statsSection = (
-    <div className={`${isDesktop ? "" : "px-5"} grid grid-cols-3 gap-2 mb-6`}>
+    <div className={`${isDesktop ? "" : "px-5"} grid grid-cols-2 gap-2 mb-6`}>
       <motion.button type="button" onClick={() => onNavigate("activity")} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-left rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex flex-col gap-1.5 min-w-0">
         <span className="text-base" aria-hidden>💰</span>
-        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-emerald-400 leading-none tabular-nums truncate`}>{formatBRL(renda, { compact: true })}</div>
+        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-emerald-400 leading-none tabular-nums truncate`}>{formatBRL(renda, { compact: true, oculto: ocultar })}</div>
         <div className="text-[10px] text-white/30 font-medium">Renda mensal</div>
       </motion.button>
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl bg-[#1d4ed8]/10 border border-[#1d4ed8]/20 p-3.5 flex flex-col gap-1.5">
         <span className="text-base" aria-hidden>⏱️</span>
         <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-blue-400 leading-none tabular-nums`}>{emDia ? `${Math.round(emDia.pct * 100)}%` : "—"}</div>
         <div className="text-[10px] text-white/30 font-medium">Pagas em dia{emDia ? ` (${emDia.emDia}/${emDia.total})` : ""}</div>
-      </motion.div>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 flex flex-col gap-1.5">
-        <span className="text-base" aria-hidden>🔥</span>
-        <div className={`${isDesktop ? "text-[22px]" : "text-[15px]"} font-bold text-amber-400 leading-none tabular-nums`}>{streak.count}</div>
-        <div className="text-[10px] text-white/30 font-medium">Dias seguidos</div>
       </motion.div>
     </div>
   );
@@ -72,11 +99,11 @@ export function ProfileTab({
           }} className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-400/30 text-[12px] font-semibold text-blue-100 hover:bg-blue-500/30 transition">Limpar dados de exemplo</button>
         </div>
       )}
-      <ContasSection finance={finance} showToast={showToast} />
+      <ContasSection finance={finance} showToast={showToast} ocultar={ocultar} />
       <ReservaSection custo={custo} reserva={reserva} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses}
         temCaixinhaReserva={finance.metas.some(m => /reserva/i.test(m.nome))}
+        ocultar={ocultar}
         onCriarCaixinha={(alvo) => { finance.salvarMeta({ nome: "Reserva de emergência", alvo }); showToast("Caixinha de reserva criada 🛟", "bg-emerald-600/90"); }} />
-      <ConquistasSection desbloqueadas={conquistas} />
       <CategoriasSection finance={finance} showToast={showToast} />
     </div>
   );
@@ -253,6 +280,8 @@ export function ProfileTab({
 
       {/* ── Content ───────────────────────────────────────────── */}
       <div className={isDesktop ? "px-5 pb-4 max-w-xl" : ""}>
+        {publicSection}
+        <BlockHeader isDesktop={isDesktop} icon="🔒" title="Privado" sub="Só você vê — renda, saldos e reserva nunca vão pro seu perfil na aba Social." action={<EyeButton />} />
         {statsSection}
         {financeSections}
         {settingsSection}

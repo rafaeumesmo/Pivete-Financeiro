@@ -10,18 +10,18 @@ import { makeId } from "../lib/finance.js";
 
 const card = "rounded-2xl border border-white/[0.07] bg-white/[0.03]";
 
-export function ContasSection({ finance, showToast }) {
+export function ContasSection({ finance, showToast, ocultar = false }) {
   const { contas } = finance;
   const [edit, setEdit] = useState(null);
   const total = contas.reduce((a, c) => a + c.saldo, 0);
   return (
     <div>
-      <SectionTitle action={<SmallButton tone="blue" onClick={() => setEdit({})}>+ Conta</SmallButton>}>Contas · {formatBRL(total)}</SectionTitle>
+      <SectionTitle action={<SmallButton tone="blue" onClick={() => setEdit({})}>+ Conta</SmallButton>}>Contas · {formatBRL(total, { oculto: ocultar })}</SectionTitle>
       <div className={`${card} divide-y divide-white/[0.05]`}>
         {contas.map(c => (
           <button key={c.id} type="button" onClick={() => setEdit(c)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.03] transition">
             <span className="text-[13px] text-white">🏦 {c.nome}</span>
-            <span className={`text-[13px] font-semibold tabular-nums ${c.saldo < 0 ? "text-red-400" : "text-white"}`}>{formatBRL(c.saldo)}</span>
+            <span className={`text-[13px] font-semibold tabular-nums ${c.saldo < 0 && !ocultar ? "text-red-400" : "text-white"}`}>{formatBRL(c.saldo, { oculto: ocultar })}</span>
           </button>
         ))}
       </div>
@@ -57,7 +57,8 @@ function ContaSheet({ conta, podeExcluir, onClose, onSave, onDelete }) {
   );
 }
 
-export function ReservaSection({ custo, reserva, reservaMeses, setReservaMeses, temCaixinhaReserva, onCriarCaixinha }) {
+export function ReservaSection({ custo, reserva, reservaMeses, setReservaMeses, temCaixinhaReserva, onCriarCaixinha, ocultar = false }) {
+  const o = { oculto: ocultar };
   const alvo = custo * reservaMeses;
   const meses = custo > 0 ? reserva / custo : 0;
   return (
@@ -77,12 +78,12 @@ export function ReservaSection({ custo, reserva, reservaMeses, setReservaMeses, 
         ) : (
           <>
             <div className="flex items-baseline justify-between mb-2">
-              <p className="text-lg font-bold text-white tabular-nums">{formatBRL(reserva)}</p>
-              <p className="text-[12px] text-white/40 tabular-nums">de {formatBRL(alvo)}</p>
+              <p className="text-lg font-bold text-white tabular-nums">{formatBRL(reserva, o)}</p>
+              <p className="text-[12px] text-white/40 tabular-nums">de {formatBRL(alvo, o)}</p>
             </div>
             <ProgressBar pct={alvo ? (reserva / alvo) * 100 : 0} color={reserva >= alvo ? "#10b981" : "#2563eb"} label="Reserva de emergência" />
             <p className="text-[12px] text-white/45 mt-2">
-              Cobre <strong className="text-white">{meses.toFixed(1).replace(".", ",")} {meses < 2 ? "mês" : "meses"}</strong> do seu custo de {formatBRL(custo)}/mês (fixos + parcelas + variável médio).
+              Cobre <strong className="text-white">{meses.toFixed(1).replace(".", ",")} {meses < 2 ? "mês" : "meses"}</strong> do seu custo de {formatBRL(custo, o)}/mês (fixos + parcelas + variável médio).
             </p>
             <p className="text-[11px] text-white/30 mt-1">Reserva = soma das caixinhas.</p>
             {!temCaixinhaReserva && <SmallButton tone="blue" className="mt-3" onClick={() => onCriarCaixinha(alvo)}>Criar caixinha "Reserva de emergência"</SmallButton>}

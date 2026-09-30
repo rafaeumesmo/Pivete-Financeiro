@@ -46,6 +46,7 @@ Além disso, sai do aparelho o que o usuário escolhe compartilhar:
    - `02_charges.sql`: avisos de "paguei" do link de cobrança. Anônimos inserem, mas ninguém lista a tabela: quem cobra lê só a própria cobrança pela função `charge_payments_for`.
    - `03_bora_budget.sql`: coluna opcional `budget_cents` em `poll_options`.
    - `04_user_data.sql`: tabela `user_data`, que espelha os dados pessoais (lançamentos, dívidas, recorrentes…) de quem está logado pra que apareçam em qualquer navegador. RLS: cada usuário só lê e grava as próprias linhas.
+   - `06_profile_stats.sql`: tabela `profile_stats` (nível, ofensiva e conquistas), o lado público do perfil. RLS: só o dono e amigos aceitos leem. Também endurece `friendships` com um trigger: ninguém cria amizade "aceita" sozinho nem troca os ids de uma linha. Nenhum valor em R$ vai pra essa tabela.
 
 > ⚠️ **As policies não são aplicadas automaticamente.** Nenhum deploy, build ou migração roda esses arquivos: é preciso colar e executar cada um no SQL Editor do Supabase. Sem eles, as abas **Social → Dividir** e **Cobranças** (avisos de pagamento) mostram um aviso de configuração, e o orçamento por pessoa do Bora? fica indisponível. O resto do app funciona normalmente. Todos os arquivos podem ser executados de novo sem problema.
 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { fetchMyPolls, deletePoll } from "../lib/polls";
 import { CobrancasPanel } from "./CobrancasPanel.jsx";
 import { DividirPanel } from "./DividirPanel.jsx";
+import { CONQUISTAS } from "../lib/conquistas.js";
 
 /*
  * SocialExplore — aba Social: cobranças, divisão de contas (Supabase),
@@ -212,12 +213,13 @@ function FriendsPanel({ social, showToast, isDesktop }) {
           </div>
         ) : (
           <div className={grid}>
-            {favorites.map(({ friendshipId, profile }) => (
+            {favorites.map(({ friendshipId, profile, stats }) => (
               <div key={friendshipId} className="flex items-center gap-2.5 rounded-2xl px-4 py-3 border" style={{ borderColor: "rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.08)" }}>
                 <Avatar emoji={profile?.avatar_emoji} close />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{profile?.display_name || profile?.username}</p>
                   <p className="text-[11px] truncate" style={{ color: "rgba(52,211,153,0.8)" }}>@{profile?.username}</p>
+                  <FriendStats stats={stats} />
                 </div>
                 <StarButton active disabled={busy.has(profile.id)} onClick={() => handleToggleClose(profile.id, true)} />
                 <RemoveButton disabled={busy.has(profile.id)} onClick={() => handleRemove(profile)} />
@@ -247,12 +249,13 @@ function FriendsPanel({ social, showToast, isDesktop }) {
           <p className="text-[12px] text-white/25 px-1">Todos os seus amigos são favoritos ⭐</p>
         ) : (
           <div className={grid}>
-            {others.map(({ friendshipId, profile }) => (
+            {others.map(({ friendshipId, profile, stats }) => (
               <div key={friendshipId} className="flex items-center gap-2.5 rounded-2xl px-4 py-3 bg-white/[0.03] border border-white/[0.06]">
                 <Avatar emoji={profile?.avatar_emoji} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{profile?.display_name || profile?.username}</p>
                   <p className="text-[11px] text-white/40 truncate">@{profile?.username}</p>
+                  <FriendStats stats={stats} />
                 </div>
                 <StarButton active={false} disabled={busy.has(profile.id)} onClick={() => handleToggleClose(profile.id, false)} />
                 <RemoveButton disabled={busy.has(profile.id)} onClick={() => handleRemove(profile)} />
@@ -262,6 +265,17 @@ function FriendsPanel({ social, showToast, isDesktop }) {
         )}
       </div>
     </div>
+  );
+}
+
+// Lado público do perfil de um amigo (profile_stats). Nunca tem valor em R$.
+function FriendStats({ stats }) {
+  if (!stats) return null;
+  const n = stats.conquistas?.length || 0;
+  return (
+    <p className="text-[10.5px] text-white/45 truncate mt-0.5 tabular-nums">
+      Nv {stats.nivel}{stats.ofensiva > 0 && ` · 🔥 ${stats.ofensiva}`}{n > 0 && ` · 🏆 ${n}/${CONQUISTAS.length}`}
+    </p>
   );
 }
 

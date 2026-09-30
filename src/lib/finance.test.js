@@ -12,6 +12,7 @@ describe("money", () => {
   it("formata em BRL com milhar e centavos", () => {
     expect(formatBRL(123456)).toBe("R$ 1.234,56");
     expect(formatBRL(5)).toBe("R$ 0,05");
+    expect(formatBRL(123456, { oculto: true })).toBe("R$ •••••");
     expect(formatBRL(-2000)).toBe("-R$ 20,00");
   });
   it("interpreta entradas em formato brasileiro e com ponto decimal", () => {

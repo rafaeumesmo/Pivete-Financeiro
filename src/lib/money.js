@@ -5,7 +5,12 @@
 const fmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const fmtCompact = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
-export function formatBRL(cents, { compact = false } = {}) {
+// Máscara do botão de olho (esconder valores): mesmo formato pra qualquer valor,
+// pra não vazar nem a ordem de grandeza.
+export const VALOR_OCULTO = "R$ •••••";
+
+export function formatBRL(cents, { compact = false, oculto = false } = {}) {
+  if (oculto) return VALOR_OCULTO;
   const v = (Number.isFinite(cents) ? cents : 0) / 100;
   // Intl usa NBSP entre "R$" e o número; troca por espaço comum pra não
   // quebrar comparações de texto e cópia/cola.

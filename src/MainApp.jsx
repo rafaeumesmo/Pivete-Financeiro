@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useAuth } from "./hooks/useAuth.js";
 import { useSocial } from "./hooks/useSocial.js";
+import { usePublishProfileStats } from "./hooks/useProfileStats.js";
 import { useSplits } from "./hooks/useSplits.js";
 import { useCobrancas } from "./hooks/useCobrancas.js";
 import { useUsernameStatus } from "./hooks/useUsernameStatus.js";
@@ -31,7 +32,7 @@ import { SK, load, save, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
 import { APP_NAME, APP_TAGLINE } from "./config.js";
-import { avaliarConquistas, CONQUISTAS } from "./lib/conquistas.js";
+import { avaliarConquistas, CONQUISTAS, nivel, xpTotal } from "./lib/conquistas.js";
 
 // Anti-spam keys for notifications (1 dispatch per type per day)
 const NOTIF_LAST_PEAK   = "fin_notif_last_peak";
@@ -115,6 +116,13 @@ export default function MainApp() {
 
   const auth   = useAuth();
   const social = useSocial(auth.user?.id);
+  // Lado público do perfil → profile_stats (só amigos leem). Precisa do perfil
+  // criado (FK pra profiles). Mesmo cálculo de nível do ProfileTab.
+  usePublishProfileStats(auth.profile ? auth.user?.id : null, {
+    nivel: nivel(xpTotal(stats.accepted + stats.rejected + stats.shared, conquistas)).nivel,
+    ofensiva: streak.count,
+    conquistas,
+  });
   const splits = useSplits(auth.user?.id);
   const cob    = useCobrancas(finance);
 

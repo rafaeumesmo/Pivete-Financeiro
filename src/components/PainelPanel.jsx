@@ -2,10 +2,11 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LabelList, LineChart, Line, Legend, ReferenceLine,
 } from "recharts";
-import { SectionTitle, SmallButton, ProgressBar } from "./ui.jsx";
+import { SectionTitle, SmallButton, ProgressBar, EyeButton } from "./ui.jsx";
 import { findCategoria, CHART_ORDER } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
 import { useTema } from "../lib/theme.js";
+import { useOcultarValores } from "../lib/privacy.js";
 import { todayKey, monthKey, addMonths, formatSnoozeReturn } from "../lib/dates.js";
 import {
   resumoMes, comprometimento, patrimonio, projecao12m, fixosMensais, rendaMensal, gastoVariavelMedio,
@@ -22,13 +23,18 @@ const COR_DEVO = "#e66767";
 const COR_OUTROS = "#7c7b76";
 const MAX_FATIAS = 4;        // + "Outros" + "Sobra" = no máximo 6 fatias
 
-const brl = (v) => formatBRL(v);
+// Formatadores do painel, respeitando o botão de olho (oculto → "R$ •••••").
 // Espaço não separável: o Recharts quebra rótulos SVG em espaço comum
 // ("R$" numa linha, número na outra).
-const brlCompact = (v) => formatBRL(v, { compact: true }).replace(" ", "\u00a0");
-const brlExato = (v) => formatBRL(v).replace(" ", "\u00a0");
+function formatadores(oculto) {
+  return {
+    brl: (v) => formatBRL(v, { oculto }),
+    brlCompact: (v) => formatBRL(v, { compact: true, oculto }).replace(" ", "\u00a0"),
+    brlExato: (v) => formatBRL(v, { oculto }).replace(" ", "\u00a0"),
+  };
+}
 
-function ChartTooltip({ active, payload, label, labelFmt }) {
+function ChartTooltip({ active, payload, label, labelFmt, brl }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl bg-raised border border-white/10 px-3 py-2 shadow-xl text-[12px]">
@@ -74,6 +80,8 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 export function PainelPanel({ finance, isDesktop }) {
   const { lancamentos, recorrentes, dividas, contas, metas, categorias } = finance;
   const [tema] = useTema();
+  const [ocultar] = useOcultarValores();
+  const { brl, brlCompact, brlExato } = formatadores(ocultar);
   const P = PAPEL[tema];
   const hoje = todayKey();
   const ym = monthKey(hoje);
@@ -102,15 +110,18 @@ export function PainelPanel({ finance, isDesktop }) {
     <div className="flex flex-col gap-6">
       {/* Saldo nas contas */}
       <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#3987e5]/20 to-white/[0.02] px-5 py-4">
-        <p className="text-[11px] uppercase tracking-widest text-white/45">Saldo nas contas</p>
-        <p className={`text-3xl font-bold tabular-nums mt-1 ${saldoContas < 0 ? "text-red-400" : "text-white"}`}>{brl(saldoContas)}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] uppercase tracking-widest text-white/45">Saldo nas contas</p>
+          <EyeButton />
+        </div>
+        <p className={`text-3xl font-bold tabular-nums mt-1 ${saldoContas < 0 && !ocultar ? "text-red-400" : "text-white"}`}>{brl(saldoContas)}</p>
         {guardado > 0 && <p className="text-[12px] text-white/45 mt-0.5">+ {brl(guardado)} nas caixinhas · total {brl(saldoContas + guardado)}</p>}
         {contas.length > 1 && (
           <div className="mt-3 pt-3 border-t border-white/[0.08] flex flex-col gap-1.5">
             {contas.map(c => (
               <div key={c.id} className="flex items-center justify-between text-[13px]">
                 <span className="text-white/65 truncate pr-3">{c.nome}</span>
-                <span className={`tabular-nums font-medium ${c.saldo < 0 ? "text-red-400" : "text-white"}`}>{brl(c.saldo)}</span>
+                <span className={`tabular-nums font-medium ${c.saldo < 0 && !ocultar ? "text-red-400" : "text-white"}`}>{brl(c.saldo)}</span>
               </div>
             ))}
           </div>
@@ -123,7 +134,7 @@ export function PainelPanel({ finance, isDesktop }) {
         <div className="grid grid-cols-2 gap-2">
           <Tile label="Renda do mês" value={brl(renda)} sub={resumo.entradas ? "entradas lançadas" : rendaFixa ? "pela renda fixa" : "sem entradas"} tone="text-emerald-400" />
           <Tile label="Saídas" value={brl(resumo.saidas)} sub={`${brl(resumo.saidasPagas)} pagas`} />
-          <Tile label="Sobra" value={brl(renda - resumo.saidas)} sub="renda − saídas" tone={renda - resumo.saidas >= 0 ? "text-white" : "text-red-400"} />
+          <Tile label="Sobra" value={brl(renda - resumo.saidas)} sub="renda − saídas" tone={renda - resumo.saidas >= 0 || ocultar ? "text-white" : "text-red-400"} />
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-white/35 mb-1">Comprometido</p>
             <p className={`text-lg font-bold tabular-nums ${comp > 0.7 ? "text-red-400" : comp > 0.5 ? "text-amber-300" : "text-white"}`}>{comp === null ? "—" : `${Math.round(comp * 100)}%`}</p>
@@ -146,7 +157,7 @@ export function PainelPanel({ finance, isDesktop }) {
                   <Pie data={fatias} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86} startAngle={90} endAngle={-270} stroke={P.surface} strokeWidth={2} isAnimationActive={false}>
                     {fatias.map(f => <Cell key={f.id} fill={f.fill} />)}
                   </Pie>
-                  <Tooltip content={<ChartTooltip />} />
+                  <Tooltip content={<ChartTooltip brl={brl} />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -182,7 +193,7 @@ export function PainelPanel({ finance, isDesktop }) {
               <XAxis dataKey="name" tick={{ fill: P.muted, fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
               <YAxis hide domain={[(min) => Math.min(0, min), "auto"]} />
               <ReferenceLine y={0} stroke={P.zero} />
-              <Tooltip cursor={{ fill: P.hover }} content={<ChartTooltip />} />
+              <Tooltip cursor={{ fill: P.hover }} content={<ChartTooltip brl={brl} />} />
               <Bar dataKey="value" name="Valor" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                 {barras.map(b => <Cell key={b.name} fill={b.fill} />)}
                 <LabelList dataKey="value" position="top" formatter={brlExato} style={{ fill: P.ink, fontSize: 11, fontWeight: 600 }} />
@@ -202,7 +213,7 @@ export function PainelPanel({ finance, isDesktop }) {
               <CartesianGrid vertical={false} stroke={P.grid} />
               <XAxis dataKey="label" tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} interval={isDesktop ? 0 : 2} />
               <YAxis tick={{ fill: P.muted, fontSize: 10 }} axisLine={false} tickLine={false} width={56} tickFormatter={brlCompact} />
-              <Tooltip content={<ChartTooltip />} cursor={{ stroke: P.cursor }} />
+              <Tooltip content={<ChartTooltip brl={brl} />} cursor={{ stroke: P.cursor }} />
               <Legend iconType="plainline" wrapperStyle={{ fontSize: 11, color: P.muted }} />
               <Line type="monotone" dataKey="tenho" name="Tenho" stroke={COR_TENHO} strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />
               <Line type="monotone" dataKey="divida" name="Dívida" stroke={COR_DEVO} strokeWidth={2} strokeDasharray="5 4" dot={false} activeDot={{ r: 4, stroke: P.surface, strokeWidth: 2 }} isAnimationActive={false} />

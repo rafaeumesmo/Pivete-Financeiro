@@ -3,6 +3,7 @@ import { LancamentoRow } from "./LancamentoRow.jsx";
 import { SectionTitle, SmallButton, EmptyHint } from "./ui.jsx";
 import { findCategoria } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
+import { useOcultarValores } from "../lib/privacy.js";
 import { toDateStr, fromDateStr, addDays, formatDateShort, todayKey, formatMonth } from "../lib/dates.js";
 import { ocorrencias, custoEfetivo } from "../lib/finance.js";
 
@@ -41,6 +42,7 @@ function previstos({ recorrentes, dividas }, de, ate) {
 }
 
 export function FinCalendar({ finance, onPagar, onEditar }) {
+  const [ocultar] = useOcultarValores();
   const hoje = todayKey();
   const [view, setView] = useState(() => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), 1); });
   const [sel, setSel] = useState(hoje);
@@ -96,12 +98,12 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
             const atrasado = ds < hoje && itens.some(l => l.tipo === "saida" && l.status !== "pago" && l.status !== "previsto");
             const isSel = ds === sel;
             return (
-              <button key={ds} onClick={() => inMonth && setSel(ds)} disabled={!inMonth} aria-label={`${formatDateShort(ds)}${t.saidas ? `, saídas ${formatBRL(t.saidas)}` : ""}${t.entradas ? `, entradas ${formatBRL(t.entradas)}` : ""}`}
+              <button key={ds} onClick={() => inMonth && setSel(ds)} disabled={!inMonth} aria-label={`${formatDateShort(ds)}${t.saidas ? `, saídas ${formatBRL(t.saidas, { oculto: ocultar })}` : ""}${t.entradas ? `, entradas ${formatBRL(t.entradas, { oculto: ocultar })}` : ""}`}
                 className={`flex flex-col items-center gap-0.5 py-1 rounded-lg ${isSel ? "bg-[#2563eb]/20" : ""}`}>
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-medium ${!inMonth ? "text-white/10" : ds === hoje ? "bg-[#2563eb] text-white" : atrasado ? "text-red-300" : "text-white/70"}`}>{fromDateStr(ds).getDate()}</span>
                 <span className="h-3 text-[8.5px] leading-3 tabular-nums">
-                  {inMonth && t.saidas > 0 && <span className={atrasado ? "text-red-400" : t.pendente > 0 ? "text-white/55" : "text-white/25"}>{formatBRL(t.saidas, { compact: true }).replace("R$ ", "")}</span>}
-                  {inMonth && !t.saidas && t.entradas > 0 && <span className="text-emerald-400/80">+{formatBRL(t.entradas, { compact: true }).replace("R$ ", "")}</span>}
+                  {inMonth && t.saidas > 0 && <span className={atrasado ? "text-red-400" : t.pendente > 0 ? "text-white/55" : "text-white/25"}>{ocultar ? "•••" : formatBRL(t.saidas, { compact: true }).replace("R$ ", "")}</span>}
+                  {inMonth && !t.saidas && t.entradas > 0 && <span className="text-emerald-400/80">+{ocultar ? "•••" : formatBRL(t.entradas, { compact: true }).replace("R$ ", "")}</span>}
                 </span>
               </button>
             );
@@ -115,7 +117,7 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
           {[{ l: "A pagar", v: tDia.pendente, c: "text-white" }, { l: "Saídas", v: tDia.saidas, c: "text-white/70" }, { l: "Entradas", v: tDia.entradas, c: "text-emerald-400" }].map(x => (
             <div key={x.l} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2">
               <p className="text-[9px] uppercase tracking-widest text-white/30">{x.l}</p>
-              <p className={`text-[13px] font-semibold tabular-nums ${x.c}`}>{formatBRL(x.v)}</p>
+              <p className={`text-[13px] font-semibold tabular-nums ${x.c}`}>{formatBRL(x.v, { oculto: ocultar })}</p>
             </div>
           ))}
         </div>

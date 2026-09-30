@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { LancamentoRow } from "./LancamentoRow.jsx";
-import { EmptyHint } from "./ui.jsx";
+import { EmptyHint, EyeButton } from "./ui.jsx";
 import { findCategoria } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
 import { todayKey, monthKey, formatMonth, fromDateStr } from "../lib/dates.js";
 import { custoEfetivo } from "../lib/finance.js";
+import { useOcultarValores } from "../lib/privacy.js";
 
 const selectCls = "rounded-xl border border-white/[0.08] bg-sheet px-3 py-2 text-[13px] text-white outline-none focus:border-[#2563eb]/60 min-w-0";
 
@@ -15,6 +16,7 @@ export function ExtratoPanel({ finance, onEditar }) {
   const [mes, setMes] = useState(atual);
   const [cat, setCat] = useState("todas");
   const [tipo, setTipo] = useState("todos");
+  const [ocultar] = useOcultarValores();
 
   const lista = lancamentos
     .filter(l => l.data && monthKey(l.data) === mes)
@@ -47,13 +49,14 @@ export function ExtratoPanel({ finance, onEditar }) {
         </select>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        {[{ l: "Entradas", v: entradas, c: "text-emerald-400" }, { l: "Saídas", v: saidas, c: "text-white" }, { l: "Saldo", v: entradas - saidas, c: entradas - saidas >= 0 ? "text-white" : "text-red-400" }].map(x => (
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+        {[{ l: "Entradas", v: entradas, c: "text-emerald-400" }, { l: "Saídas", v: saidas, c: "text-white" }, { l: "Saldo", v: entradas - saidas, c: entradas - saidas >= 0 || ocultar ? "text-white" : "text-red-400" }].map(x => (
           <div key={x.l} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2">
             <p className="text-[9px] uppercase tracking-widest text-white/30">{x.l}</p>
-            <p className={`text-[13px] font-semibold tabular-nums ${x.c}`}>{formatBRL(x.v)}</p>
+            <p className={`text-[13px] font-semibold tabular-nums ${x.c}`}>{formatBRL(x.v, { oculto: ocultar })}</p>
           </div>
         ))}
+        <EyeButton />
       </div>
 
       {lista.length === 0 ? (

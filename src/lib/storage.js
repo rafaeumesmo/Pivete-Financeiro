@@ -28,6 +28,7 @@ export const SK = {
   snoozeAsked:   "fin_snooze_asked",
   onboarded:     "fin_onboarded",
   tema:          "fin_tema",           // "escuro" | "claro" — acompanha a conta (SYNC_KEYS)
+  ocultarValores: "fin_ocultar_valores", // botão de olho do perfil — por aparelho, fora de SYNC_KEYS
 };
 
 export function load(key, fallback) {

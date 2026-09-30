@@ -17,10 +17,18 @@ export function useSocial(userId) {
       .eq("user_id", userId)
       .eq("status", "accepted");
     if (error) { console.error(error); return; }
+    // Nível/ofensiva/conquistas vêm à parte: se profile_stats ainda não existe
+    // (SQL não aplicado) ou a RLS esconde, a lista de amigos continua igual.
+    const ids = (data || []).map(f => f.friend?.id).filter(Boolean);
+    const { data: stats } = ids.length
+      ? await supabase.from("profile_stats").select("user_id,nivel,ofensiva,conquistas").in("user_id", ids)
+      : { data: [] };
+    const statsById = Object.fromEntries((stats || []).map(s => [s.user_id, s]));
     setFriends((data || []).map(f => ({
       friendshipId: f.id,
       isCloseFriend: f.is_close_friend,
       profile: f.friend,
+      stats: statsById[f.friend?.id] || null,
     })));
   }, [userId]);
 

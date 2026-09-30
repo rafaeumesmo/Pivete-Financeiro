@@ -1,10 +1,12 @@
 import { formatBRL } from "../lib/money.js";
+import { useOcultarValores } from "../lib/privacy.js";
 import { formatDateShort, todayKey } from "../lib/dates.js";
 import { vencimentoInfo, custoEfetivo } from "../lib/finance.js";
 
 // Linha de lançamento usada no Calendário e no Extrato. Clicar abre a edição;
 // `actions` (opcional) aparece à direita, antes do valor.
 export function LancamentoRow({ lancamento: l, categoria, onClick, actions, showDate = false, previsto = false }) {
+  const [ocultar] = useOcultarValores();
   const entrada = l.tipo === "entrada";
   const pago = l.status === "pago";
   const venc = !pago && l.data ? vencimentoInfo(l.data, todayKey(), l.tipo) : null;
@@ -30,7 +32,7 @@ export function LancamentoRow({ lancamento: l, categoria, onClick, actions, show
       </button>
       {actions}
       <span className={`text-[13px] font-semibold tabular-nums flex-shrink-0 ${entrada ? "text-emerald-400" : pago ? "text-white/60" : "text-white"}`}>
-        {entrada ? "+" : "−"}{formatBRL(entrada ? l.valor : custoEfetivo(l))}
+        {entrada ? "+" : "−"}{formatBRL(entrada ? l.valor : custoEfetivo(l), { oculto: ocultar })}
       </span>
     </div>
   );
