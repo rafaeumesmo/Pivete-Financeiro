@@ -124,7 +124,7 @@ export function Onboarding({ onFinish }) {
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }} className="w-full max-w-sm bg-sheet rounded-3xl border border-white/[0.09] shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-5 pb-4 border-b border-white/[0.06] flex items-center justify-between">
-          <div><p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-0.5">Bem-vindo ao</p><h2 className="text-[20px] font-black text-white leading-none"><Brand /></h2></div>
+          <div><p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25 mb-0.5">Bem-vindo ao</p><h2 className="text-[20px] font-black text-white leading-none"><Brand icon /></h2></div>
           <span className="text-[11px] text-white/25">{step + 1} / {TOTAL}</span>
         </div>
         {/* Content */}

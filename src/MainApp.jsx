@@ -405,9 +405,9 @@ export default function MainApp() {
       {/* ── MOBILE ── */}
       {!isDesktop && (
         <div className="flex flex-col w-full bg-app overflow-hidden" style={{ height: "100dvh" }}>
-          <div className="flex-shrink-0 flex items-center justify-between px-5 pb-3 bg-app" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
-            <div><h1 className="text-[22px] font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-0.5 whitespace-nowrap max-[400px]:hidden">{APP_TAGLINE}</p></div>
-            <div className="flex items-center gap-1">
+          <div className="flex-shrink-0 flex items-center justify-between gap-2 px-5 max-[350px]:px-4 pb-3 bg-app" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
+            <div className="min-w-0"><h1 className="text-[22px] max-[380px]:text-[19px] max-[340px]:text-[16px] font-black tracking-tight leading-none text-white"><Brand icon iconSize="1.6em" /></h1><p className="text-[11px] text-white/30 mt-0.5 whitespace-nowrap max-[400px]:hidden">{APP_TAGLINE}</p></div>
+            <div className="flex items-center gap-1 shrink-0">
               <StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} />
               {!auth.isLoggedIn && (
                 <button onClick={() => setShowAuthModal(true)} className="px-2.5 h-9 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[11px] font-semibold text-blue-300 hover:bg-[#2563eb]/25 transition">Entrar</button>
@@ -473,7 +473,7 @@ export default function MainApp() {
       {isDesktop && (
         <div className="w-full h-screen flex bg-app">
           <aside className="w-[220px] flex-shrink-0 bg-sidebar flex flex-col px-4 py-6 border-r border-white/[0.05]">
-            <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white"><Brand /></h1><p className="text-[11px] text-white/30 mt-1 leading-snug">{APP_TAGLINE}</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
+            <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white"><Brand icon iconSize="1.6em" /></h1><p className="text-[11px] text-white/30 mt-1 leading-snug">{APP_TAGLINE}</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
             <nav className="flex flex-col gap-0.5">
               {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-blue-300" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
             </nav>

@@ -28,7 +28,7 @@ function Branding() {
   return (
     <div className="flex items-center justify-center gap-1.5 py-4 flex-shrink-0">
       <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/30">feito no</span>
-      <span className="text-sm font-black text-white"><Brand /></span>
+      <span className="text-sm font-black text-white"><Brand icon /></span>
     </div>
   );
 }

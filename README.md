@@ -1,6 +1,6 @@
-# FinMatch
+# Pivete Financeiro
 
-> Nome provisório. O nome do app fica em um lugar só: `src/config.js` (`APP_NAME`). Trocar ali muda o cabeçalho, o onboarding, os links compartilhados e o título da aba.
+> O nome do app fica em um lugar só: `src/config.js` (`APP_NAME`). Trocar ali muda o cabeçalho, o onboarding, os links compartilhados e o título da aba. O ícone (gatinho) está em `src/components/Brand.jsx` e `public/favicon.svg`.
 
 Organização financeira pessoal com a mecânica de swipe do TaskMatch: cada conta vira um card e você decide com um gesto.
 
