@@ -4,14 +4,14 @@ import { normalizeUsername } from "../lib/username";
 import { useUsernameStatus } from "../hooks/useUsernameStatus.js";
 import { UsernameHint } from "./UsernameHint.jsx";
 import { Brand } from "./Brand.jsx";
+import { AVATAR_EMOJIS } from "../config.js";
 
-const EMOJIS = ["😎","🚀","⚡","🎯","🔥","💡","🧠","🏆","🎮","🦊","🐼","🌟","🎸","🎪","🌈","🍕"];
 
 export function SetupProfile({ onCreate, onCheckUsername, localProfile }) {
   const suggestedHandle = localProfile?.handle?.replace(/^@/, "") || "";
   const [username,    setUsername]    = useState(suggestedHandle);
   const [displayName, setDisplayName] = useState(localProfile?.name || "");
-  const [emoji,       setEmoji]       = useState(localProfile?.avatar || "😎");
+  const [emoji,       setEmoji]       = useState(localProfile?.avatar || AVATAR_EMOJIS[0]);
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState("");
 
@@ -63,7 +63,7 @@ export function SetupProfile({ onCreate, onCheckUsername, localProfile }) {
               {emoji}
             </div>
             <div className="grid grid-cols-8 gap-1.5 w-full">
-              {EMOJIS.map(em => (
+              {AVATAR_EMOJIS.map(em => (
                 <button
                   key={em}
                   type="button"

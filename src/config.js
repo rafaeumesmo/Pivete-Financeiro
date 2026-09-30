@@ -5,6 +5,9 @@ export const APP_NAME = "Pivete Financeiro";
 export const APP_TAGLINE = "Seu dinheiro, um swipe por vez.";
 export const BRAND_COLOR = "#2563eb";
 
+// Opções de avatar do perfil (criação e edição). O gatinho vem primeiro: é o da marca.
+export const AVATAR_EMOJIS = ["🐱", "🐶", "🦊", "🐼", "🐨", "🐯", "🦁", "🐻", "🐰", "🐸", "🐵", "🐧", "🦉", "🐢", "🐙", "🦄"];
+
 // Divide o nome no segundo maiúsculo pra destacar a segunda parte
 // ("Pivete " + "Financeiro"). Nome sem segundo maiúsculo sai inteiro na 1ª parte.
 export function brandParts(name = APP_NAME) {

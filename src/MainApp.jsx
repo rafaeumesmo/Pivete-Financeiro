@@ -31,7 +31,7 @@ import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
 import { SK, load, save, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
-import { APP_NAME, APP_TAGLINE } from "./config.js";
+import { APP_NAME, APP_TAGLINE, AVATAR_EMOJIS } from "./config.js";
 import { avaliarConquistas, CONQUISTAS, nivel, xpTotal } from "./lib/conquistas.js";
 
 // Anti-spam keys for notifications (1 dispatch per type per day)
@@ -163,7 +163,6 @@ export default function MainApp() {
   const [showCreatePollModal,  setShowCreatePollModal]  = useState(false);
   const [showNotifSettings,    setShowNotifSettings]    = useState(false);
 
-  const profileEmojis = ["😎", "🚀", "⚡", "🎯", "🔥", "💡", "🧠", "✅", "🏆", "👾"];
 
   useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
   useEffect(() => {
@@ -635,7 +634,7 @@ export default function MainApp() {
                 {auth.isLoggedIn && <div className="mt-1.5"><UsernameHint status={editorUsernameStatus} value={editedProfile.handle} /></div>}
               </div>
             </div>
-            <div className="grid grid-cols-5 gap-2 mb-4">{profileEmojis.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
+            <div className="grid grid-cols-4 gap-2 mb-4">{AVATAR_EMOJIS.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
             {profileEditError && <p className="text-[12px] text-red-400 px-1 mb-3">{profileEditError}</p>}
             <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} disabled={savingProfile || (auth.isLoggedIn && editorUsernameStatus !== "available")} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center">{savingProfile ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : "Salvar"}</button></div>
           </div>
