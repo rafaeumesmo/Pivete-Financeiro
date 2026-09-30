@@ -1,5 +1,7 @@
 import { supabase } from "../supabaseClient";
-import { SK, load, save, setSaveHook, REMOTE_UPDATE_EVENT } from "./storage.js";
+import {
+  SK, DADOS_KEYS, load, save, setSaveHook, REMOTE_UPDATE_EVENT, dadosPersistentes, tornarPersistente, tornarTemporario,
+} from "./storage.js";
 import { planSync } from "./syncPlan.js";
 
 /*
@@ -15,13 +17,9 @@ import { planSync } from "./syncPlan.js";
  */
 
 // Configurações do aparelho (notificações, onboarding, soneca) ficam de fora.
-export const SYNC_KEYS = [
-  SK.lancamentos, SK.recorrentes, SK.dividas, SK.contas, SK.metas, SK.categorias,
-  SK.revisoes, SK.contaPadrao, SK.reservaMeses, SK.conquistas, SK.stats,
-  SK.cobrancas, SK.pixKey, SK.profile, SK.decisions, SK.streak, SK.tema,
-];
+export const SYNC_KEYS = [...DADOS_KEYS, SK.tema];
 
-const OWNER_KEY = "fin_sync_owner"; // id do usuário dono dos dados deste navegador
+const OWNER_KEY = SK.syncOwner;
 const DIRTY_KEY = "fin_sync_dirty"; // chaves alteradas que ainda não subiram
 const PUSH_DELAY_MS = 800;
 const PULL_THROTTLE_MS = 15_000;
@@ -118,6 +116,19 @@ export async function startSync(uid) {
   userId = uid;
   const mySession = ++session;
 
+  // Acabou de entrar: o que foi feito sem conta nesta aba vira dado local e o
+  // planSync decide o que sobe. Sobra de outra conta no aparelho sai antes,
+  // pra não se misturar (o planSync apagaria tudo junto, inclusive o da aba).
+  if (!dadosPersistentes()) {
+    const owner = load(OWNER_KEY, null);
+    if (owner && owner !== uid) {
+      SYNC_KEYS.forEach((k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
+      setDirty([]);
+      try { localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
+    }
+    tornarPersistente();
+  }
+
   let rows;
   try {
     rows = await fetchRemote();
@@ -175,5 +186,6 @@ export async function finishSync({ force = false } = {}) {
   SYNC_KEYS.forEach((k) => applyRemote(k, null));
   setDirty([]);
   try { localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
+  tornarTemporario();
   return true;
 }

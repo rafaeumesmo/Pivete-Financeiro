@@ -98,9 +98,9 @@ function OBStep3({ onBack, onFinish }) {
   return (
     <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }} transition={{ duration: 0.22 }} className="flex flex-col gap-4">
       <div className="text-center pt-1">
-        <div className="text-4xl mb-2">🔒</div>
-        <h3 className="text-white font-bold text-[17px] mb-1.5">Seus números ficam com você</h3>
-        <p className="text-white/45 text-[13px] leading-relaxed">Saldos, contas e extrato ficam só neste aparelho — funciona sem login. Entrar só serve pra dividir contas com amigos.</p>
+        <div className="text-4xl mb-2">💾</div>
+        <h3 className="text-white font-bold text-[17px] mb-1.5">Quer guardar? Entre na conta</h3>
+        <p className="text-white/45 text-[13px] leading-relaxed">Sem conta, dá pra usar à vontade, mas nada fica salvo: fechou a aba, some tudo. Com conta, fica guardado e aparece em qualquer aparelho.</p>
       </div>
       <div className="rounded-2xl bg-white/[0.04] border border-white/[0.07] px-4 py-3">
         <p className="text-[12px] font-semibold text-white/80 mb-1">Quer ver funcionando primeiro?</p>

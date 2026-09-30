@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 
 // ── Storage keys ─────────────────────────────────────────────
-// Tudo é local-first: sem login, estes dados nunca saem do aparelho. Logado,
-// as chaves de SYNC_KEYS (lib/sync.js) são espelhadas na tabela user_data pra
-// aparecerem em outros navegadores.
+// Logado, os dados pessoais (DADOS_KEYS) ficam no localStorage e são
+// espelhados na tabela user_data (lib/sync.js). Sem login ficam só na aba
+// (sessionStorage): sobrevivem a reload, somem quando a aba/app fecha.
 export const SK = {
   // Finanças
   lancamentos:   "fin_lancamentos",
@@ -31,11 +31,58 @@ export const SK = {
   ocultarValores: "fin_ocultar_valores", // botão de olho do perfil — por aparelho, fora de SYNC_KEYS
   landingSeen:   "fin_landing_seen",   // clicou "Começar" na Landing — por aparelho, fora de SYNC_KEYS
   saiuDaConta:   "fin_saiu_da_conta",  // deslogou: abre na Landing (modo "entrar de novo") até logar ou escolher usar sem conta
+  syncOwner:     "fin_sync_owner",     // id do usuário dono dos dados deste navegador (lib/sync.js)
 };
+
+// Dados pessoais — o que sincroniza com a conta (SYNC_KEYS = estes + tema).
+export const DADOS_KEYS = [
+  SK.lancamentos, SK.recorrentes, SK.dividas, SK.contas, SK.metas, SK.categorias,
+  SK.revisoes, SK.contaPadrao, SK.reservaMeses, SK.conquistas, SK.stats,
+  SK.cobrancas, SK.pixKey, SK.profile, SK.decisions, SK.streak,
+];
+// Sem login, vivem só na aba. Onboarding e "já passou da Landing" vão junto:
+// quem volta sem conta começa do zero, pela Landing.
+const TEMPORARIAS = new Set([...DADOS_KEYS, SK.onboarded, SK.landingSeen]);
+
+let persistente = false;
+function area(key) {
+  return !persistente && TEMPORARIAS.has(key) ? sessionStorage : localStorage;
+}
+export function dadosPersistentes() { return persistente; }
+
+// Boot (main.jsx, antes do primeiro render). Sem login, apaga os dados
+// pessoais que versões antigas deixavam no localStorage — exceto se forem de
+// uma conta (fin_sync_owner): esses podem ter edição que ainda não subiu e
+// voltam a valer quando a pessoa entrar de novo.
+export function iniciarArmazenamento({ logado }) {
+  persistente = logado;
+  if (logado) return;
+  try {
+    if (localStorage.getItem(SK.syncOwner) !== null) return;
+    TEMPORARIAS.forEach((k) => localStorage.removeItem(k));
+  } catch { /* storage bloqueado */ }
+}
+
+// Login: o que foi feito sem conta nesta aba passa pro localStorage (a sync
+// decide o que sobe pra conta). Não sobrescreve o que já estiver lá.
+export function tornarPersistente() {
+  if (persistente) return;
+  try {
+    TEMPORARIAS.forEach((k) => {
+      const v = sessionStorage.getItem(k);
+      if (v !== null && localStorage.getItem(k) === null) localStorage.setItem(k, v);
+      sessionStorage.removeItem(k);
+    });
+  } catch { /* storage bloqueado */ }
+  persistente = true;
+}
+
+// Logout: dali em diante, só na aba de novo.
+export function tornarTemporario() { persistente = false; }
 
 export function load(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = area(key).getItem(key);
     if (raw === null) return fallback;
     return JSON.parse(raw);
   } catch {
@@ -48,7 +95,7 @@ export function load(key, fallback) {
 // O componente principal escuta "fin:storage-error" e avisa o usuário.
 export function save(key, value) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    area(key).setItem(key, JSON.stringify(value));
   } catch (err) {
     try { window.dispatchEvent(new CustomEvent("fin:storage-error", { detail: { key, err } })); } catch {}
   }

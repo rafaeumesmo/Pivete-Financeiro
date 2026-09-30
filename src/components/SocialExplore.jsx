@@ -395,7 +395,7 @@ export function SocialExplore({
         {subTab === "cobrancas" && <CobrancasPanel cob={cob} finance={finance} nome={nome} showToast={showToast} />}
         {subTab === "dividir" && (
           !isLoggedIn
-            ? <LoginPrompt onRequireLogin={onRequireLogin} texto="Entre pra criar grupos com amigos, lançar despesas divididas e ver quem deve pra quem. Seus saldos, contas e extrato continuam só neste aparelho." />
+            ? <LoginPrompt onRequireLogin={onRequireLogin} texto="Entre pra criar grupos com amigos, lançar despesas divididas e ver quem deve pra quem. Entrando, seus saldos, contas e extrato também ficam salvos na sua conta." />
             : <DividirPanel splits={splits} social={social} userId={userId} finance={finance} showToast={showToast} />
         )}
         {subTab === "amigos" && (

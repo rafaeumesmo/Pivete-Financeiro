@@ -328,7 +328,7 @@ export default function MainApp() {
 
   function clearAllData() {
     if (!window.confirm("Apagar todos os dados? Lançamentos, contas, dívidas, caixinhas e histórico serão removidos deste aparelho.")) return;
-    [...Object.values(SK), NOTIF_LAST_PEAK, NOTIF_LAST_STREAK].forEach((key) => { try { localStorage.removeItem(key); } catch {} });
+    [...Object.values(SK), NOTIF_LAST_PEAK, NOTIF_LAST_STREAK].forEach((key) => { try { localStorage.removeItem(key); sessionStorage.removeItem(key); } catch {} });
     finance.setLancamentos([]);
     finance.setRecorrentes([]);
     finance.setDividas([]);
@@ -360,7 +360,7 @@ export default function MainApp() {
   }, [auth.user?.id]);
 
   // Logado: espelha os dados pessoais na conta (lib/sync.js) pra que apareçam
-  // em qualquer navegador. Deslogado: só no aparelho, como sempre.
+  // em qualquer navegador. Deslogado: só na aba (lib/storage.js), some ao fechar.
   useEffect(() => {
     if (!auth.user?.id) return;
     startSync(auth.user.id);
@@ -645,7 +645,7 @@ export default function MainApp() {
         <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
           <div className="w-full max-w-sm rounded-[28px] bg-sheet border border-white/10 p-5 shadow-2xl">
             <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Sobre o {APP_NAME}</div><div className="text-[12px] text-white/40">Informações do app</div></div><button type="button" onClick={() => setShowAboutModal(false)} aria-label="Fechar" className="text-white/40 hover:text-white text-lg">✕</button></div>
-            <div className="space-y-3 text-sm text-white/60 mb-5"><div><div className="text-white font-semibold">{APP_NAME}</div><div className="text-[12px] text-white/35">Versão 0.0.0</div></div><p>Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Seus dados ficam neste aparelho.</p></div>
+            <div className="space-y-3 text-sm text-white/60 mb-5"><div><div className="text-white font-semibold">{APP_NAME}</div><div className="text-[12px] text-white/35">Versão 0.0.0</div></div><p>Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, os dados somem ao fechar a aba; com conta, ficam salvos nela.</p></div>
             <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Fechar</button>
           </div>
         </div>
