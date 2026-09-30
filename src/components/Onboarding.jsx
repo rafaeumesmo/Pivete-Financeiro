@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Brand } from "./Brand.jsx";
 
-function OBMiniCard({ cardX, cardY }) {
+// Também usado na demo da Landing (com outro valor/vencimento).
+export function OBMiniCard({ cardX, cardY, valor = "R$ 40,00", vence = "Vence hoje" }) {
   const rotateZ = useTransform(cardX, [-180, 180], [-20, 20]);
   const greenOp = useTransform(cardX, [0, 90], [0, 1]);
   const redOp   = useTransform(cardX, [-90, 0], [1, 0]);
@@ -13,10 +14,10 @@ function OBMiniCard({ cardX, cardY }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute top-3 left-3 z-10"><span className="text-[8px] font-semibold tracking-widest uppercase bg-white/20 text-white/90 px-2 py-0.5 rounded-full border border-white/20">Casa/Contas</span></div>
         <div className="absolute top-3 right-3 z-10 text-2xl">🏠</div>
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 text-center"><p className="text-[26px] font-black text-white tabular-nums">R$ 40,00</p></div>
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 text-center"><p className="text-[26px] font-black text-white tabular-nums">{valor}</p></div>
         <div className="absolute bottom-0 left-0 right-0 p-3.5 z-10">
           <p className="text-sm font-bold text-white">Internet</p>
-          <p className="text-[10px] text-white/70 mt-1 inline-block bg-black/25 px-2 py-0.5 rounded-full">🗓 Vence hoje</p>
+          <p className="text-[10px] text-white/70 mt-1 inline-block bg-black/25 px-2 py-0.5 rounded-full">🗓 {vence}</p>
         </div>
       </div>
       <motion.div className="absolute inset-0 rounded-2xl flex items-center justify-center z-20 pointer-events-none" style={{ background: "rgba(22,163,74,0.55)", opacity: greenOp }}><div className="border-2 border-white/90 rounded-lg px-3 py-1 -rotate-[20deg]"><span className="text-white font-black text-sm tracking-widest uppercase">Paguei</span></div></motion.div>

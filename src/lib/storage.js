@@ -29,6 +29,7 @@ export const SK = {
   onboarded:     "fin_onboarded",
   tema:          "fin_tema",           // "escuro" | "claro" — acompanha a conta (SYNC_KEYS)
   ocultarValores: "fin_ocultar_valores", // botão de olho do perfil — por aparelho, fora de SYNC_KEYS
+  landingSeen:   "fin_landing_seen",   // clicou "Começar" na Landing — por aparelho, fora de SYNC_KEYS
 };
 
 export function load(key, fallback) {
