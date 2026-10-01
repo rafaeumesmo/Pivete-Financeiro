@@ -27,6 +27,7 @@ export function ProfileTab({
   profile, stats, streak, notifSettings,
   openProfileEditor, setShowNotifSettings, setShowAboutModal,
   handleLogout, clearAllData, isDesktop = false,
+  assinatura = null, onAbrirAssinatura,
   snoozeDefault, onSnoozeDefaultChange,
   finance, conquistas, reservaMeses, setReservaMeses, onNavigate, showToast,
 }) {
@@ -151,6 +152,8 @@ export function ProfileTab({
           </div>
         </div>
         {[
+          // Só pra quem está logado: sem conta não há onde salvar.
+          ...(assinatura ? [{ label: "Assinatura", icon: <span className="text-base leading-none">💾</span>, action: onAbrirAssinatura, badge: assinatura.ativa ? "Ativa" : null, color: "#2563eb" }] : []),
           { label: "Notificações", icon: IconBell, action: () => setShowNotifSettings(true), badge: notifSettings.enabled ? "On" : null, color: "#10b981" },
           { label: "Sobre",        icon: IconInfo, action: () => setShowAboutModal(true), badge: null, color: "#3b82f6" },
         ].map(({ label, icon, action, badge, color }, i) => (

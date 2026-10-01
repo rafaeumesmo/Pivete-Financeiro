@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useAuth } from "./hooks/useAuth.js";
+import { useAssinatura } from "./hooks/useAssinatura.js";
+import { AssinaturaSheet, AssinaturaBanner } from "./components/AssinaturaSheet.jsx";
 import { useSocial } from "./hooks/useSocial.js";
 import { usePublishProfileStats } from "./hooks/useProfileStats.js";
 import { useSplits } from "./hooks/useSplits.js";
@@ -28,7 +30,7 @@ import { FinDeck } from "./components/FinDeck.jsx";
 import { Brand } from "./components/Brand.jsx";
 import { useFinance, CONTA_INICIAL } from "./hooks/useFinance.js";
 import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
-import { SK, load, save, usePersistedState } from "./lib/storage.js";
+import { SK, load, save, usePersistedState, dadosPersistentes } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
 import { APP_NAME, APP_TAGLINE, AVATAR_EMOJIS } from "./config.js";
@@ -115,6 +117,7 @@ export default function MainApp() {
   const statsMes = decisoesDoMes(decisions, finance.lancamentos, todayKey().slice(0, 7));
 
   const auth   = useAuth();
+  const assinatura = useAssinatura(auth.user?.id);
   const social = useSocial(auth.user?.id);
   // Lado público do perfil → profile_stats (só amigos leem). Precisa do perfil
   // criado (FK pra profiles). Mesmo cálculo de nível do ProfileTab.
@@ -137,6 +140,8 @@ export default function MainApp() {
       }
     : profile;
   const [showAuthModal,      setShowAuthModal]      = useState(false);
+  const [showAssinatura,     setShowAssinatura]     = useState(false);
+  const [assinaturaDispensada, setAssinaturaDispensada] = useState(false);
 
   // Estados voláteis — resetam no reload (intencionalmente)
   const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
@@ -315,7 +320,10 @@ export default function MainApp() {
   }
   async function handleLogout() {
     if (!auth.isLoggedIn) { showToast("Não há sessão ativa.", "bg-white/10"); return; }
-    if (!window.confirm(`Deseja sair do ${APP_NAME}? Seus dados saem deste aparelho e continuam salvos na sua conta.`)) return;
+    const aviso = assinatura.ativa
+      ? "Seus dados saem deste aparelho e continuam salvos na sua conta."
+      : "Sem assinatura, o que você fez fica só nesta aba e some quando ela fechar.";
+    if (!window.confirm(`Deseja sair do ${APP_NAME}? ${aviso}`)) return;
     // Sobe o que falta e limpa o aparelho antes de encerrar a sessão (depois
     // do signOut não dá mais pra gravar em user_data).
     if (!(await finishSync())) {
@@ -359,13 +367,21 @@ export default function MainApp() {
     if (auth.user?.id) migrateAnonPolls(auth.user.id).catch(() => {});
   }, [auth.user?.id]);
 
-  // Logado: espelha os dados pessoais na conta (lib/sync.js) pra que apareçam
-  // em qualquer navegador. Deslogado: só na aba (lib/storage.js), some ao fechar.
+  // Logado com assinatura: espelha os dados pessoais na conta (lib/sync.js) pra
+  // que apareçam em qualquer navegador. Sem login ou sem assinatura: só na aba
+  // (lib/storage.js), some ao fechar. Assinou agora: o que foi feito na aba
+  // sobe pra conta. Assinatura venceu: a cópia do aparelho sai (continua na
+  // conta e volta se assinar de novo).
   useEffect(() => {
     if (!auth.user?.id) return;
-    startSync(auth.user.id);
-    return () => stopSync();
-  }, [auth.user?.id]);
+    if (assinatura.ativa) {
+      startSync(auth.user.id);
+      return () => stopSync();
+    }
+    if (dadosPersistentes()) finishSync({ force: true });
+  }, [auth.user?.id, assinatura.ativa]);
+
+  const mostrarBannerAssinatura = auth.isLoggedIn && !assinatura.ativa && !assinatura.carregando && !assinaturaDispensada;
 
   // ── Callbacks do deck financeiro ─────────────────────────
   function handleDecision(decision) {
@@ -429,6 +445,9 @@ export default function MainApp() {
             </div>
           </div>
 
+          {activeTab === "home" && mostrarBannerAssinatura && (
+            <div className="flex-shrink-0"><AssinaturaBanner onAbrir={() => setShowAssinatura(true)} onDispensar={() => setAssinaturaDispensada(true)} /></div>
+          )}
           {/* Streak risk banner */}
           <AnimatePresence>
             {activeTab === "home" && streakAtRisk && !riskDismissed && (
@@ -467,6 +486,7 @@ export default function MainApp() {
                   openProfileEditor={openProfileEditor}
                   setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
                   handleLogout={handleLogout}
+                  assinatura={auth.isLoggedIn ? assinatura : null} onAbrirAssinatura={() => setShowAssinatura(true)}
                   clearAllData={clearAllData}
                   snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
                   finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
@@ -500,6 +520,7 @@ export default function MainApp() {
           <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
             {activeTab === "home" && (
               <>
+                {mostrarBannerAssinatura && <div className="flex-shrink-0"><AssinaturaBanner desktop onAbrir={() => setShowAssinatura(true)} onDispensar={() => setAssinaturaDispensada(true)} /></div>}
                 {/* Streak risk banner desktop */}
                 <AnimatePresence>
                   {streakAtRisk && !riskDismissed && (
@@ -548,6 +569,7 @@ export default function MainApp() {
                     openProfileEditor={openProfileEditor}
                     setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
                     handleLogout={handleLogout}
+                    assinatura={auth.isLoggedIn ? assinatura : null} onAbrirAssinatura={() => setShowAssinatura(true)}
                     clearAllData={clearAllData} isDesktop={true}
                     snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
                   finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
@@ -589,6 +611,9 @@ export default function MainApp() {
             onUseFreeze={handleUseFreeze}
             onLetBreak={handleLetStreakBreak}
           />
+        )}
+        {showAssinatura && auth.isLoggedIn && (
+          <AssinaturaSheet key="assinatura" assinatura={assinatura} onClose={() => setShowAssinatura(false)} showToast={showToast} />
         )}
         {showAuthModal && !auth.isLoggedIn && (
           <motion.div
