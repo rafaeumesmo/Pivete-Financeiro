@@ -153,6 +153,9 @@ export async function startSync(uid) {
   }
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   plan.apply.forEach((k) => applyRemote(k, byKey.get(k)));
+  // Conta que já tem dados não refaz o tutorial (onboarded é por aparelho:
+  // num navegador ou domínio novo ele começa vazio).
+  if (rows.length > 0 && !load(SK.onboarded, false)) applyRemote(SK.onboarded, true);
   save(OWNER_KEY, uid);
   await push(plan.push);
   if (mySession !== session) return;

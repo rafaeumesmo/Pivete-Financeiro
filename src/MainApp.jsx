@@ -28,7 +28,7 @@ import { FinDeck } from "./components/FinDeck.jsx";
 import { Brand } from "./components/Brand.jsx";
 import { useFinance, CONTA_INICIAL } from "./hooks/useFinance.js";
 import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
-import { SK, load, save, usePersistedState } from "./lib/storage.js";
+import { SK, load, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
 import { APP_NAME, APP_TAGLINE, AVATAR_EMOJIS } from "./config.js";
@@ -154,7 +154,10 @@ export default function MainApp() {
     displayProfile.handle,
   );
   const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
-  const [showOnboarding,    setShowOnboarding]    = useState(() => !load(SK.onboarded, false));
+  // Persistido (não só lido no mount) pra fechar sozinho quando a sync
+  // descobre que a conta já tem dados (lib/sync.js).
+  const [onboarded,         setOnboarded]         = usePersistedState(SK.onboarded, false);
+  const showOnboarding = !onboarded;
   const [showStreakDetail,  setShowStreakDetail]  = useState(false);
   const [streakBroken,     setStreakBroken]      = useState(null); // null | { oldCount, hasFreeze }
   const [riskDismissed,    setRiskDismissed]     = useState(false);
@@ -562,8 +565,7 @@ export default function MainApp() {
       {showOnboarding && (
         <Onboarding
           onFinish={(comExemplo) => {
-            save(SK.onboarded, true);
-            setShowOnboarding(false);
+            setOnboarded(true);
             if (comExemplo) { finance.carregarExemplo(); showToast("Dados de exemplo carregados — apague quando quiser no Perfil", "bg-blue-600/90"); }
           }}
         />
