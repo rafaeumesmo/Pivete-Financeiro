@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 
 // ── Storage keys ─────────────────────────────────────────────
-// Logado e com assinatura ativa, os dados pessoais (DADOS_KEYS) ficam no
-// localStorage e são espelhados na tabela user_data (lib/sync.js). Sem login
-// ou sem assinatura ficam só na aba (sessionStorage): sobrevivem a reload,
-// somem quando a aba/app fecha.
+// Logado, os dados pessoais (DADOS_KEYS) ficam no localStorage e são
+// espelhados na tabela user_data (lib/sync.js). Sem login ficam só na aba
+// (sessionStorage): sobrevivem a reload, somem quando a aba/app fecha.
 export const SK = {
   // Finanças
   lancamentos:   "fin_lancamentos",
@@ -33,7 +32,6 @@ export const SK = {
   landingSeen:   "fin_landing_seen",   // clicou "Começar" na Landing — por aparelho, fora de SYNC_KEYS
   saiuDaConta:   "fin_saiu_da_conta",  // deslogou: abre na Landing (modo "entrar de novo") até logar ou escolher usar sem conta
   syncOwner:     "fin_sync_owner",     // id do usuário dono dos dados deste navegador (lib/sync.js)
-  assinante:     "fin_assinante",      // id de quem estava com assinatura ativa na última checagem (lib/assinatura.js)
 };
 
 // Dados pessoais — o que sincroniza com a conta (SYNC_KEYS = estes + tema).

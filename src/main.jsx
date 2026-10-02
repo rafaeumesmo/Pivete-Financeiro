@@ -5,20 +5,14 @@ import App from "./App";
 import { iniciarTema } from "./lib/theme.js";
 import { iniciarArmazenamento } from "./lib/storage.js";
 import { supabase } from "./supabaseClient";
-import { assinanteEmCache } from "./lib/assinatura.js";
 
-// Logado com assinatura ativa → dados no localStorage; sem login ou sem
-// assinatura → só na aba. (A assinatura é conferida no servidor logo depois.)
+// Tem sessão salva → dados no localStorage; sem login → só na aba.
 // (storageKey é onde o supabase-js guarda a sessão; é "protected" só no .d.ts.)
-function usuarioDaSessaoSalva() {
-  try {
-    if (!supabase) return null;
-    return JSON.parse(localStorage.getItem(supabase.auth.storageKey))?.user?.id ?? null;
-  } catch { return null; }
+function temSessaoSalva() {
+  try { return !!supabase && localStorage.getItem(supabase.auth.storageKey) !== null; } catch { return false; }
 }
 
-const uid = usuarioDaSessaoSalva();
-iniciarArmazenamento({ logado: !!uid && assinanteEmCache(uid) });
+iniciarArmazenamento({ logado: temSessaoSalva() });
 iniciarTema();
 
 ReactDOM.createRoot(document.getElementById("root")).render(

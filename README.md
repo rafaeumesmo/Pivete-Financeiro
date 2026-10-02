@@ -35,7 +35,7 @@ Além disso, sai do aparelho o que o usuário escolhe compartilhar:
 | Link de cobrança | o id aleatório da cobrança e o nome de quem marcou "paguei" (o valor vai só no link) |
 | Bora? (enquetes) | pergunta, opções, orçamento por pessoa (opcional) e votos |
 | Perfil social | username, nome e emoji |
-| Dados pessoais (só logado com assinatura) | lançamentos, fixos, dívidas, contas, metas, categorias, histórico, streak e conquistas, visíveis só pro dono |
+| Dados pessoais (só logado) | lançamentos, fixos, dívidas, contas, metas, categorias, histórico, streak e conquistas, visíveis só pro dono |
 
 ## Supabase (recursos sociais)
 
@@ -46,41 +46,11 @@ Além disso, sai do aparelho o que o usuário escolhe compartilhar:
    - `02_charges.sql`: avisos de "paguei" do link de cobrança. Anônimos inserem, mas ninguém lista a tabela: quem cobra lê só a própria cobrança pela função `charge_payments_for`.
    - `03_bora_budget.sql`: coluna opcional `budget_cents` em `poll_options`.
    - `04_user_data.sql`: tabela `user_data`, que espelha os dados pessoais (lançamentos, dívidas, recorrentes…) de quem está logado pra que apareçam em qualquer navegador. RLS: cada usuário só lê e grava as próprias linhas.
-   - `07_assinaturas.sql`: tabela `assinaturas` (só as Edge Functions gravam; cada usuário lê a própria linha) e a regra que **só deixa gravar em `user_data` quem tem assinatura ativa**. Rode logo depois do `04_user_data.sql`, inclusive quando rodar o 04 de novo: sozinho, ele deixa todo mundo só com leitura.
    - `06_profile_stats.sql`: tabela `profile_stats` (nível, ofensiva e conquistas), o lado público do perfil. RLS: só o dono e amigos aceitos leem. Também endurece `friendships` com um trigger: ninguém cria amizade "aceita" sozinho nem troca os ids de uma linha. Nenhum valor em R$ vai pra essa tabela.
 
 > ⚠️ **As policies não são aplicadas automaticamente.** Nenhum deploy, build ou migração roda esses arquivos: é preciso colar e executar cada um no SQL Editor do Supabase. Sem eles, as abas **Social → Dividir** e **Cobranças** (avisos de pagamento) mostram um aviso de configuração, e o orçamento por pessoa do Bora? fica indisponível. O resto do app funciona normalmente. Todos os arquivos podem ser executados de novo sem problema.
 
 Toda tabela nova precisa de um arquivo em `supabase/policies/` com o SQL de RLS.
-
-## Assinatura (R$ 1,99/mês, Mercado Pago)
-
-Sem login, ou logado sem assinatura, dá pra usar tudo, mas os dados ficam só na aba e somem quando ela fecha. Com assinatura ativa, os dados vão pra conta (`user_data`). Quem assinou agora tem o que fez na aba salvo na conta. Quem cancelou continua salvando até o fim do mês já pago. Quando a assinatura vence, os dados continuam na conta e voltam se a pessoa assinar de novo.
-
-O cartão é digitado em campos do próprio Mercado Pago (Secure Fields, iframes): o app e o servidor só recebem um token. Quem decide se a pessoa pagou é o servidor: a Edge Function `assinatura` cria e cancela a assinatura, o webhook `mp-webhook` recebe os avisos do Mercado Pago, e o banco recusa a gravação de quem não está em dia (`07_assinaturas.sql`).
-
-| Arquivo | O que faz |
-|---|---|
-| `supabase/functions/_shared/assinatura.js` | regras puras (quando está ativa, leitura do webhook), testadas em `src/lib/assinatura.test.js` |
-| `supabase/functions/assinatura/` | `assinar` (com o token do cartão), `cancelar`, `atualizar` |
-| `supabase/functions/mp-webhook/` | confere a assinatura do aviso, relê a assinatura na API do MP e grava |
-| `src/hooks/useAssinatura.js` + `src/components/AssinaturaSheet.jsx` | estado no app, faixa "seus dados não estão sendo salvos", tela de pagamento (Perfil → Assinatura) |
-
-### Configurar
-
-1. Crie uma aplicação no [painel de desenvolvedor do Mercado Pago](https://www.mercadopago.com.br/developers/panel/app). Comece com as **credenciais de teste** e com as **contas de teste** do painel (comprador e vendedor de teste). Em modo teste, o e-mail de quem assina precisa ser o de um comprador de teste.
-2. Coloque a **Public Key** em `VITE_MP_PUBLIC_KEY` (`.env` e Vercel).
-3. Rode `supabase/policies/07_assinaturas.sql` no SQL Editor.
-4. Publique as funções com a CLI do Supabase:
-   ```bash
-   npx supabase login
-   npx supabase link --project-ref SEU_PROJECT_REF
-   npx supabase secrets set MP_ACCESS_TOKEN=TEST-... APP_URL=https://seu-app.vercel.app
-   npx supabase functions deploy assinatura
-   npx supabase functions deploy mp-webhook --no-verify-jwt
-   ```
-5. No painel do MP → **Webhooks**, use a URL `https://SEU_PROJECT_REF.supabase.co/functions/v1/mp-webhook` e marque o evento **Planos e assinaturas**. Copie a "assinatura secreta" e rode `npx supabase secrets set MP_WEBHOOK_SECRET=...`.
-6. Pra cobrar de verdade, troque pelas credenciais de produção: a Public Key no `.env`/Vercel e o `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET` nos secrets.
 
 ## Modelo de dados (local)
 

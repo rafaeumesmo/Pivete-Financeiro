@@ -6,7 +6,6 @@ import { Landing } from "./components/Landing.jsx";
 import { supabase } from "./supabaseClient";
 import { SK, load, save, dadosPersistentes, tornarTemporario } from "./lib/storage.js";
 import { telaInicial } from "./lib/landing.js";
-import { lembrarAssinante } from "./lib/assinatura.js";
 
 function getRoute() {
   const h = window.location.hash;
@@ -44,7 +43,7 @@ export default function App() {
   // de novo ou escolher usar sem conta. Fica salvo pra sobreviver a reload.
   const [noApp, setNoApp] = useState(() => dadosPersistentes() || load(SK.landingSeen, false));
   const [saiu, setSaiu] = useState(() => load(SK.saiuDaConta, false));
-  const session = useSessao(route === "app", () => { tornarTemporario(); lembrarAssinante(null); save(SK.saiuDaConta, true); setSaiu(true); });
+  const session = useSessao(route === "app", () => { tornarTemporario(); save(SK.saiuDaConta, true); setSaiu(true); });
   useEffect(() => {
     if (!session) return;
     setNoApp(true);
