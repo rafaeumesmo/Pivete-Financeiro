@@ -20,10 +20,17 @@ import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
 import { NovoLancamentoForm } from "./components/NovoLancamentoForm.jsx";
 import { Toast } from "./components/Toast.jsx";
-import { NavBadge } from "./components/NavBadge.jsx";
 import { Onboarding } from "./components/Onboarding.jsx";
 import { StreakFlame, StreakDetailModal, StreakBrokenModal } from "./components/StreakWidgets.jsx";
 import { IOSToggle } from "./components/IOSToggle.jsx";
+import { Sidebar, BottomNav } from "./components/AppNav.jsx";
+import { RecentActivity } from "./components/RecentActivity.jsx";
+import { DecisoesCard } from "./components/DecisoesCard.jsx";
+import { btnCls, inputCls } from "./components/ui.jsx";
+import { Sheet } from "./components/Sheet.jsx";
+import { useBreakpoint } from "./hooks/useBreakpoint.js";
+import { ICON_STROKE } from "./lib/icons.js";
+import { Plus, Vote, X, LogIn, TriangleAlert, Bell, Zap, Flame } from "lucide-react";
 import { FinDeck } from "./components/FinDeck.jsx";
 import { Brand } from "./components/Brand.jsx";
 import { useFinance, CONTA_INICIAL } from "./hooks/useFinance.js";
@@ -31,7 +38,7 @@ import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
 import { SK, load, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
-import { APP_NAME, APP_TAGLINE, AVATAR_EMOJIS } from "./config.js";
+import { APP_NAME, AVATAR_EMOJIS } from "./config.js";
 import { avaliarConquistas, CONQUISTAS, nivel, xpTotal } from "./lib/conquistas.js";
 
 // Anti-spam keys for notifications (1 dispatch per type per day)
@@ -69,7 +76,7 @@ function checkNotifications() {
     const dec  = load(SK.decisions, []);
     const peak = calcPeakHour(dec);
     if (nowH === peak && !dec.some(d => d.decidedAt?.startsWith(today))) {
-      notify("Hora de olhar as contas 💸", "Tem lançamento esperando no deck.", "peak-reminder");
+      notify("Hora de olhar as contas", "Tem lançamento esperando no deck.", "peak-reminder");
       localStorage.setItem(NOTIF_LAST_PEAK, today);
     }
   }
@@ -77,7 +84,7 @@ function checkNotifications() {
     const s = load(SK.streak, { count: 0, lastActiveDate: null });
     if (s.count > 0 && nowH >= 19 && localStorage.getItem(NOTIF_LAST_STREAK) !== today) {
       if (s.lastActiveDate === addDays(today, -1)) {
-        notify(`Seu streak de ${s.count} dias acaba à meia-noite 🔥`, "Registre ou revise 1 lançamento pra manter!", "streak-alert");
+        notify(`Sua sequência de ${s.count} dias acaba à meia-noite`, "Registre ou revise 1 lançamento pra manter!", "streak-alert");
         localStorage.setItem(NOTIF_LAST_STREAK, today);
       }
     }
@@ -86,7 +93,7 @@ function checkNotifications() {
 
 function fireDeckCompleteConfetti() {
   try {
-    const colors = ["#2563eb", "#34d399", "#f59e0b"];
+    const colors = ["#1F3FD6", "#16A34A", "#F59E0B"];
     const end = Date.now() + 2500;
     (function shoot() {
       confetti({ particleCount: 5, spread: 70, origin: { x: 0.3, y: 0.6 }, colors });
@@ -153,7 +160,8 @@ export default function MainApp() {
     auth.checkUsername,
     displayProfile.handle,
   );
-  const [isDesktop,         setIsDesktop]         = useState(window.innerWidth >= 1024);
+  const bp = useBreakpoint();
+  const isDesktop = bp === "desktop";
   // Persistido (não só lido no mount) pra fechar sozinho quando a sync
   // descobre que a conta já tem dados (lib/sync.js).
   const [onboarded,         setOnboarded]         = usePersistedState(SK.onboarded, false);
@@ -167,7 +175,6 @@ export default function MainApp() {
   const [showNotifSettings,    setShowNotifSettings]    = useState(false);
 
 
-  useEffect(() => { function h() { setIsDesktop(window.innerWidth >= 1024); } window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
   useEffect(() => {
     if (activeTab !== "social") setSocialTab("cobrancas");
   }, [activeTab]);
@@ -205,7 +212,7 @@ export default function MainApp() {
     const agora = new Date().toISOString();
     setConquistas(prev => ({ ...prev, ...Object.fromEntries(novas.map(id => [id, agora])) }));
     const q = CONQUISTAS.find(x => x.id === novas[0]);
-    setTimeout(() => showToast(`${q.icon} Conquista: ${q.nome} · +${q.xp} XP`, "bg-amber-600/90 backdrop-blur-md"), 900);
+    setTimeout(() => showToast(`Conquista: ${q.nome} · +${q.xp} XP`, "bg-blue-600/90"), 900);
   }, [finance.lancamentos, finance.dividas, finance.metas, finance.revisoes, finance.recorrentes, streak, reservaMeses]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -240,13 +247,13 @@ export default function MainApp() {
     if (Notification.permission === "denied") { setNotifSettings(s => ({ ...s, permission: "denied" })); return; }
     if (Notification.permission === "granted") {
       setNotifSettings(s => ({ ...s, enabled: true, permission: "granted" }));
-      setTimeout(() => notify("Notificações ativadas 🔔", "Você vai receber lembretes inteligentes.", "test-notif"), 200);
+      setTimeout(() => notify("Notificações ativadas", "Você vai receber lembretes inteligentes.", "test-notif"), 200);
       return;
     }
     const result = await Notification.requestPermission();
     if (result === "granted") {
       setNotifSettings(s => ({ ...s, enabled: true, permission: "granted" }));
-      setTimeout(() => notify("Notificações ativadas 🔔", "Você vai receber lembretes inteligentes.", "test-notif"), 200);
+      setTimeout(() => notify("Notificações ativadas", "Você vai receber lembretes inteligentes.", "test-notif"), 200);
     } else {
       setNotifSettings(s => ({ ...s, permission: result }));
     }
@@ -259,7 +266,7 @@ export default function MainApp() {
       const gap = s.lastActiveDate ? daysBetween(s.lastActiveDate, today) : null;
       const count = (gap === null || gap > 1) ? 1 : (gap === 1 ? s.count + 1 : s.count);
       const gainFreeze = count % 7 === 0 && count > 0 && s.freezesAvailable < 2;
-      if (gainFreeze) setTimeout(() => showToast("Você ganhou uma proteção de streak 🛡️", "bg-blue-600/90"), 400);
+      if (gainFreeze) setTimeout(() => showToast("Você ganhou um escudo de sequência", "bg-blue-600/90"), 400);
       return { ...s, count, best: Math.max(s.best, count), lastActiveDate: today, freezesAvailable: gainFreeze ? Math.min(2, s.freezesAvailable + 1) : s.freezesAvailable };
     });
   }
@@ -267,7 +274,7 @@ export default function MainApp() {
   function handleUseFreeze() {
     setStreak((s) => ({ ...s, lastActiveDate: addDays(todayKey(), -1), freezesAvailable: Math.max(0, s.freezesAvailable - 1) }));
     setStreakBroken(null);
-    showToast("Escudo usado! Streak salvo 🛡️🔥", "bg-amber-600/90");
+    showToast("Escudo usado. Sequência salva", "bg-amber-600/90");
   }
 
   function handleLetStreakBreak() {
@@ -353,7 +360,7 @@ export default function MainApp() {
     finance.criarLancamento(data);
     registerActivity();
     const extra = data.recorrente ? " · fixo" : data.parcelas ? ` · ${data.parcelas}x` : "";
-    showToast(`✓ ${data.tipo === "entrada" ? "Entrada" : "Saída"} de ${formatBRL(data.valor)} salva${extra}`, "bg-emerald-600/90");
+    showToast(`${data.tipo === "entrada" ? "Entrada" : "Saída"} de ${formatBRL(data.valor)} salva${extra}`, "bg-emerald-600/90");
     setActiveTab("home");
   }
 
@@ -387,7 +394,7 @@ export default function MainApp() {
   }
 
   function handleQuitouDivida(l) {
-    showToast(`🏆 Dívida quitada: ${l.descricao}!`, "bg-emerald-600/90 backdrop-blur-md");
+    showToast(`Dívida quitada: ${l.descricao}`, "bg-emerald-600/90");
     if (!prefersReducedMotion) fireDeckCompleteConfetti();
   }
 
@@ -399,168 +406,131 @@ export default function MainApp() {
     if (r.quitouDivida) handleQuitouDivida(l);
   }
 
-  // ── Shared sub-sections ──────────────────────────────────
-  const NavItems = [
-    { id: "home",     label: "Início",    icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-    { id: "social",   label: "Social",    icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
-    { id: "activity", label: "Atividade", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-    { id: "profile",  label: "Perfil",    icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
-  ];
-  const friendsPendingBadge = social.pendingIncoming.length;
+  const badges = { social: social.pendingIncoming.length };
+  const keyboardEnabled = activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken;
+  const abrirStreak = () => setShowStreakDetail(true);
+  const entrarBtn = !auth.isLoggedIn && (
+    <button type="button" onClick={() => setShowAuthModal(true)} className={`${btnCls.secondary} h-9 px-3 text-[13px] ${bp === "tablet" ? "w-11 px-0" : bp === "desktop" ? "w-full" : ""}`} aria-label="Entrar" title="Entrar">
+      {bp === "tablet" ? <LogIn size={18} strokeWidth={ICON_STROKE} aria-hidden /> : "Entrar"}
+    </button>
+  );
 
+  // Aviso de sequência em risco (só na Início).
+  const riskBanner = (
+    <AnimatePresence>
+      {activeTab === "home" && streakAtRisk && !riskDismissed && (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+          <div className="mb-5 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
+            <TriangleAlert size={18} strokeWidth={ICON_STROKE} className="text-warn flex-shrink-0" aria-hidden />
+            <p className="text-[13px] text-fg flex-1 leading-snug">Sua sequência de <strong className="font-semibold">{streak.count} dias</strong> acaba à meia-noite. Registre ou revise 1 lançamento pra manter.</p>
+            <button type="button" onClick={() => setRiskDismissed(true)} aria-label="Dispensar aviso" className="w-8 h-8 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition flex-shrink-0"><X size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
+  // Início: saldo → card → ações → atividade. No desktop, 2 colunas.
+  const home = (
+    <div className="h-full overflow-y-auto">
+      <div className={`mx-auto w-full ${isDesktop ? "max-w-[1120px] px-10 py-8" : "max-w-[640px] px-4 sm:px-6 pt-4 pb-28 md:pb-10 md:pt-8"}`}>
+        {riskBanner}
+        <div className={isDesktop ? "grid grid-cols-[minmax(0,1fr)_360px] gap-10 items-start" : ""}>
+          <FinDeck
+            isDesktop={isDesktop} finance={finance}
+            snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked}
+            keyboardEnabled={keyboardEnabled} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida}
+            onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes}
+            headerActions={<>
+              <button type="button" onClick={() => setActiveTab("create")} className={`${btnCls.primary} h-10 px-4 text-sm flex-1 sm:flex-none`}><Plus size={18} strokeWidth={ICON_STROKE} aria-hidden />Novo lançamento</button>
+              <button type="button" onClick={() => setShowCreatePollModal(true)} title="Bora? — enquete de grupo" className={`${btnCls.secondary} h-10 px-4 text-sm`}><Vote size={18} strokeWidth={ICON_STROKE} aria-hidden />Bora?</button>
+            </>}
+          />
+          <div className={`flex flex-col gap-6 ${isDesktop ? "" : "mt-10"}`}>
+            {isDesktop && <DecisoesCard stats={statsMes} />}
+            <RecentActivity finance={finance} onVerTudo={() => setActiveTab("activity")} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
-
-
+  const createForm = (
+    <NovoLancamentoForm
+      isDesktop={isDesktop}
+      categorias={finance.categorias}
+      contas={finance.contas}
+      contaPadrao={finance.contaPadrao}
+      onCancel={() => setActiveTab("home")}
+      onSubmit={handleCriarLancamento}
+      showToast={showToast}
+    />
+  );
+  const profileTab = (
+    <ProfileTab
+      profile={displayProfile} stats={stats} streak={streak}
+      notifSettings={notifSettings}
+      openProfileEditor={openProfileEditor}
+      setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
+      handleLogout={handleLogout}
+      clearAllData={clearAllData} isDesktop={isDesktop}
+      snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
+      finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
+    />
+  );
+  const social_ = <SocialExplore isDesktop={isDesktop} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />;
 
   // ════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen w-full bg-app">
+    <div className="min-h-screen w-full bg-page">
+      <div className="flex w-full" style={{ height: "100dvh" }}>
+        {bp !== "mobile" && (
+          <Sidebar compact={bp === "tablet"} activeTab={activeTab} onTab={setActiveTab} badges={badges} streak={streak.count} onStreak={abrirStreak} footer={entrarBtn} />
+        )}
 
-      {/* ── MOBILE ── */}
-      {!isDesktop && (
-        <div className="flex flex-col w-full bg-app overflow-hidden" style={{ height: "100dvh" }}>
-          <div className="flex-shrink-0 flex items-center justify-between gap-2 px-5 max-[350px]:px-4 pb-3 bg-app" style={{ paddingTop: "max(env(safe-area-inset-top), 16px)" }}>
-            <div className="min-w-0"><h1 className="text-[22px] max-[380px]:text-[19px] max-[340px]:text-[16px] font-black tracking-tight leading-none text-white"><Brand icon iconSize="1.6em" /></h1><p className="text-[11px] text-white/30 mt-0.5 whitespace-nowrap max-[400px]:hidden">{APP_TAGLINE}</p></div>
-            <div className="flex items-center gap-1 shrink-0">
-              <StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} />
-              {!auth.isLoggedIn && (
-                <button onClick={() => setShowAuthModal(true)} className="px-2.5 h-9 rounded-2xl bg-[#2563eb]/15 border border-[#2563eb]/30 text-[11px] font-semibold text-blue-300 hover:bg-[#2563eb]/25 transition">Entrar</button>
-              )}
-              <button onClick={() => setShowCreatePollModal(true)} className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center" title="Bora? — enquete de grupo"><span className="text-base leading-none">🗳️</span></button>
-              <button onClick={() => setActiveTab("create")} aria-label="Novo lançamento" className="w-9 h-9 rounded-2xl bg-[#2563eb]/20 border border-[#2563eb]/30 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
-            </div>
-          </div>
-
-          {/* Streak risk banner */}
-          <AnimatePresence>
-            {activeTab === "home" && streakAtRisk && !riskDismissed && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex-shrink-0 overflow-hidden">
-                <div className="mx-5 mb-1 flex items-center gap-2 bg-amber-500/15 border border-amber-500/25 rounded-xl px-3.5 py-2.5">
-                  <span className="text-sm flex-shrink-0">⚠️</span>
-                  <p className="text-[12px] text-amber-300 flex-1 leading-snug">Seu streak de <strong>{streak.count}</strong> dias acaba à meia-noite. Registre ou revise 1 lançamento pra manter 🔥</p>
-                  <button onClick={() => setRiskDismissed(true)} aria-label="Dispensar aviso" className="text-amber-400/50 hover:text-amber-400 transition text-sm flex-shrink-0">✕</button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="flex-1 min-h-0 overflow-hidden relative">
-            {activeTab === "home" && <FinDeck isDesktop={false} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes} />}
-            {activeTab === "social" && <SocialExplore isDesktop={false} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
-            {activeTab === "activity" && (
-              <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
-            )}
-            {activeTab === "create" && (
-              <NovoLancamentoForm
-                isDesktop={false}
-                categorias={finance.categorias}
-                contas={finance.contas}
-                contaPadrao={finance.contaPadrao}
-                onCancel={() => setActiveTab("home")}
-                onSubmit={handleCriarLancamento}
-                showToast={showToast}
-              />
-            )}
-            {activeTab === "profile" && (
-              <div className="h-full overflow-y-auto">
-                <ProfileTab
-                  profile={displayProfile} stats={stats} streak={streak}
-                  notifSettings={notifSettings}
-                  openProfileEditor={openProfileEditor}
-                  setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
-                  handleLogout={handleLogout}
-                  clearAllData={clearAllData}
-                  snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
-                  finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
-                />
+        <div className="flex-1 min-w-0 flex flex-col">
+          {bp === "mobile" && (
+            <header className="flex-shrink-0 flex items-center justify-between gap-2 px-4 pb-2 bg-page" style={{ paddingTop: "max(env(safe-area-inset-top), 14px)" }}>
+              <h1 className="min-w-0 text-[17px] max-[340px]:text-[15px] font-bold tracking-tight leading-tight text-fg"><Brand icon iconSize="1.5em" /></h1>
+              <div className="flex items-center gap-1 shrink-0">
+                <StreakFlame count={streak.count} onClick={abrirStreak} />
+                {entrarBtn}
               </div>
-            )}
-          </div>
+            </header>
+          )}
 
-          <div className="flex-shrink-0 flex items-center border-t border-white/[0.06] bg-app" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
-            {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex-1 flex flex-col items-center gap-1 py-3"><div className={`relative ${isActive ? "text-[#3b82f6]" : "text-white/30"}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className={`text-[10px] font-medium ${isActive ? "text-[#3b82f6]" : "text-white/30"}`}>{tab.label}</span></button>); })}
-          </div>
-        </div>
-      )}
-
-      {/* ── DESKTOP ── */}
-      {isDesktop && (
-        <div className="w-full h-screen flex bg-app">
-          <aside className="w-[220px] flex-shrink-0 bg-sidebar flex flex-col px-4 py-6 border-r border-white/[0.05]">
-            <div className="mb-4 px-2 flex items-center justify-between"><div><h1 className="text-xl font-black tracking-tight leading-none text-white"><Brand icon iconSize="1.6em" /></h1><p className="text-[11px] text-white/30 mt-1 leading-snug">{APP_TAGLINE}</p></div><StreakFlame count={streak.count} onClick={() => setShowStreakDetail(true)} /></div>
-            <nav className="flex flex-col gap-0.5">
-              {NavItems.map((tab) => { const isActive = activeTab === tab.id; return (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isActive ? "bg-[#2563eb]/15 text-blue-300" : "text-white/40 hover:bg-white/5 hover:text-white/60"}`}><div className="relative flex-shrink-0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} className="w-[17px] h-[17px]"><path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} /></svg>{tab.id === "social" && <NavBadge count={friendsPendingBadge} />}</div><span className="text-[13px] font-medium">{tab.label}</span></button>); })}
-            </nav>
-            <div className="mt-auto pt-4 border-t border-white/[0.06] flex flex-col gap-2.5">
-              <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-1">Decisões do mês</p>
-              {[{ label: "Pagas", value: statsMes.accepted, color: "text-emerald-400" }, { label: "Divididas", value: statsMes.shared, color: "text-blue-400" }, { label: "Adiadas", value: statsMes.rejected, color: "text-amber-400" }].map(({ label, value, color }) => (<div key={label} className="flex items-center justify-between"><span className="text-[12px] text-white/40">{label}</span><AnimatePresence mode="wait"><motion.span key={value} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className={`text-[14px] font-semibold ${color}`}>{value}</motion.span></AnimatePresence></div>))}
-              <div className="flex items-center justify-between mt-1"><span className="text-[12px] text-white/40">Pagas sem adiar</span><span className="text-[13px] font-semibold text-emerald-400">{statsMes.accepted + statsMes.rejected + statsMes.shared > 0 ? `${Math.round((statsMes.accepted / (statsMes.accepted + statsMes.rejected + statsMes.shared)) * 100)}%` : "—"}</span></div>
-              <div className="h-[3px] bg-white/[0.08] rounded-full overflow-hidden mt-0.5"><motion.div className="h-full bg-[#2563eb] rounded-full" animate={{ width: statsMes.accepted + statsMes.rejected + statsMes.shared > 0 ? `${Math.round((statsMes.accepted / (statsMes.accepted + statsMes.rejected + statsMes.shared)) * 100)}%` : "0%" }} transition={{ type: "spring", stiffness: 100, damping: 20 }} /></div>
-            </div>
-          </aside>
-
-          <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
-            {activeTab === "home" && (
+          <main className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+            {activeTab === "home" && home}
+            {activeTab !== "home" && (isDesktop ? (
               <>
-                {/* Streak risk banner desktop */}
-                <AnimatePresence>
-                  {streakAtRisk && !riskDismissed && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex-shrink-0 overflow-hidden border-b border-amber-500/15">
-                      <div className="flex items-center gap-3 px-10 py-2.5 bg-amber-500/[0.07]">
-                        <span className="text-sm">⚠️</span>
-                        <p className="text-[12px] text-amber-300 flex-1">Seu streak de <strong>{streak.count}</strong> dias acaba à meia-noite. Registre ou revise 1 lançamento pra manter 🔥</p>
-                        <button onClick={() => setRiskDismissed(true)} aria-label="Dispensar aviso" className="text-amber-400/40 hover:text-amber-400 transition text-sm">✕</button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className="flex items-center justify-end gap-3 px-10 pt-5 flex-shrink-0">
-                  {!auth.isLoggedIn && <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/15 border border-[#2563eb]/25 text-[12px] font-medium text-blue-300 hover:bg-[#2563eb]/25 transition">Entrar</button>}
-                  <button onClick={() => setShowCreatePollModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 text-[12px] font-medium text-purple-400 hover:bg-purple-500/30 transition">🗳️ Bora?</button>
-                  <button onClick={() => setActiveTab("create")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563eb]/20 border border-[#2563eb]/30 text-[12px] font-medium text-[#3b82f6] hover:bg-[#2563eb]/30 transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>Novo lançamento</button>
-                </div>
-                <div className="flex-1 min-h-0"><FinDeck isDesktop={true} finance={finance} snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked} keyboardEnabled={activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida} onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes} /></div>
+                {activeTab === "social" && social_}
+                {activeTab === "activity" && (
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="max-w-2xl mx-auto">
+                      <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
+                    </div>
+                  </div>
+                )}
+                {activeTab === "create" && createForm}
+                {activeTab === "profile" && (
+                  <div className="flex flex-1 flex-col items-center overflow-y-auto">
+                    <div className="w-full max-w-[900px]">{profileTab}</div>
+                  </div>
+                )}
               </>
-            )}
-            {activeTab === "social" && <SocialExplore isDesktop={true} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />}
-            {activeTab === "activity" && (
-              <div className="flex-1 overflow-y-auto">
-                <div className="max-w-2xl mx-auto">
-                  <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
-                </div>
+            ) : (
+              <div className={`flex-1 min-h-0 relative w-full ${bp === "tablet" ? "max-w-[640px] mx-auto" : "pb-[76px]"}`}>
+                {activeTab === "social" && social_}
+                {activeTab === "activity" && <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />}
+                {activeTab === "create" && createForm}
+                {activeTab === "profile" && <div className="h-full overflow-y-auto">{profileTab}</div>}
               </div>
-            )}
-            {activeTab === "create" && (
-              <NovoLancamentoForm
-                isDesktop={true}
-                categorias={finance.categorias}
-                contas={finance.contas}
-                contaPadrao={finance.contaPadrao}
-                onCancel={() => setActiveTab("home")}
-                onSubmit={handleCriarLancamento}
-                showToast={showToast}
-              />
-            )}
-            {activeTab === "profile" && (
-              <div className="flex flex-1 flex-col items-center overflow-y-auto">
-                <div className="w-full max-w-[900px]">
-                  <ProfileTab
-                    profile={displayProfile} stats={stats} streak={streak}
-                    notifSettings={notifSettings}
-                    openProfileEditor={openProfileEditor}
-                    setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
-                    handleLogout={handleLogout}
-                    clearAllData={clearAllData} isDesktop={true}
-                    snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
-                  finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
-                  />
-                </div>
-              </div>
-            )}
+            ))}
           </main>
         </div>
-      )}
+      </div>
+
+      {bp === "mobile" && <BottomNav activeTab={activeTab} onTab={setActiveTab} badges={badges} />}
 
       {showOnboarding && (
         <Onboarding
@@ -593,102 +563,66 @@ export default function MainApp() {
           />
         )}
         {showAuthModal && !auth.isLoggedIn && (
-          <motion.div
-            key="auth-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
-            onClick={() => setShowAuthModal(false)}
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 28 }}
-              className="bg-sidebar rounded-3xl w-full max-w-sm border border-white/10 overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-6 pt-5 pb-2">
-                <h3 className="font-bold text-white text-base">Entrar no {APP_NAME}</h3>
-                <button onClick={() => setShowAuthModal(false)} aria-label="Fechar" className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-white/40 hover:text-white transition text-sm">✕</button>
-              </div>
-              <AuthScreen onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} />
-            </motion.div>
-          </motion.div>
+          <Sheet key="auth-modal" title={`Entrar no ${APP_NAME}`} onClose={() => setShowAuthModal(false)}>
+            <div className="-mx-5 -mb-5"><AuthScreen onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} /></div>
+          </Sheet>
         )}
-      </AnimatePresence>
-
-
-      {showProfileEditor && (
-        <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
-          <div className="w-full max-w-md rounded-[28px] bg-sheet border border-white/10 p-5 shadow-2xl">
-            <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Editar perfil</div><div className="text-[12px] text-white/40">Atualize nome, nick e emoji.</div></div><button type="button" onClick={closeProfileEditor} aria-label="Fechar" className="text-white/40 hover:text-white text-lg">✕</button></div>
-            <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/10 text-4xl flex items-center justify-center">{editedProfile.avatar}</div></div>
+        {showProfileEditor && (
+          <Sheet key="profile-editor" title="Editar perfil" kicker="Atualize nome, nick e avatar." onClose={closeProfileEditor} maxWidth="max-w-md" z="z-50">
+            <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-tile border border-line text-3xl flex items-center justify-center">{editedProfile.avatar}</div></div>
             <div className="space-y-3 mb-4">
-              <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" className="w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border border-transparent focus:border-[#2563eb]" />
+              <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" aria-label="Nome" className={inputCls} />
               <div>
-                <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" className={`w-full rounded-xl bg-white/[0.06] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none border ${
-                  auth.isLoggedIn && editorUsernameStatus === "available" ? "border-emerald-500/50"
-                  : auth.isLoggedIn && (editorUsernameStatus === "taken" || editorUsernameStatus === "invalid") ? "border-red-500/50"
-                  : "border-transparent focus:border-[#2563eb]"
+                <input value={editedProfile.handle} onChange={(e) => setEditedProfile((p) => ({ ...p, handle: e.target.value }))} placeholder="@nick" aria-label="Nick" className={`${inputCls} ${
+                  auth.isLoggedIn && editorUsernameStatus === "available" ? "!border-pos"
+                  : auth.isLoggedIn && (editorUsernameStatus === "taken" || editorUsernameStatus === "invalid") ? "!border-neg"
+                  : ""
                 }`} />
                 {auth.isLoggedIn && <div className="mt-1.5"><UsernameHint status={editorUsernameStatus} value={editedProfile.handle} /></div>}
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 mb-4">{AVATAR_EMOJIS.map((emoji) => (<button key={emoji} type="button" onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-xl p-2.5 text-lg transition ${editedProfile.avatar === emoji ? "border border-[#2563eb] bg-[#2563eb]/20" : "bg-white/[0.04]"}`}>{emoji}</button>))}</div>
-            {profileEditError && <p className="text-[12px] text-red-400 px-1 mb-3">{profileEditError}</p>}
-            <div className="flex gap-3"><button type="button" onClick={closeProfileEditor} className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm text-white/70">Cancelar</button><button type="button" onClick={saveProfileEdits} disabled={savingProfile || (auth.isLoggedIn && editorUsernameStatus !== "available")} className="flex-1 rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center">{savingProfile ? <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : "Salvar"}</button></div>
-          </div>
-        </div>
-      )}
-
-      {showAboutModal && (
-        <div className={`fixed inset-0 z-50 flex bg-black/60 px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
-          <div className="w-full max-w-sm rounded-[28px] bg-sheet border border-white/10 p-5 shadow-2xl">
-            <div className="flex items-center justify-between mb-4"><div><div className="text-sm font-semibold text-white">Sobre o {APP_NAME}</div><div className="text-[12px] text-white/40">Informações do app</div></div><button type="button" onClick={() => setShowAboutModal(false)} aria-label="Fechar" className="text-white/40 hover:text-white text-lg">✕</button></div>
-            <div className="space-y-3 text-sm text-white/60 mb-5"><div><div className="text-white font-semibold">{APP_NAME}</div><div className="text-[12px] text-white/35">Versão 0.0.0</div></div><p>Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, os dados somem ao fechar a aba; com conta, ficam salvos nela.</p></div>
-            <button type="button" onClick={() => setShowAboutModal(false)} className="w-full rounded-xl bg-[#2563eb] py-2.5 text-sm font-semibold text-white">Fechar</button>
-          </div>
-        </div>
-      )}
-
-      {showNotifSettings && (
-        <div className={`fixed inset-0 z-50 flex bg-black/70 backdrop-blur-sm px-4 ${!isDesktop ? "items-end pb-6" : "items-center justify-center"}`}>
-          <div className="w-full max-w-sm rounded-[28px] bg-sheet border border-white/10 shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
-              <div><p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mb-0.5">Configurar</p><h3 className="text-base font-bold text-white">Notificações</h3></div>
-              <button type="button" onClick={() => setShowNotifSettings(false)} aria-label="Fechar" className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-white/40 hover:text-white transition">✕</button>
-            </div>
-            <div className="px-5 py-4 space-y-4">
-              <div className="flex items-center gap-3 rounded-2xl bg-white/[0.04] border border-white/[0.07] px-4 py-3.5">
-                <span className="text-xl">🔔</span>
-                <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-white">Ativar notificações</p><p className="text-[11px] text-white/35 mt-0.5">Permissão no browser necessária</p></div>
+            <div className="grid grid-cols-8 gap-1.5 mb-4">{AVATAR_EMOJIS.map((emoji) => (<button key={emoji} type="button" aria-pressed={editedProfile.avatar === emoji} onClick={() => setEditedProfile((p) => ({ ...p, avatar: emoji }))} className={`rounded-md aspect-square text-lg transition border ${editedProfile.avatar === emoji ? "border-brand bg-brand/[0.06]" : "border-transparent hover:bg-tile"}`}>{emoji}</button>))}</div>
+            {profileEditError && <p className="text-[13px] text-neg px-1 mb-3">{profileEditError}</p>}
+            <div className="flex gap-2"><button type="button" onClick={closeProfileEditor} className={`${btnCls.secondary} flex-1 py-2.5 text-sm`}>Cancelar</button><button type="button" onClick={saveProfileEdits} disabled={savingProfile || (auth.isLoggedIn && editorUsernameStatus !== "available")} className={`${btnCls.primary} flex-1 py-2.5 text-sm`}>{savingProfile ? <span className="w-4 h-4 rounded-full border-2 border-on-brand/30 border-t-on-brand animate-spin" /> : "Salvar"}</button></div>
+          </Sheet>
+        )}
+        {showAboutModal && (
+          <Sheet key="about" title={`Sobre o ${APP_NAME}`} kicker="Versão 0.0.0" onClose={() => setShowAboutModal(false)} z="z-50">
+            <p className="text-sm text-fg-2 leading-relaxed mb-5">Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, os dados somem ao fechar a aba; com conta, ficam salvos nela.</p>
+            <button type="button" onClick={() => setShowAboutModal(false)} className={`${btnCls.secondary} w-full py-2.5 text-sm`}>Fechar</button>
+          </Sheet>
+        )}
+        {showNotifSettings && (
+          <Sheet key="notifs" title="Notificações" onClose={() => setShowNotifSettings(false)} z="z-50">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 rounded-md border border-line px-4 py-3.5">
+                <span className="w-9 h-9 rounded-md bg-tile text-fg flex items-center justify-center flex-shrink-0" aria-hidden><Bell size={18} strokeWidth={ICON_STROKE} /></span>
+                <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-fg">Ativar notificações</p><p className="text-[12px] text-fg-2 mt-0.5">Permissão no browser necessária</p></div>
                 <IOSToggle value={notifSettings.enabled} onChange={handleEnableNotifs} disabled={!("Notification" in window)} />
               </div>
               {(notifSettings.permission === "denied" || ("Notification" in window && Notification.permission === "denied")) && (
-                <div className="rounded-2xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-                  <p className="text-[12px] text-red-300 font-medium mb-0.5">Permissão bloqueada</p>
-                  <p className="text-[11px] text-red-300/70">Acesse as configurações do browser e permita notificações para este site manualmente.</p>
+                <div className="rounded-md border border-neg/30 px-4 py-3">
+                  <p className="text-[13px] text-neg font-medium mb-0.5">Permissão bloqueada</p>
+                  <p className="text-[12px] text-fg-2">Acesse as configurações do browser e permita notificações para este site manualmente.</p>
                 </div>
               )}
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden divide-y divide-white/[0.05]">
+              <div className="rounded-md border border-line divide-y divide-line">
                 {[
-                  { key: "peakReminder",  icon: "⚡", label: "Lembrete no meu horário",         sub: "No horário em que você costuma revisar as contas" },
-                  { key: "streakAlert",   icon: "🔥", label: "Aviso de streak em risco",         sub: "Após 19h se você ainda não registrou nada hoje" },
-                ].map(({ key, icon, label, sub }) => (
+                  { key: "peakReminder", Icon: Zap,   label: "Lembrete no meu horário",       sub: "No horário em que você costuma revisar as contas" },
+                  { key: "streakAlert",  Icon: Flame, label: "Aviso de sequência em risco",   sub: "Após 19h se você ainda não registrou nada hoje" },
+                ].map(({ key, Icon, label, sub }) => (
                   <div key={key} className="flex items-center gap-3 px-4 py-3.5">
-                    <span className="text-base w-6 text-center flex-shrink-0">{icon}</span>
-                    <div className="flex-1 min-w-0"><p className={`text-[13px] font-medium ${notifSettings.enabled ? "text-white" : "text-white/35"}`}>{label}</p><p className="text-[11px] text-white/25 mt-0.5">{sub}</p></div>
+                    <Icon size={18} strokeWidth={ICON_STROKE} className="text-fg-2 flex-shrink-0" aria-hidden />
+                    <div className="flex-1 min-w-0"><p className={`text-[13px] font-medium ${notifSettings.enabled ? "text-fg" : "text-fg-3"}`}>{label}</p><p className="text-[12px] text-fg-2 mt-0.5">{sub}</p></div>
                     <IOSToggle value={notifSettings[key]} onChange={v => setNotifSettings(s => ({ ...s, [key]: v }))} disabled={!notifSettings.enabled} />
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-white/20 text-center leading-relaxed px-2">Funciona com o app aberto. Para notificações em segundo plano, seria necessário integrar Push API + service worker.</p>
+              <p className="text-[12px] text-fg-3 text-center leading-relaxed px-2">Funciona com o app aberto. Para notificações em segundo plano, seria necessário integrar Push API + service worker.</p>
             </div>
-          </div>
-        </div>
-      )}
+          </Sheet>
+        )}
+      </AnimatePresence>
 
       <Toast visible={toast.visible} message={toast.message} color={toast.color} />
     </div>

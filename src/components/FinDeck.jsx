@@ -24,7 +24,7 @@ const LABELS_REVISAO = { right: "Valeu a pena", left: "Cortar" };
 export function FinDeck({
   finance, isDesktop, snoozeDefault, setSnoozeDefault, snoozeAsked, setSnoozeAsked,
   keyboardEnabled, onActivity, onDecision, onDividido, onQuitouDivida, onDeckComplete,
-  onNavigate, showToast, stats,
+  onNavigate, showToast, stats, headerActions,
 }) {
   const { lancamentos, categorias, contas, contaPadrao, recorrentes, revisoes } = finance;
   const [mode, setMode] = useState("contas"); // "contas" | "painel" | "revisar"
@@ -132,70 +132,67 @@ export function FinDeck({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const px = isDesktop ? "px-10" : "px-5";
-  const cardBox = isDesktop ? "relative w-full max-w-[520px]" : "relative w-full h-full";
-
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Cabeçalho: modo + resumo */}
-      <div className={`flex-shrink-0 ${px} ${isDesktop ? "pt-6" : "pt-1"} pb-3`}>
-        <div className={`flex items-center gap-3 ${isDesktop ? "justify-between" : "flex-col items-stretch"}`}>
-          <div className="flex bg-white/[0.05] border border-white/[0.07] p-1 rounded-xl" role="tablist">
-            {[{ id: "painel", label: "Painel" }, { id: "contas", label: "Contas", badge: deck.length }].map(t => (
-              <button key={t.id} role="tab" aria-selected={mode === t.id} onClick={() => setMode(t.id)} className={`flex-1 px-4 py-1.5 rounded-lg text-[12px] font-semibold whitespace-nowrap transition flex items-center justify-center gap-1.5 ${mode === t.id ? "bg-white/[0.12] text-white" : "text-white/40 hover:text-white/60"}`}>
-                {t.label}
-                {t.badge > 0 && <span className="text-[10px] tabular-nums text-white/40">{t.badge}</span>}
-              </button>
-            ))}
-          </div>
-          {mode !== "painel" && (
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setMode("painel")} title={contas.map(c => `${c.nome}: ${brl(c.saldo)}`).join("\n")} className="flex-1 flex items-baseline justify-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-2 hover:bg-white/[0.07] transition">
-                <span className="text-[10px] uppercase tracking-widest text-white/40">Saldo</span>
-                <span className={`text-lg font-bold tabular-nums ${saldoContas < 0 && !ocultar ? "text-red-400" : "text-white"}`}>{brl(saldoContas)}</span>
-                {contas.length > 1 && <span className="text-[10px] text-white/30">{contas.length} contas</span>}
-              </button>
-              <EyeButton />
-            </div>
-          )}
-          {mode === "contas" && deck.length > 0 && (
-            <p className="text-[11px] text-white/35 text-center">
-              {deck.length} {deck.length === 1 ? "lançamento" : "lançamentos"} até daqui 7 dias
-              {totalPagar > 0 && <> · <span className="text-white/60 font-semibold tabular-nums">{brl(totalPagar)}</span> a pagar</>}
-              {totalReceber > 0 && <> · <span className="text-emerald-400/80 font-semibold tabular-nums">{brl(totalReceber)}</span> a receber</>}
-            </p>
-          )}
-          {mode === "revisar" && revisaoDeck.length > 0 && (
-            <p className="text-[11px] text-white/35 text-center">Fixos e gastos dos últimos 30 dias · {revisaoDeck.length} pra revisar</p>
-          )}
+    <div className="flex flex-col">
+      {/* Saldo: texto simples; clicar abre o Painel */}
+      <div>
+        <div className="flex items-center gap-1 -ml-0.5">
+          <span className="text-[13px] font-medium text-fg-2">Saldo</span>
+          <EyeButton className="w-7 h-7" />
         </div>
+        <button type="button" onClick={() => setMode("painel")} title={contas.map(c => `${c.nome}: ${brl(c.saldo)}`).join("\n")} className="block text-left">
+          <span className={`text-[34px] leading-tight font-bold tracking-tight tabular-nums ${saldoContas < 0 && !ocultar ? "text-neg" : "text-fg"}`}>{brl(saldoContas)}</span>
+        </button>
+        {contas.length > 1 && <p className="text-[13px] text-fg-2">{contas.length} contas</p>}
       </div>
 
+      {headerActions && <div className="mt-4 flex gap-2">{headerActions}</div>}
+
+      <div className="mt-6 flex items-center gap-3 flex-wrap">
+        <div className="inline-flex p-1 rounded-md bg-tile" role="tablist" aria-label="Visão">
+          {[{ id: "painel", label: "Painel" }, { id: "contas", label: "Contas", badge: deck.length }].map(t => {
+            const ativo = mode === t.id || (t.id === "contas" && mode === "revisar");
+            return (
+              <button key={t.id} type="button" role="tab" aria-selected={ativo} onClick={() => setMode(t.id)} className={`px-4 py-1.5 rounded-sm text-[13px] font-medium whitespace-nowrap transition inline-flex items-center gap-1.5 ${ativo ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>
+                {t.label}
+                {t.badge > 0 && <span className="text-[12px] tabular-nums text-fg-3">{t.badge}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {mode === "contas" && deck.length > 0 && (
+        <p className="mt-3 text-[13px] text-fg-2">
+          {deck.length} {deck.length === 1 ? "lançamento" : "lançamentos"} nos próximos 7 dias
+          {totalPagar > 0 && <> · <span className="text-fg font-medium tabular-nums">{brl(totalPagar)}</span> a pagar</>}
+          {totalReceber > 0 && <> · <span className="text-pos font-medium tabular-nums">{brl(totalReceber)}</span> a receber</>}
+        </p>
+      )}
+      {mode === "revisar" && revisaoDeck.length > 0 && (
+        <p className="mt-3 text-[13px] text-fg-2">Fixos e gastos dos últimos 30 dias · {revisaoDeck.length} pra revisar</p>
+      )}
+
       {mode === "painel" ? (
-        <div className={`flex-1 min-h-0 overflow-y-auto ${px} pt-2 pb-10`}>
-          <div className={isDesktop ? "max-w-3xl mx-auto" : ""}>
-            <PainelPanel finance={finance} isDesktop={isDesktop} />
-          </div>
+        <div className="mt-5">
+          <PainelPanel finance={finance} isDesktop={isDesktop} />
         </div>
       ) : items.length > 0 ? (
-        <div className={`flex-1 min-h-0 flex flex-col ${isDesktop ? "items-center justify-center gap-6 px-10 py-4" : ""}`}>
-          <div className={isDesktop ? cardBox : `flex-1 min-h-0 ${px} pt-1 pb-2`} style={isDesktop ? { height: 420 } : undefined}>
-            <div className={isDesktop ? "relative w-full h-full" : cardBox}>
-              <AnimatePresence custom={swipeExit}>
-                {items.slice(-3).reverse().map((it, i, arr) => {
-                  const isTop = i === 0;
-                  const cat = findCategoria(categorias, it.categoria);
-                  const itemLabels = mode === "revisar" ? LABELS_REVISAO : it.tipo === "entrada" ? LABELS_ENTRADA : LABELS_SAIDA;
-                  return (
-                    <SwipeCard key={it.id || it.key} item={it} isTop={isTop} stackIndex={arr.length - 1 - i} onSwipe={handleSwipe} labels={itemLabels}>
-                      {mode === "revisar" ? <RevisaoCardContent item={it} categoria={cat} /> : <LancamentoCardContent lancamento={it} categoria={cat} />}
-                    </SwipeCard>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
+        <div className="mt-4 flex flex-col">
+          <div className="relative w-full" style={{ height: isDesktop ? 400 : "clamp(300px, 46dvh, 400px)" }}>
+            <AnimatePresence custom={swipeExit}>
+              {items.slice(-3).reverse().map((it, i, arr) => {
+                const isTop = i === 0;
+                const cat = findCategoria(categorias, it.categoria);
+                const itemLabels = mode === "revisar" ? LABELS_REVISAO : it.tipo === "entrada" ? LABELS_ENTRADA : LABELS_SAIDA;
+                return (
+                  <SwipeCard key={it.id || it.key} item={it} isTop={isTop} stackIndex={arr.length - 1 - i} onSwipe={handleSwipe} labels={itemLabels}>
+                    {mode === "revisar" ? <RevisaoCardContent item={it} categoria={cat} /> : <LancamentoCardContent lancamento={it} categoria={cat} />}
+                  </SwipeCard>
+                );
+              })}
+            </AnimatePresence>
           </div>
-          <div className={`flex-shrink-0 flex items-center justify-center ${isDesktop ? "" : "pt-3 pb-4"}`}>
+          <div className="pt-7 flex items-center justify-center">
             <ActionButtons labels={labels} onAction={(dir) => top && handleSwipe(dir, top)} disabled={!top || modalOpen} />
           </div>
         </div>
@@ -299,7 +296,7 @@ function DividirSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
 
 function DeckVazio({ stats, onNavigate, onRevisar }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto w-full">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-col items-center justify-center px-2 py-10 text-center max-w-md mx-auto w-full">
       <span className="w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center mb-4" aria-hidden><CircleCheck size={24} strokeWidth={ICON_STROKE} /></span>
       <h3 className="text-xl font-semibold text-fg mb-1.5">Tudo em dia</h3>
       <p className="text-fg-2 text-sm mb-6 leading-relaxed">Nenhuma conta vencendo nos próximos 7 dias.</p>
@@ -327,7 +324,7 @@ function ResumoRevisao({ itens, revisoes, onRecomecar, onVoltar }) {
   const revisados = itens.filter(it => revisoes[it.key]).length;
   const [ocultar] = useOcultarValores();
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto w-full overflow-y-auto py-6">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-col items-center justify-center px-2 py-10 text-center max-w-md mx-auto w-full">
       {itens.length === 0 ? (
         <>
           <span className="w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center mb-4" aria-hidden><Receipt size={24} strokeWidth={ICON_STROKE} /></span>

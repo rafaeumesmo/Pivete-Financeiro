@@ -33,9 +33,18 @@ function CardLayout({ categoria, topRight, valor, valorSub, titulo, meta, alerta
   );
 }
 
+// Ontem/hoje/amanhã: só o relativo. Atrasado: sempre por extenso (não só o
+// ícone). A data aparece só pra prazos mais distantes.
+function statusVencimento(l) {
+  const venc = vencimentoInfo(l.data, todayKey(), l.tipo);
+  const perto = venc.dias !== null && Math.abs(venc.dias) <= 1;
+  const label = venc.atrasado ? `Atrasado há ${-venc.dias} ${venc.dias === -1 ? "dia" : "dias"}` : venc.label;
+  return { atrasado: venc.atrasado, label, data: !perto && l.data ? formatDateShort(l.data) : null };
+}
+
 export function LancamentoCardContent({ lancamento: l, categoria }) {
   const [ocultar] = useOcultarValores();
-  const venc = vencimentoInfo(l.data, todayKey(), l.tipo);
+  const venc = statusVencimento(l);
   const entrada = l.tipo === "entrada";
   return (
     <CardLayout
@@ -47,7 +56,7 @@ export function LancamentoCardContent({ lancamento: l, categoria }) {
       meta={[
         l.voltou && "De volta",
         venc.label,
-        l.data && formatDateShort(l.data),
+        venc.data,
         l.recorrenteId && "Fixo",
         l.dividaId && "Parcela de dívida",
         l.parcela && `Parcela ${l.parcela.numero}/${l.parcela.total}`,
