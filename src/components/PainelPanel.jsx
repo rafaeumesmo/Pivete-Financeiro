@@ -15,15 +15,15 @@ import {
 // Cores de papel (não de série) dos gráficos, por tema. O Recharts grava cor
 // em atributo SVG, que não aceita var(--…), então vêm do JS.
 const PAPEL = {
-  escuro: { ink: "rgba(255,255,255,0.8)", muted: "rgba(255,255,255,0.4)", grid: "rgba(255,255,255,0.06)", zero: "rgba(255,255,255,0.2)", hover: "rgba(255,255,255,0.04)", cursor: "rgba(255,255,255,0.25)", surface: "#1A1B21", sobra: "#34343b" },
-  claro:  { ink: "rgba(17,19,24,0.85)",   muted: "#6B7280",               grid: "#E6E8EC",                zero: "rgba(17,19,24,0.25)",   hover: "rgba(17,19,24,0.04)",    cursor: "rgba(17,19,24,0.25)",    surface: "#FFFFFF", sobra: "#E6E8EC" },
+  escuro: { ink: "rgba(255,255,255,0.8)", muted: "rgba(255,255,255,0.4)", grid: "rgba(255,255,255,0.06)", zero: "rgba(255,255,255,0.2)", hover: "rgba(255,255,255,0.04)", cursor: "rgba(255,255,255,0.25)", surface: "#1A1B21" },
+  claro:  { ink: "rgba(17,19,24,0.85)",   muted: "#6B7280",               grid: "#E6E8EC",                zero: "rgba(17,19,24,0.25)",   hover: "rgba(17,19,24,0.04)",    cursor: "rgba(17,19,24,0.25)",    surface: "#FFFFFF" },
 };
 const COR_TENHO = "#3987e5";
 const COR_DEVO = "#e66767";
 const COR_ENTRADA = COR_TENHO;
 const COR_SAIDA = COR_DEVO;
 const COR_OUTROS = "#7c7b76";
-const MAX_FATIAS = 4;        // + "Outros" + "Sobra" = no máximo 6 fatias
+const MAX_FATIAS = 5;        // + "Outros" = no máximo 6 fatias
 
 // Formatadores do painel, respeitando o botão de olho (oculto → "R$ •••••").
 // Espaço não separável: o Recharts quebra rótulos SVG em espaço comum
@@ -63,10 +63,11 @@ function Tile({ label, value, sub, tone = "text-fg" }) {
   );
 }
 
-// Fatias da pizza "pra onde vai a renda": categorias em ordem fixa (cor
-// segue a categoria), as menores dobradas em "Outros", e a sobra no fim.
-// A sobra (parte da renda ainda livre) é um trilho neutro, não uma "categoria".
-function fatiasRenda(resumo, categorias, corSobra) {
+// Fatias da pizza "pra onde vai a renda": só os gastos do mês, por categoria,
+// em ordem fixa (cor segue a categoria) e as menores dobradas em "Outros".
+// O que sobra da renda não entra: o gráfico mostra pra onde o dinheiro foi
+// (a sobra já está no bloco "Sobra" acima).
+function fatiasRenda(resumo, categorias) {
   const cats = Object.entries(resumo.porCategoria).filter(([, v]) => v > 0);
   const top = [...cats].sort((a, b) => b[1] - a[1]).slice(0, MAX_FATIAS).map(([id]) => id);
   const ordem = (id) => { const i = CHART_ORDER.indexOf(id); return i === -1 ? 99 : i; };
@@ -74,7 +75,6 @@ function fatiasRenda(resumo, categorias, corSobra) {
     .map(([id, v]) => { const c = findCategoria(categorias, id); return { id, name: c.nome, value: v, fill: c.cor }; });
   const resto = cats.filter(([id]) => !top.includes(id) || id === "outros").reduce((a, [, v]) => a + v, 0);
   if (resto > 0) fatias.push({ id: "outros", name: "Outros", value: resto, fill: COR_OUTROS });
-  if (resumo.sobra > 0) fatias.push({ id: "sobra", name: "Sobra", value: resumo.sobra, fill: corSobra });
   return fatias;
 }
 
@@ -94,7 +94,7 @@ export function PainelPanel({ finance, isDesktop }) {
   const comp = comprometimento({ recorrentes, dividas, renda });
   const pat = patrimonio({ contas, metas, dividas, lancamentos, hoje });
   const ano = entradasSaidasAno(lancamentos, hoje).map(m => ({ ...m, label: MESES[m.mes] }));
-  const fatias = fatiasRenda(resumo, categorias, P.sobra);
+  const fatias = fatiasRenda(resumo, categorias);
   const baseFatias = fatias.reduce((a, f) => a + f.value, 0);
   const barras = [
     { name: "Tenho", value: pat.tenho, fill: COR_TENHO },
@@ -149,7 +149,7 @@ export function PainelPanel({ finance, isDesktop }) {
       <div>
         <SectionTitle>Pra onde vai a renda</SectionTitle>
         {baseFatias === 0 ? (
-          <p className="text-[12px] text-fg-3 px-1">Sem entradas nem saídas neste mês ainda.</p>
+          <p className="text-[12px] text-fg-3 px-1">Sem gastos neste mês ainda.</p>
         ) : (
           <div className={`rounded-lg border border-line bg-surface p-4 flex ${isDesktop ? "flex-row items-center gap-6" : "flex-col gap-3"}`}>
             <div className="relative mx-auto" style={{ width: 180, height: 180 }}>
@@ -162,7 +162,7 @@ export function PainelPanel({ finance, isDesktop }) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[12px] text-fg-3">{resumo.sobra >= 0 ? "Renda" : "Saídas"}</p>
+                <p className="text-[12px] text-fg-3">Gastos</p>
                 <p className="text-[15px] font-bold text-fg tabular-nums">{brlExato(baseFatias)}</p>
               </div>
             </div>
@@ -172,7 +172,7 @@ export function PainelPanel({ finance, isDesktop }) {
               <tbody>
                 {fatias.map(f => (
                   <tr key={f.id} className="border-b border-line last:border-0">
-                    <td className="py-1.5 pr-2"><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-2" style={{ background: f.fill, outline: f.id === "sobra" ? `1px solid ${P.cursor}` : undefined }} /><span className="text-fg">{f.name}</span></td>
+                    <td className="py-1.5 pr-2"><span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-2" style={{ background: f.fill }} /><span className="text-fg">{f.name}</span></td>
                     <td className="py-1.5 text-right text-fg-2 tabular-nums">{Math.round((f.value / baseFatias) * 100)}%</td>
                     <td className="py-1.5 pl-3 text-right text-fg tabular-nums">{brl(f.value)}</td>
                   </tr>
