@@ -16,9 +16,11 @@ import { SetupProfile } from "./components/SetupProfile.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
 import { migrateAnonPolls, fetchMyPolls } from "./lib/polls.js";
-import { startSync, stopSync, finishSync, limparAparelho, MESCLADO_EVENT } from "./lib/sync.js";
+import { startSync, stopSync, finishSync, limparAparelho, MESCLADO_EVENT, SYNC_PRONTO_EVENT, syncPronto } from "./lib/sync.js";
 import { resumoTexto, duplicadoTexto, SALDO_MANTIDO_TEXTO } from "./lib/mesclar.js";
-import { registrarDiaUso, deveAvisarConta, MOTIVOS_CONTA } from "./lib/convidado.js";
+import { MOTIVOS_CONTA } from "./lib/convidado.js";
+import { AcessoProvider, criarExigirConta } from "./hooks/useAcesso.js";
+import { OnboardingConta } from "./components/OnboardingConta.jsx";
 import { reciboDoMes, estatisticasMes, nomeMesCurto } from "./lib/recibo.js";
 import { ReciboAviso, ReciboSheet } from "./components/Recibo.jsx";
 import { todayKey, daysBetween, addDays } from "./lib/dates.js";
@@ -26,7 +28,6 @@ import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
 import { NovoLancamentoForm } from "./components/NovoLancamentoForm.jsx";
 import { Toast } from "./components/Toast.jsx";
-import { Onboarding } from "./components/Onboarding.jsx";
 import { StreakFlame, StreakDetailModal, StreakBrokenModal } from "./components/StreakWidgets.jsx";
 import { IOSToggle } from "./components/IOSToggle.jsx";
 import { Sidebar, BottomNav } from "./components/AppNav.jsx";
@@ -36,12 +37,12 @@ import { btnCls, inputCls } from "./components/ui.jsx";
 import { Sheet } from "./components/Sheet.jsx";
 import { useBreakpoint } from "./hooks/useBreakpoint.js";
 import { ICON_STROKE } from "./lib/icons.js";
-import { Plus, Vote, X, LogIn, TriangleAlert, Bell, Zap, Flame, Smartphone, Wallet } from "lucide-react";
+import { Plus, Vote, X, LogIn, TriangleAlert, Bell, Zap, Flame, Wallet } from "lucide-react";
 import { FinDeck } from "./components/FinDeck.jsx";
 import { Brand } from "./components/Brand.jsx";
 import { useFinance, CONTA_INICIAL } from "./hooks/useFinance.js";
 import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
-import { SK, load, usePersistedState } from "./lib/storage.js";
+import { SK, load, usePersistedState, modoArmazenamento } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
 import { APP_NAME, AVATAR_EMOJIS, AVATAR_PADRAO } from "./config.js";
@@ -164,12 +165,16 @@ export default function MainApp() {
     setShowCreatePollModal(true);
   }
 
-  // Aviso discreto pro convidado (lib/convidado.js): conta dias de uso.
-  const [diasUso, setDiasUso] = usePersistedState(SK.diasUso, []);
-  const [avisoContaDispensado, setAvisoContaDispensado] = usePersistedState(SK.avisoContaDispensado, null);
-  useEffect(() => { setDiasUso((d) => registrarDiaUso(d, todayKey())); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- setter estável, roda no mount
+  // Sem conta: modo exemplo (mês fictício só na memória) ou legado (dados
+  // reais de convidado). Adicionar dado próprio pede conta (lib/acesso.js).
+  const modo = modoArmazenamento();
+  const exemplo = modo === "exemplo";
+  const acessoCtx = { modo, exigirConta: criarExigirConta({ modo, pedir: () => pedirConta(MOTIVOS_CONTA.comecar) }) };
+  function novoLancamento() { if (acessoCtx.exigirConta("adicionar")) setActiveTab("create"); }
+  function navegar(tab) { if (tab === "create") novoLancamento(); else setActiveTab(tab); }
+
   // Recibo do mês fechado: aviso na Início do dia 1 ao 7 (some ao abrir ou
-  // fechar); depois fica no Perfil. Grátis, inclusive pra convidado.
+  // fechar); depois fica no Perfil. No exemplo: só no Perfil, marcado "exemplo".
   const [reciboVisto, setReciboVisto] = usePersistedState(SK.reciboVisto, null);
   const [reciboAberto, setReciboAberto] = useState(false);
   const recibo = reciboDoMes(todayKey());
@@ -177,7 +182,6 @@ export default function MainApp() {
   const reciboSuficiente = estatisticasMes({ ...reciboDados, ym: recibo.ym }).suficiente;
   function abrirRecibo() { setReciboVisto(recibo.ym); setReciboAberto(true); }
 
-  const avisarConta = !auth.isLoading && deveAvisarConta({ logado: auth.isLoggedIn, diasUso, dispensadoEm: avisoContaDispensado, hoje: todayKey() });
 
   // Perfil efetivo da UI: logado → tabela "profiles" do Supabase é a fonte de
   // verdade; deslogado → perfil local do localStorage. Assim o nome/nick/emoji
@@ -213,7 +217,15 @@ export default function MainApp() {
   // Persistido (não só lido no mount) pra fechar sozinho quando a sync
   // descobre que a conta já tem dados (lib/sync.js).
   const [onboarded,         setOnboarded]         = usePersistedState(SK.onboarded, false);
-  const showOnboarding = !onboarded;
+  // Onboarding só depois do login, com a conta já alinhada (conta com dados
+  // marca onboarded na sync e não passa por aqui).
+  const [contaPronta, setContaPronta] = useState(syncPronto);
+  useEffect(() => {
+    const f = () => setContaPronta(true);
+    window.addEventListener(SYNC_PRONTO_EVENT, f);
+    return () => window.removeEventListener(SYNC_PRONTO_EVENT, f);
+  }, []);
+  const showOnboarding = auth.isLoggedIn && contaPronta && !auth.needsProfile && !onboarded;
   const [showStreakDetail,  setShowStreakDetail]  = useState(false);
   const [streakBroken,     setStreakBroken]      = useState(null); // null | { oldCount, hasFreeze }
   const [riskDismissed,    setRiskDismissed]     = useState(false);
@@ -260,7 +272,8 @@ export default function MainApp() {
     const agora = new Date().toISOString();
     setConquistas(prev => ({ ...prev, ...Object.fromEntries(novas.map(id => [id, agora])) }));
     const q = CONQUISTAS.find(x => x.id === novas[0]);
-    setTimeout(() => showToast(`Conquista: ${q.nome} · +${q.xp} XP`, "bg-blue-600/90"), 900);
+    // No mês de exemplo as conquistas saem dos dados fictícios: sem toast (voltaria a cada recarga).
+    if (modoArmazenamento() !== "exemplo") setTimeout(() => showToast(`Conquista: ${q.nome} · +${q.xp} XP`, "bg-blue-600/90"), 900);
   }, [finance.lancamentos, finance.dividas, finance.metas, finance.revisoes, finance.recorrentes, streak, reservaMeses]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -500,24 +513,17 @@ export default function MainApp() {
     <div className="h-full overflow-y-auto">
       <div className={`mx-auto w-full ${isDesktop ? "max-w-[1120px] px-10 py-8" : "max-w-[640px] px-4 sm:px-6 pt-4 pb-28 md:pb-10 md:pt-8"}`}>
         {riskBanner}
-        {recibo.emDestaque && reciboVisto !== recibo.ym && (
+        {!exemplo && recibo.emDestaque && reciboVisto !== recibo.ym && (
           <ReciboAviso ym={recibo.ym} suficiente={reciboSuficiente} onAbrir={abrirRecibo} onDispensar={() => setReciboVisto(recibo.ym)} />
-        )}
-        {avisarConta && (
-          <div className="mb-5 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
-            <Smartphone size={18} strokeWidth={ICON_STROKE} className="text-fg-2 flex-shrink-0" aria-hidden />
-            <p className="text-[13px] text-fg flex-1 leading-snug">Seus dados estão só neste aparelho. <button type="button" onClick={() => pedirConta(MOTIVOS_CONTA.guardar)} className="font-semibold text-brand-ink hover:underline">Crie uma conta pra não perder.</button></p>
-            <button type="button" onClick={() => setAvisoContaDispensado(todayKey())} aria-label="Dispensar aviso" className="w-8 h-8 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition flex-shrink-0"><X size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
-          </div>
         )}
         <div className={isDesktop ? "grid grid-cols-[minmax(0,1fr)_360px] gap-10 items-start" : ""}>
           <FinDeck
             isDesktop={isDesktop} finance={finance}
             snoozeDefault={snoozeDefault} setSnoozeDefault={setSnoozeDefault} snoozeAsked={snoozeAsked} setSnoozeAsked={setSnoozeAsked}
             keyboardEnabled={keyboardEnabled} onActivity={registerActivity} onDecision={handleDecision} onDividido={handleDividido} onQuitouDivida={handleQuitouDivida}
-            onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes}
+            onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={navegar} showToast={showToast} stats={statsMes}
             headerActions={<>
-              <button type="button" onClick={() => setActiveTab("create")} className={`${btnCls.primary} h-10 px-4 text-sm flex-1 sm:flex-none`}><Plus size={18} strokeWidth={ICON_STROKE} aria-hidden />Novo lançamento</button>
+              <button type="button" onClick={novoLancamento} className={`${btnCls.primary} h-10 px-4 text-sm flex-1 sm:flex-none`}><Plus size={18} strokeWidth={ICON_STROKE} aria-hidden />Novo lançamento</button>
               <button type="button" onClick={abrirBora} title="Bora? — enquete de grupo" className={`${btnCls.secondary} h-10 px-4 text-sm`}><Vote size={18} strokeWidth={ICON_STROKE} aria-hidden />Bora?</button>
             </>}
           />
@@ -549,8 +555,8 @@ export default function MainApp() {
       setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
       handleLogout={handleLogout}
       clearAllData={clearAllData} isDesktop={isDesktop}
-      isLoggedIn={auth.isLoggedIn} onCriarConta={() => pedirConta(MOTIVOS_CONTA.guardar)}
-      reciboMes={nomeMesCurto(recibo.ym)} onAbrirRecibo={abrirRecibo}
+      isLoggedIn={auth.isLoggedIn} exemplo={exemplo} onCriarConta={() => pedirConta(exemplo ? MOTIVOS_CONTA.comecar : MOTIVOS_CONTA.guardar)}
+      reciboMes={exemplo ? "exemplo" : nomeMesCurto(recibo.ym)} onAbrirRecibo={abrirRecibo}
       snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
       finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
     />
@@ -560,6 +566,7 @@ export default function MainApp() {
   // ════════════════════════════════════════════════════════
   return (
     <PlanoProvider value={planoCtx}>
+    <AcessoProvider value={acessoCtx}>
     <div className="min-h-screen w-full bg-page">
       <div className="flex w-full" style={{ height: "100dvh" }}>
         {bp !== "mobile" && (
@@ -577,6 +584,12 @@ export default function MainApp() {
             </header>
           )}
 
+          {exemplo && (
+            <div className="flex-shrink-0 flex items-center justify-center gap-x-2 gap-y-0.5 flex-wrap px-4 py-2 bg-tile border-b border-line text-[13px] text-center">
+              <span className="text-fg-2">Você está vendo um mês de exemplo</span>
+              <button type="button" onClick={() => pedirConta(MOTIVOS_CONTA.comecar)} className="font-semibold text-brand-ink hover:underline">Começar com meus dados</button>
+            </div>
+          )}
           <main className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
             {activeTab === "home" && home}
             {activeTab !== "home" && (isDesktop ? (
@@ -611,12 +624,7 @@ export default function MainApp() {
       {bp === "mobile" && <BottomNav activeTab={activeTab} onTab={setActiveTab} badges={badges} />}
 
       {showOnboarding && (
-        <Onboarding
-          onFinish={(comExemplo) => {
-            setOnboarded(true);
-            if (comExemplo) { finance.carregarExemplo(); showToast("Dados de exemplo carregados — apague quando quiser no Perfil", "bg-blue-600/90"); }
-          }}
-        />
+        <OnboardingConta finance={finance} onFinish={() => { setOnboarded(true); showToast("Pronto! Seus dados estão na conta.", "bg-emerald-600/90"); }} />
       )}
 
       {auth.needsProfile && (
@@ -646,7 +654,7 @@ export default function MainApp() {
           </Sheet>
         )}
         {reciboAberto && (
-          <ReciboSheet key="recibo" ym={recibo.ym} dados={reciboDados} userId={auth.user?.id ?? null} onClose={() => setReciboAberto(false)} showToast={showToast} />
+          <ReciboSheet key="recibo" ym={recibo.ym} exemplo={exemplo} dados={reciboDados} userId={auth.user?.id ?? null} onClose={() => setReciboAberto(false)} showToast={showToast} />
         )}
         {mesclado && (
           <Sheet key="mesclado" title="Seus dados vieram junto" onClose={() => setMesclado(null)}>
@@ -683,7 +691,7 @@ export default function MainApp() {
         )}
         {showAboutModal && (
           <Sheet key="about" title={`Sobre o ${APP_NAME}`} kicker="Versão 0.0.0" onClose={() => setShowAboutModal(false)} z="z-50">
-            <p className="text-sm text-fg-2 leading-relaxed mb-5">Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, os dados ficam só neste aparelho; com conta, ficam salvos nela e aparecem em qualquer aparelho.</p>
+            <p className="text-sm text-fg-2 leading-relaxed mb-5">Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, você passeia por um mês de exemplo; com conta, seus dados ficam salvos nela e aparecem em qualquer aparelho.</p>
             <button type="button" onClick={() => setShowAboutModal(false)} className={`${btnCls.secondary} w-full py-2.5 text-sm`}>Fechar</button>
           </Sheet>
         )}
@@ -721,6 +729,7 @@ export default function MainApp() {
 
       <Toast visible={toast.visible} message={toast.message} color={toast.color} />
     </div>
+    </AcessoProvider>
     </PlanoProvider>
   );
 }

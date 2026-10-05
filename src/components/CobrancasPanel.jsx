@@ -7,6 +7,7 @@ import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls }
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort } from "../lib/dates.js";
 import { Receipt, X } from "lucide-react";
+import { useAcesso } from "../hooks/useAcesso.js";
 import { ICON_STROKE } from "../lib/icons.js";
 
 // Avisos "paguei" que chegaram pelo link, lidos pela função
@@ -26,6 +27,7 @@ function useAvisos(ids) {
 }
 
 export function CobrancasPanel({ cob, finance, nome, showToast }) {
+  const { exigirConta } = useAcesso();
   const [receber, setReceber] = useState(null); // { cobranca, nome?, valor? }
   const [verArquivadas, setVerArquivadas] = useState(false);
   const abertas = cob.cobrancas.filter(c => !c.arquivada);
@@ -88,7 +90,7 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
             : <>
                 {falta === 0 && <SmallButton onClick={() => cob.arquivar(c.id)}>Arquivar</SmallButton>}
                 {falta > 0 && <SmallButton onClick={() => setReceber({ cobranca: c, nome: "", valor: Math.min(c.porPessoa, falta) })}>Recebi</SmallButton>}
-                {falta > 0 && <SmallButton tone="blue" onClick={() => cob.compartilhar(c, nome, showToast)}>Enviar link</SmallButton>}
+                {falta > 0 && <SmallButton tone="blue" onClick={() => exigirConta("enviarCobranca") && cob.compartilhar(c, nome, showToast)}>Enviar link</SmallButton>}
               </>}
         </div>
       </div>

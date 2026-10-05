@@ -54,7 +54,7 @@ function Linha({ Icon, children, tone = "text-fg", onClick, right }) {
 export function ProfileTab({
   profile, stats, streak, notifSettings,
   openProfileEditor, setShowNotifSettings, setShowAboutModal,
-  handleLogout, clearAllData, isDesktop = false, isLoggedIn = false, onCriarConta, reciboMes, onAbrirRecibo,
+  handleLogout, clearAllData, isDesktop = false, isLoggedIn = false, exemplo = false, onCriarConta, reciboMes, onAbrirRecibo,
   snoozeDefault, onSnoozeDefaultChange,
   finance, conquistas, reservaMeses, setReservaMeses, onNavigate, showToast,
 }) {
@@ -144,8 +144,9 @@ export function ProfileTab({
         {isLoggedIn
           ? <Linha Icon={LogOut} tone="text-neg" onClick={handleLogout}>Sair</Linha>
           : <>
-              <Linha Icon={CloudUpload} onClick={onCriarConta} right={chevron}>Criar conta e guardar os dados</Linha>
-              <Linha Icon={Trash2} tone="text-neg" onClick={() => setConfirmarApagar(true)}>Apagar dados deste aparelho</Linha>
+              <Linha Icon={CloudUpload} onClick={onCriarConta} right={chevron}>{exemplo ? "Criar conta e começar com meus dados" : "Criar conta e guardar os dados"}</Linha>
+              {/* O exemplo some sozinho ao recarregar; só o legado tem o que apagar. */}
+              {!exemplo && <Linha Icon={Trash2} tone="text-neg" onClick={() => setConfirmarApagar(true)}>Apagar dados deste aparelho</Linha>}
             </>}
       </div>
 

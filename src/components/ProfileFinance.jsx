@@ -11,6 +11,7 @@ import { Landmark, Lock, Trophy } from "lucide-react";
 import { ICONS, ICON_STROKE, categoriaIcon, conquistaIcons } from "../lib/icons.js";
 import { CategoryTile } from "./CategoryTile.jsx";
 import { usePlanoCtx } from "../hooks/usePlano.js";
+import { useAcesso } from "../hooks/useAcesso.js";
 import { btnCls } from "./ui.jsx";
 
 // Chave do ícone atual (iconKey salvo, ou a do ícone padrão da categoria).
@@ -23,15 +24,16 @@ function iconKeyDe(categoria) {
 const card = "rounded-lg border border-line bg-surface";
 
 export function ContasSection({ finance, showToast, ocultar = false }) {
+  const { exigirConta } = useAcesso();
   const { contas } = finance;
   const [edit, setEdit] = useState(null);
   const total = contas.reduce((a, c) => a + c.saldo, 0);
   return (
     <div>
-      <SectionTitle action={<SmallButton tone="blue" onClick={() => setEdit({})}>+ Conta</SmallButton>}>Contas · {formatBRL(total, { oculto: ocultar })}</SectionTitle>
+      <SectionTitle action={<SmallButton tone="blue" onClick={() => exigirConta("adicionar") && setEdit({})}>+ Conta</SmallButton>}>Contas · {formatBRL(total, { oculto: ocultar })}</SectionTitle>
       <div className={`${card} divide-y divide-line`}>
         {contas.map(c => (
-          <button key={c.id} type="button" onClick={() => setEdit(c)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-tile transition">
+          <button key={c.id} type="button" onClick={() => exigirConta("editarSaldo") && setEdit(c)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-tile transition">
             <span className="flex items-center gap-3 text-[13px] text-fg"><span className="w-8 h-8 rounded-md bg-tile flex items-center justify-center" aria-hidden><Landmark size={16} strokeWidth={ICON_STROKE} /></span>{c.nome}</span>
             <span className={`text-[13px] font-semibold tabular-nums ${c.saldo < 0 && !ocultar ? "text-neg" : "text-fg"}`}>{formatBRL(c.saldo, { oculto: ocultar })}</span>
           </button>
@@ -137,6 +139,7 @@ export function ConquistasSection({ desbloqueadas }) {
 export function CategoriasSection({ finance, showToast }) {
   const { categorias } = finance;
   const { tentar } = usePlanoCtx(); // limite de personalizadas no grátis; o seletor de ícone é livre
+  const { exigirConta } = useAcesso();
   const [edit, setEdit] = useState(null);
   const padrao = new Set(DEFAULT_CATEGORIAS.map(c => c.id));
   function salvar(c) {
@@ -157,7 +160,7 @@ export function CategoriasSection({ finance, showToast }) {
   }
   return (
     <div>
-      <SectionTitle action={<SmallButton tone="blue" onClick={() => { if (tentar("categorias")) setEdit({}); }}>+ Categoria</SmallButton>}>Categorias</SectionTitle>
+      <SectionTitle action={<SmallButton tone="blue" onClick={() => { if (exigirConta("adicionar") && tentar("categorias")) setEdit({}); }}>+ Categoria</SmallButton>}>Categorias</SectionTitle>
       <div className="flex flex-wrap gap-2">
         {categorias.map(c => (
           <button key={c.id} type="button" onClick={() => setEdit(c)} className="flex items-center gap-2 rounded-md border border-line bg-surface pl-1.5 pr-3 py-1.5 text-[13px] text-fg hover:bg-tile transition">

@@ -34,29 +34,29 @@ export function ReciboAviso({ ym, suficiente, onAbrir, onDispensar }) {
   );
 }
 
-export function ReciboSheet({ ym, dados, userId, onClose, showToast }) {
+export function ReciboSheet({ ym, dados, userId, onClose, showToast, exemplo = false }) {
   const [estado, setEstado] = useState({ carregando: true });
 
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const boraCriados = await contarBoraNoMes(userId, ym);
+      const boraCriados = exemplo ? 0 : await contarBoraNoMes(userId, ym);
       const stats = estatisticasMes({ ...dados, ym, boraCriados });
       if (!stats.suficiente) { if (vivo) setEstado({ stats }); return; }
       const t = tituloDoMes(stats);
       await carregarFonte();
-      const canvas = buildReciboImage({ stats, titulo: t.titulo, subtitulo: t.subtitulo });
+      const canvas = buildReciboImage({ stats, titulo: t.titulo, subtitulo: t.subtitulo, exemplo });
       if (vivo) setEstado({ stats, canvas, url: canvas.toDataURL("image/png") });
     })();
     return () => { vivo = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- gera uma vez ao abrir
 
   const compartilhar = () => compartilharCanvas(estado.canvas, {
-    arquivo: `recibo-${ym}.png`, titulo: `Meu recibo de ${nomeDoMes(ym)}`, showToast, baixadoTexto: "Recibo baixado!",
+    arquivo: exemplo ? "recibo-exemplo.png" : `recibo-${ym}.png`, titulo: exemplo ? "Recibo de exemplo" : `Meu recibo de ${nomeDoMes(ym)}`, showToast, baixadoTexto: "Recibo baixado!",
   });
 
   return (
-    <Sheet title={`Recibo de ${nomeDoMes(ym)}`} onClose={onClose}>
+    <Sheet title={exemplo ? "Recibo de exemplo" : `Recibo de ${nomeDoMes(ym)}`} kicker={exemplo ? "É assim que fica o seu, com os seus dados." : undefined} onClose={onClose}>
       {estado.carregando ? (
         <div className="h-64 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-line border-t-brand animate-spin" /></div>
       ) : estado.url ? (

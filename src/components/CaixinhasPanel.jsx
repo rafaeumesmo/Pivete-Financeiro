@@ -6,6 +6,7 @@ import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls }
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey, fromDateStr } from "../lib/dates.js";
 import { usePlanoCtx } from "../hooks/usePlano.js";
+import { useAcesso } from "../hooks/useAcesso.js";
 import { PiggyBank } from "lucide-react";
 
 // Quanto falta guardar por mês pra bater a meta no prazo.
@@ -21,7 +22,9 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
   const [editando, setEditando] = useState(null); // meta | {} (nova)
   const [aporte, setAporte] = useState(null);     // { meta, modo: "aportar" | "retirar" }
   const { tentar } = usePlanoCtx();
-  function nova() { if (tentar("caixinhas")) setEditando({}); } // limite do grátis (lib/plano.js)
+  const { exigirConta } = useAcesso();
+  // Sem conta pede conta (lib/acesso.js); com conta, o limite do grátis (lib/plano.js).
+  function nova() { if (exigirConta("adicionar") && tentar("caixinhas")) setEditando({}); }
   const hoje = todayKey();
   const total = metas.reduce((a, m) => a + m.guardado, 0);
 

@@ -3,16 +3,10 @@ import MainApp from "./MainApp.jsx";
 import CobrancaPage from "./CobrancaPage.jsx";
 import BoraPage from "./components/BoraPage.jsx";
 import { Landing } from "./components/Landing.jsx";
-import { supabase } from "./supabaseClient";
-import { SK, load, save } from "./lib/storage.js";
+import { supabase, temSessaoSalva } from "./supabaseClient";
+import { SK, load, save, aoEntrarNaConta, entrarNoExemplo, modoArmazenamento } from "./lib/storage.js";
 import { telaInicial } from "./lib/landing.js";
 import { UpdatePrompt } from "./components/UpdatePrompt.jsx";
-
-// Tem sessão salva neste aparelho (storageKey é onde o supabase-js guarda a
-// sessão; é "protected" só no .d.ts).
-function temSessaoSalva() {
-  try { return !!supabase && localStorage.getItem(supabase.auth.storageKey) !== null; } catch { return false; }
-}
 
 function getRoute() {
   const h = window.location.hash;
@@ -35,6 +29,9 @@ function useSessao(ativo, onSaiu) {
     supabase.auth.getSession().then(({ data }) => { if (vivo) setSession(data.session ?? null); }).catch(() => { if (vivo) setSession(null); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, s) => {
       if (!vivo) return;
+      // Entrou a partir do mês de exemplo (ex.: login em outra aba): recarrega
+      // pra memória do exemplo sumir antes de qualquer sync — nada dele sobe.
+      if (evento === "SIGNED_IN" && aoEntrarNaConta()) { window.location.reload(); return; }
       setSession(s ?? null);
       if (evento === "SIGNED_OUT") onSaiu();
     });
@@ -76,7 +73,12 @@ function Rotas() {
     return (
       <Landing
         saiu={saiu}
-        onStart={() => { save(SK.landingSeen, true); save(SK.saiuDaConta, false); setSaiu(false); setNoApp(true); }}
+        onStart={() => {
+          // "Ver como funciona": mês de exemplo do zero (quem tem dados de
+          // convidado antigos no aparelho segue com eles).
+          if (modoArmazenamento() !== "legado") entrarNoExemplo();
+          save(SK.landingSeen, true); save(SK.saiuDaConta, false); setSaiu(false); setNoApp(true);
+        }}
       />
     );
   }

@@ -181,3 +181,15 @@ export const supabase =
         },
       })
     : null;
+
+// Tem sessão salva neste aparelho, ou acabou de voltar do login (link mágico
+// com #access_token, Google com ?code=) — a sessão ainda vai ser gravada, mas
+// o boot já deve abrir no modo conta (lib/storage.js), não no exemplo.
+// (storageKey é onde o supabase-js guarda a sessão; é "protected" só no .d.ts.)
+export function temSessaoSalva() {
+  if (!supabase) return false;
+  try {
+    if (/access_token=|[?&]code=/.test(window.location.hash + window.location.search)) return true;
+    return localStorage.getItem(supabase.auth.storageKey) !== null;
+  } catch { return false; }
+}

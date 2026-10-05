@@ -1,9 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 
 // ── Storage keys ─────────────────────────────────────────────
-// Tudo no localStorage. Sem conta é o modo convidado: os dados ficam só neste
-// aparelho. Ao criar conta / entrar, lib/sync.js junta esses dados com os da
-// conta (lib/mesclar.js) e passa a espelhar na tabela user_data.
+// Três modos (decididos no boot, iniciarArmazenamento):
+//   conta   — tem sessão: localStorage + espelho na tabela user_data (lib/sync.js)
+//   legado  — sem sessão, mas o aparelho já tem dados reais (do modo convidado
+//             que existiu até 10/2026): localStorage; ao criar conta, a junção
+//             de lib/mesclar.js leva tudo
+//   exemplo — sem sessão e sem dados: um mês fictício SÓ NA MEMÓRIA. Nada vai
+//             pro localStorage, recarregar volta ao início e nunca sobe pra conta.
 export const SK = {
   // Finanças
   lancamentos:   "fin_lancamentos",
@@ -30,8 +34,6 @@ export const SK = {
   tema:          "fin_tema",           // "escuro" | "claro" — acompanha a conta (SYNC_KEYS)
   ocultarValores: "fin_ocultar_valores", // botão de olho do perfil — por aparelho, fora de SYNC_KEYS
   landingSeen:   "fin_landing_seen",   // clicou "Começar" na Landing — por aparelho, fora de SYNC_KEYS
-  diasUso:       "fin_dias_uso",       // dias distintos em que o convidado abriu o app (aviso de criar conta)
-  avisoContaDispensado: "fin_aviso_conta_dispensado", // data em que fechou o aviso de criar conta
   reciboVisto:   "fin_recibo_visto",   // mês (YYYY-MM) do recibo já aberto/dispensado — some o aviso da Início
   saiuDaConta:   "fin_saiu_da_conta",  // deslogou: abre na Landing (modo "entrar de novo") até logar ou escolher usar sem conta
   syncOwner:     "fin_sync_owner",     // id do usuário dono dos dados deste navegador (lib/sync.js)
@@ -43,13 +45,30 @@ export const DADOS_KEYS = [
   SK.revisoes, SK.contaPadrao, SK.reservaMeses, SK.conquistas, SK.stats,
   SK.cobrancas, SK.pixKey, SK.profile, SK.decisions, SK.streak,
 ];
+// No modo exemplo estas ficam na memória; o resto (tema, olho de ocultar,
+// já passou da Landing…) é preferência do aparelho e segue no localStorage.
+const DO_EXEMPLO = new Set([...DADOS_KEYS, SK.onboarded, SK.reciboVisto, SK.notifs, SK.snoozeAsked, SK.snoozeDefault]);
 // Até 10/2026 o convidado vivia só na aba (sessionStorage).
 const DA_ABA = [...DADOS_KEYS, SK.onboarded, SK.landingSeen];
 
-// Boot (main.jsx, antes do primeiro render). Aba aberta numa versão antiga
-// ainda tem o convidado no sessionStorage: passa pro localStorage, sem
-// sobrescrever o que já estiver lá.
-export function iniciarArmazenamento() {
+let modo = "conta";
+const memoria = new Map();
+let gerarExemplo = () => ({});
+
+export function modoArmazenamento() { return modo; }
+
+// Dado real no aparelho sem sessão: algum dado pessoal com conteúdo.
+export function temDadosNoAparelho() {
+  const vazio = new Set(["[]", "{}", "null", '""']);
+  try { return DADOS_KEYS.some((k) => { const v = localStorage.getItem(k); return v !== null && !vazio.has(v); }); }
+  catch { return false; }
+}
+
+// Boot (main.jsx, antes do primeiro render). `exemplo` gera o mês fictício
+// ({ chave: valor }). Aba aberta numa versão antiga ainda tem o convidado no
+// sessionStorage: passa pro localStorage antes de decidir o modo.
+export function iniciarArmazenamento({ temSessao = false, exemplo } = {}) {
+  if (exemplo) gerarExemplo = exemplo;
   try {
     DA_ABA.forEach((k) => {
       const v = sessionStorage.getItem(k);
@@ -57,11 +76,34 @@ export function iniciarArmazenamento() {
       sessionStorage.removeItem(k);
     });
   } catch { /* storage bloqueado */ }
+  if (temSessao) modo = "conta";
+  else if (temDadosNoAparelho()) modo = "legado";
+  else entrarNoExemplo();
+  return modo;
 }
+
+// (Re)começa o mês de exemplo do zero — no boot e ao escolher "Ver como
+// funciona" depois de sair da conta.
+export function entrarNoExemplo() {
+  modo = "exemplo";
+  memoria.clear();
+  for (const [k, v] of Object.entries(gerarExemplo())) memoria.set(k, JSON.stringify(v));
+}
+
+// Login com sessão nova nesta aba. Exemplo: devolve true — a página tem que
+// recarregar (a memória some e o boot entra em "conta" com o aparelho vazio,
+// então nada do exemplo sobe). Legado: os dados do aparelho seguem pra junção.
+export function aoEntrarNaConta() {
+  if (modo === "exemplo") return true;
+  modo = "conta";
+  return false;
+}
+
+const naMemoria = (key) => modo === "exemplo" && DO_EXEMPLO.has(key);
 
 export function load(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = naMemoria(key) ? (memoria.has(key) ? memoria.get(key) : null) : localStorage.getItem(key);
     if (raw === null) return fallback;
     return JSON.parse(raw);
   } catch {
@@ -73,6 +115,7 @@ export function load(key, fallback) {
 // (dentro de setState updaters), então não há como mostrar toast direto daqui.
 // O componente principal escuta "fin:storage-error" e avisa o usuário.
 export function save(key, value) {
+  if (naMemoria(key)) { memoria.set(key, JSON.stringify(value)); return; } // exemplo: nem chama o saveHook da sync
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (err) {

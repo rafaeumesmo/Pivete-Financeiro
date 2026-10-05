@@ -31,7 +31,7 @@ function tile(ctx, x, y, w, h, { valor, rotulo, valorTam = 88 }) {
   ctx.fillText(rotulo, x + 40, y + h - 40);
 }
 
-export function buildReciboImage({ stats, titulo, subtitulo }) {
+export function buildReciboImage({ stats, titulo, subtitulo, exemplo = false }) {
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
@@ -46,7 +46,15 @@ export function buildReciboImage({ stats, titulo, subtitulo }) {
   const larg = ctx.measureText("Pivete ").width;
   ctx.fillStyle = COR.brand; ctx.fillText("Financeiro", PAD + 84 + larg, 144);
   ctx.fillStyle = COR.fg2; ctx.font = `600 36px ${FONTE}`;
-  ctx.fillText(`Recibo de ${nomeDoMes(stats.ym)}`, PAD, 252);
+  ctx.fillText(exemplo ? "Recibo de exemplo" : `Recibo de ${nomeDoMes(stats.ym)}`, PAD, 252);
+  if (exemplo) {
+    // Selo no canto: quem vir o PNG compartilhado sabe que não é de ninguém.
+    ctx.font = `700 30px ${FONTE}`;
+    const txt = "EXEMPLO", w = ctx.measureText(txt).width + 48;
+    ctx.fillStyle = COR.surface; roundRect(ctx, W - PAD - w, 92, w, 64, 20); ctx.fill();
+    ctx.strokeStyle = COR.brand; ctx.lineWidth = 3; roundRect(ctx, W - PAD - w, 92, w, 64, 20); ctx.stroke();
+    ctx.fillStyle = COR.brand; ctx.fillText(txt, W - PAD - w + 24, 136);
+  }
 
   // Título do mês no card azul (o mesmo do deck)
   const cardY = 300, cardH = 460;

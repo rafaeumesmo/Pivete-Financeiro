@@ -11,9 +11,11 @@ import {
   frequenciaLabel, valorMensal, parcelasRestantes, jurosAlto, fixosMensais, rendaMensal, DAY_NAMES, JUROS_ALTO_MES,
 } from "../lib/finance.js";
 import { ICON_STROKE } from "../lib/icons.js";
+import { useAcesso } from "../hooks/useAcesso.js";
 import { CategoryTile } from "./CategoryTile.jsx";
 
 export function FixosDividasPanel({ finance, showToast }) {
+  const { exigirConta } = useAcesso();
   const { recorrentes, dividas, categorias } = finance;
   const [recEdit, setRecEdit] = useState(null);
   const [divEdit, setDivEdit] = useState(null);
@@ -47,7 +49,7 @@ export function FixosDividasPanel({ finance, showToast }) {
   return (
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
       <div className="lg:row-span-2">
-        <SectionTitle action={<SmallButton tone="blue" onClick={() => setRecEdit({ tipo: "saida" })}>+ Fixo</SmallButton>}>
+        <SectionTitle action={<SmallButton tone="blue" onClick={() => exigirConta("adicionar") && setRecEdit({ tipo: "saida" })}>+ Fixo</SmallButton>}>
           Gastos fixos · {formatBRL(fixosMensais(recorrentes))}/mês
         </SectionTitle>
         {saidas.length === 0 ? (
@@ -58,7 +60,7 @@ export function FixosDividasPanel({ finance, showToast }) {
       </div>
 
       <div>
-        <SectionTitle action={<SmallButton tone="green" onClick={() => setRecEdit({ tipo: "entrada", categoria: "renda" })}>+ Renda</SmallButton>}>
+        <SectionTitle action={<SmallButton tone="green" onClick={() => exigirConta("adicionar") && setRecEdit({ tipo: "entrada", categoria: "renda" })}>+ Renda</SmallButton>}>
           Renda fixa · {formatBRL(rendaMensal(recorrentes))}/mês
         </SectionTitle>
         {entradas.length === 0 ? (
@@ -69,7 +71,7 @@ export function FixosDividasPanel({ finance, showToast }) {
       </div>
 
       <div>
-        <SectionTitle action={<SmallButton tone="blue" onClick={() => setDivEdit({})}>+ Dívida</SmallButton>}>
+        <SectionTitle action={<SmallButton tone="blue" onClick={() => exigirConta("adicionar") && setDivEdit({})}>+ Dívida</SmallButton>}>
           Dívidas · {formatBRL(ativas.reduce((a, d) => a + d.saldoDevedor, 0))}
         </SectionTitle>
         {ativas.length === 0 && quitadas.length === 0 && (

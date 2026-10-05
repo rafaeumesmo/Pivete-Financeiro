@@ -21,6 +21,10 @@ import { mesclarConvidado } from "./mesclar.js";
  */
 
 export const MESCLADO_EVENT = "fin:mesclado";
+// startSync terminou: a conta e o aparelho estão alinhados (ex.: dá pra saber
+// se a conta já tem dados antes de mostrar o onboarding).
+export const SYNC_PRONTO_EVENT = "fin:sync-pronto";
+export function syncPronto() { return ready; }
 
 // Configurações do aparelho (notificações, onboarding, soneca) ficam de fora.
 export const SYNC_KEYS = [...DADOS_KEYS, SK.tema];
@@ -173,6 +177,7 @@ export async function startSync(uid) {
   await push(enviar);
   if (mySession !== session) return;
   ready = true;
+  try { window.dispatchEvent(new CustomEvent(SYNC_PRONTO_EVENT)); } catch { /* ignore */ }
 
   document.addEventListener("visibilitychange", onVisibility);
 }

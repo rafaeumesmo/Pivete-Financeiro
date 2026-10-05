@@ -22,7 +22,8 @@ vi.mock("../supabaseClient", () => ({
   },
 }));
 
-const { SK, save, load } = await import("./storage.js");
+const { SK, save, load, iniciarArmazenamento } = await import("./storage.js");
+const { mesDeExemplo } = await import("./exemplo.js");
 const { startSync, stopSync, limparAparelho } = await import("./sync.js");
 
 function memStorage() {
@@ -95,5 +96,23 @@ describe("limpar dados deste aparelho com conta", () => {
   it("sem conta (convidado), não faz nada pela sync", async () => {
     expect(await limparAparelho()).toBe(false);
     expect(envios).toEqual([]);
+  });
+});
+
+describe("mês de exemplo nunca sobe pra conta", () => {
+  it("mexe no exemplo, entra (recarrega com sessão) e a sync não envia nada dele", async () => {
+    iniciarArmazenamento({ exemplo: () => mesDeExemplo("2026-10-05") });
+    save(SK.lancamentos, [...load(SK.lancamentos, []), { id: "feito-no-exemplo", valor: 1 }]);
+    save(SK.metas, [{ id: "caixinha-no-exemplo" }]);
+    expect(localStorage.getItem(SK.lancamentos)).toBeNull();
+
+    // Login recarrega a página: boot de novo, agora com sessão.
+    iniciarArmazenamento({ temSessao: true, exemplo: () => mesDeExemplo("2026-10-05") });
+    const id = `novo${++uid}`;
+    await startSync(id);
+
+    expect(envios).toEqual([]);
+    expect([...servidor.keys()].filter((k) => k.startsWith(`${id}:`))).toEqual([]);
+    expect(load(SK.lancamentos, null)).toBeNull();
   });
 });

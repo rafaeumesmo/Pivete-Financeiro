@@ -11,11 +11,13 @@ import { useBreakpoint } from "../hooks/useBreakpoint.js";
 import { formatBRL } from "../lib/money.js";
 import { ICON_STROKE } from "../lib/icons.js";
 import { APP_NAME } from "../config.js";
+import { MOTIVOS_CONTA } from "../lib/convidado.js";
 
 // Landing pra quem chega sem sessão e ainda não começou (regra em lib/landing.js).
 // Não repete o Onboarding: aqui é o "por quê"; o passo a passo fica lá.
 // A personalidade vem do texto (tom de "pivete"), não de emoji.
-// "Começar agora" entra como convidado, direto no Onboarding, sem cadastro.
+// "Ver como funciona" abre o mês de exemplo (sem conta, nada fica salvo);
+// "Criar conta" leva ao login e ao onboarding com os dados da pessoa.
 
 export const LANDING_TITULO = "Conta chegou? Arraste e bola pra frente.";
 export const LANDING_FRASE = "Sem planilha e sem entregar a senha do banco pra ninguém. Suas contas viram cards e você resolve cada uma num gesto.";
@@ -82,11 +84,12 @@ function Demo() {
   );
 }
 
-function AuthSheet({ onClose }) {
+// motivo: só no "Criar conta" (o "Entrar" do topo é pra quem já tem conta).
+function AuthSheet({ onClose, motivo = null }) {
   const auth = useAuth();
   return (
-    <Sheet title={`Entrar no ${APP_NAME}`} onClose={onClose}>
-      <div className="-mx-5 -mb-5"><AuthScreen onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} /></div>
+    <Sheet title={motivo ? "Criar conta ou entrar" : `Entrar no ${APP_NAME}`} onClose={onClose}>
+      <div className="-mx-5 -mb-5"><AuthScreen motivo={motivo} onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} /></div>
     </Sheet>
   );
 }
@@ -98,22 +101,23 @@ function isStandalone() {
 
 export function Landing({ onStart, saiu = false }) {
   const isDesktop = useBreakpoint() === "desktop";
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth, setShowAuth] = useState(false); // false | "entrar" | "criar"
   const [standalone] = useState(isStandalone);
   const alinhar = isDesktop ? "text-left" : "text-center";
 
-  // Depois do logout, entrar de novo vem primeiro; começar sem conta vira link.
+  // "Ver como funciona" abre o mês de exemplo; "Criar conta" começa com os
+  // dados da pessoa. Depois do logout, entrar de novo vem primeiro.
   const cta = (extra = "") => (
-    <div className={`flex flex-col gap-2 w-full max-w-sm ${isDesktop ? "" : "mx-auto"} ${extra}`}>
+    <div className={`flex flex-col gap-2.5 w-full max-w-sm ${isDesktop ? "" : "mx-auto"} ${extra}`}>
       {saiu ? (
         <>
-          <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={() => setShowAuth(true)} className={`${btnCls.primary} w-full py-3.5 text-sm`}>Entrar de novo</motion.button>
-          <button type="button" onClick={onStart} className={`${btnCls.ghost} w-full py-2.5 text-[13px]`}>ou começar agora sem cadastro</button>
+          <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={() => setShowAuth("entrar")} className={`${btnCls.primary} w-full py-3.5 text-[15px]`}>Entrar de novo</motion.button>
+          <button type="button" onClick={onStart} className={`${btnCls.secondary} w-full py-3 text-sm`}>Ver como funciona</button>
         </>
       ) : (
         <>
-          <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={onStart} className={`${btnCls.primary} w-full py-3.5 text-[15px]`}>Começar agora</motion.button>
-          <p className={`text-[12px] text-fg-3 ${alinhar}`}>sem cadastro</p>
+          <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={onStart} className={`${btnCls.primary} w-full py-3.5 text-[15px]`}>Ver como funciona</motion.button>
+          <button type="button" onClick={() => setShowAuth("criar")} className={`${btnCls.secondary} w-full py-3 text-sm`}>Criar conta</button>
         </>
       )}
     </div>
@@ -122,7 +126,7 @@ export function Landing({ onStart, saiu = false }) {
   const topo = (
     <header className="flex items-center justify-between">
       <span className="text-[16px] font-bold text-fg"><Brand icon iconSize="1.3em" /></span>
-      <button type="button" onClick={() => setShowAuth(true)} className={`${btnCls.ghost} h-9 px-3 text-[13px]`}>Entrar</button>
+      <button type="button" onClick={() => setShowAuth("entrar")} className={`${btnCls.ghost} h-9 px-3 text-[13px]`}>Entrar</button>
     </header>
   );
 
@@ -186,7 +190,7 @@ export function Landing({ onStart, saiu = false }) {
     <section className={`rounded-lg bg-surface border border-line ${isDesktop ? "p-10 flex items-center justify-between gap-8" : "p-6 flex flex-col gap-5 text-center"}`}>
       <div>
         <p className="text-[20px] lg:text-[24px] font-bold tracking-tight text-fg">Bora organizar essa bagunça?</p>
-        <p className="text-[14px] text-fg-2 mt-1">Leva um minuto pra começar. Conta só se quiser.</p>
+        <p className="text-[14px] text-fg-2 mt-1">Dá uma volta num mês de exemplo antes de criar conta.</p>
       </div>
       {cta(isDesktop ? "lg:max-w-[280px]" : "")}
     </section>
@@ -220,7 +224,7 @@ export function Landing({ onStart, saiu = false }) {
         {fim}
         {instalar}
       </div>
-      <AnimatePresence>{showAuth && <AuthSheet key="auth" onClose={() => setShowAuth(false)} />}</AnimatePresence>
+      <AnimatePresence>{showAuth && <AuthSheet key="auth" motivo={showAuth === "criar" ? MOTIVOS_CONTA.comecar : null} onClose={() => setShowAuth(false)} />}</AnimatePresence>
     </div>
   );
 }
