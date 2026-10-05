@@ -6,6 +6,7 @@ import { ActionButtons } from "./ActionButtons.jsx";
 import { SnoozeSetupModal } from "./SnoozeSetupModal.jsx";
 import { Sheet } from "./Sheet.jsx";
 import { PainelPanel } from "./PainelPanel.jsx";
+import { DecisoesCard } from "./DecisoesCard.jsx";
 import { EyeButton, btnCls } from "./ui.jsx";
 import { CircleCheck, Receipt, Scissors, Plus, Minus } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
@@ -174,6 +175,7 @@ export function FinDeck({
 
       {mode === "painel" ? (
         <div className="mt-5">
+          {!isDesktop && <div className="mb-5"><DecisoesCard stats={stats} compact /></div>}
           <PainelPanel finance={finance} isDesktop={isDesktop} />
         </div>
       ) : items.length > 0 ? (

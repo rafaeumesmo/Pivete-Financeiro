@@ -37,23 +37,23 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
         const completa = m.guardado >= m.alvo && m.alvo > 0;
         const mensal = porMes(m, hoje);
         return (
-          <div key={m.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+          <div key={m.id} className="rounded-lg border border-line bg-surface p-4">
             <div className="flex items-start justify-between gap-3 mb-2">
               <button type="button" onClick={() => setEditando(m)} className="text-left min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{completa ? "🏆 " : "🐷 "}{m.nome}</p>
-                <p className="text-[11px] text-white/35">
+                <p className="text-sm font-semibold text-fg truncate">{m.nome}</p>
+                <p className="text-[12px] text-fg-3">
                   {m.prazo ? `até ${formatDateShort(m.prazo)}` : "sem prazo"}
                   {mensal ? ` · guarde ${formatBRL(mensal)}/mês` : ""}
                 </p>
               </button>
               <div className="text-right flex-shrink-0">
-                <p className="text-sm font-bold text-white tabular-nums">{formatBRL(m.guardado)}</p>
-                <p className="text-[11px] text-white/35 tabular-nums">de {formatBRL(m.alvo)}</p>
+                <p className="text-sm font-bold text-fg tabular-nums">{formatBRL(m.guardado)}</p>
+                <p className="text-[12px] text-fg-3 tabular-nums">de {formatBRL(m.alvo)}</p>
               </div>
             </div>
-            <ProgressBar pct={pct} color={completa ? "#10b981" : "#2563eb"} label={`Progresso de ${m.nome}`} />
+            <ProgressBar pct={pct} color={completa ? "rgb(var(--pos))" : "rgb(var(--brand))"} label={`Progresso de ${m.nome}`} />
             <div className="flex items-center justify-between mt-3">
-              <span className="text-[11px] text-white/40 tabular-nums">{Math.round(pct)}%</span>
+              <span className="text-[12px] text-fg-2 tabular-nums">{Math.round(pct)}%</span>
               <div className="flex gap-2">
                 {m.guardado > 0 && <SmallButton onClick={() => setAporte({ meta: m, modo: "retirar" })}>Retirar</SmallButton>}
                 <SmallButton tone="green" onClick={() => setAporte({ meta: m, modo: "aportar" })}>+ Aportar</SmallButton>
@@ -66,7 +66,7 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
       <AnimatePresence>
         {editando && (
           <MetaSheet key="meta" meta={editando} onClose={() => setEditando(null)}
-            onSave={m => { finance.salvarMeta(m); setEditando(null); showToast(m.id ? "Caixinha atualizada" : "Caixinha criada 🐷", "bg-emerald-600/90"); }}
+            onSave={m => { finance.salvarMeta(m); setEditando(null); showToast(m.id ? "Caixinha atualizada" : "Caixinha criada", "bg-emerald-600/90"); }}
             onDelete={editando.id ? () => {
               if (!window.confirm(`Excluir a caixinha "${editando.nome}"?${editando.guardado > 0 ? ` Os ${formatBRL(editando.guardado)} guardados voltam pra ${contas[0]?.nome}.` : ""}`)) return;
               finance.removerMeta(editando.id); setEditando(null);
@@ -78,7 +78,7 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
               const v = aporte.modo === "retirar" ? -Math.min(valor, aporte.meta.guardado) : valor;
               finance.aportar(aporte.meta.id, v, contaId);
               onActivity();
-              showToast(v > 0 ? `🐷 +${formatBRL(v)} em ${aporte.meta.nome}` : `Retirado ${formatBRL(-v)}`, "bg-emerald-600/90");
+              showToast(v > 0 ? `+${formatBRL(v)} em ${aporte.meta.nome}` : `Retirado ${formatBRL(-v)}`, "bg-emerald-600/90");
               setAporte(null);
             }} />
         )}
@@ -101,9 +101,9 @@ function MetaSheet({ meta, onClose, onSave, onDelete }) {
         <div><label className={labelCls} htmlFor="m-nome">Nome</label><input id="m-nome" value={f.nome} maxLength={40} onChange={e => setF(p => ({ ...p, nome: e.target.value }))} className={inputCls} placeholder="Ex: Reserva de emergência" /></div>
         <div><label className={labelCls} htmlFor="m-alvo">Meta</label><MoneyInput id="m-alvo" value={f.alvo} onChange={alvo => setF(p => ({ ...p, alvo }))} className={`${inputCls} text-lg font-bold`} /></div>
         <div><label className={labelCls} htmlFor="m-prazo">Prazo (opcional)</label><input id="m-prazo" type="date" value={f.prazo} onChange={e => setF(p => ({ ...p, prazo: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></div>
-        {erro && <p className="text-[12px] text-red-400">{erro}</p>}
-        <button type="button" onClick={salvar} className="w-full rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Salvar</button>
-        {onDelete && <button type="button" onClick={onDelete} className="w-full rounded-2xl border border-red-500/25 bg-red-500/10 py-2.5 text-[13px] text-red-300 hover:bg-red-500/20 transition">Excluir caixinha</button>}
+        {erro && <p className="text-[12px] text-neg">{erro}</p>}
+        <button type="button" onClick={salvar} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand hover:bg-brand-hover transition">Salvar</button>
+        {onDelete && <button type="button" onClick={onDelete} className="w-full rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-neg hover:bg-tile transition">Excluir caixinha</button>}
       </div>
     </Sheet>
   );
@@ -116,16 +116,16 @@ function AporteSheet({ meta, modo, contas, contaPadrao, onClose, onConfirm }) {
   return (
     <Sheet title={retirar ? "Retirar da caixinha" : "Aportar na caixinha"} kicker={`${meta.nome} · ${formatBRL(meta.guardado)} guardados`} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <MoneyInput autoFocus value={valor} onChange={setValor} className={`${inputCls} text-2xl font-black`} />
+        <MoneyInput autoFocus value={valor} onChange={setValor} className={`${inputCls} text-2xl font-bold`} />
         {contas.length > 1 && (
           <div>
             <label className={labelCls} htmlFor="ap-conta">{retirar ? "Devolver pra" : "Tirar de"}</label>
-            <select id="ap-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-sheet`}>
+            <select id="ap-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-surface`}>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {formatBRL(c.saldo)}</option>)}
             </select>
           </div>
         )}
-        <button type="button" disabled={valor <= 0} onClick={() => onConfirm(valor, contaId)} className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-40">
+        <button type="button" disabled={valor <= 0} onClick={() => onConfirm(valor, contaId)} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand hover:bg-brand-hover transition disabled:opacity-40">
           {retirar ? "Retirar" : "Guardar"} {valor > 0 ? formatBRL(retirar ? Math.min(valor, meta.guardado) : valor) : ""}
         </button>
       </div>

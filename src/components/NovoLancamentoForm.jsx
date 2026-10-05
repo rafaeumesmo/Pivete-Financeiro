@@ -4,9 +4,13 @@ import { MoneyInput } from "./MoneyInput.jsx";
 import { formatBRL, splitCents } from "../lib/money.js";
 import { todayKey, fromDateStr } from "../lib/dates.js";
 import { diaSemanaLabel } from "../lib/finance.js";
+import { CategoryTile } from "./CategoryTile.jsx";
+import { ChevronLeft, Minus, Plus } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
+import { btnCls } from "./ui.jsx";
 
-const label = "block text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35 mb-2";
-const field = "w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-sm text-white outline-none focus:border-[#2563eb]/60 placeholder:text-white/25 transition";
+const label = "block text-[12px] font-semibold text-fg-3 mb-2";
+const field = "w-full rounded-lg border border-line bg-tile px-4 py-3 text-sm text-fg outline-none focus:border-brand placeholder:text-fg-3 transition";
 
 function emptyForm(tipo = "saida") {
   return {
@@ -56,22 +60,22 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
     <motion.div className={isDesktop ? "h-full overflow-y-auto px-10 py-10" : "h-full overflow-y-auto px-5 pt-4 pb-6"} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <div className={isDesktop ? "max-w-xl mx-auto" : undefined}>
         <div className={`flex items-center justify-between ${isDesktop ? "mb-6" : "mb-5"}`}>
-          <div><p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/30 mb-1">Registrar</p><h2 className={`font-bold text-white ${isDesktop ? "text-xl" : "text-lg"}`}>Novo lançamento</h2></div>
-          <button onClick={onCancel} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>Voltar</button>
+          <h2 className={`font-semibold text-fg ${isDesktop ? "text-2xl" : "text-xl"}`}>Novo lançamento</h2>
+          <button onClick={onCancel} className={`${btnCls.ghost} px-2.5 py-1.5 text-[13px]`}><ChevronLeft size={16} strokeWidth={ICON_STROKE} aria-hidden />Voltar</button>
         </div>
 
-        <form onSubmit={submit} className={isDesktop ? "rounded-3xl bg-white/[0.03] border border-white/[0.06] p-6 flex flex-col gap-5" : "flex flex-col gap-4"}>
+        <form onSubmit={submit} className={isDesktop ? "rounded-lg bg-surface border border-line p-6 flex flex-col gap-5" : "flex flex-col gap-4"}>
           {/* Tipo */}
-          <div className="flex bg-white/[0.05] border border-white/[0.07] p-1 rounded-2xl" role="radiogroup" aria-label="Tipo">
-            {[{ id: "saida", label: "↓ Saída", on: "bg-red-500/20 text-red-300" }, { id: "entrada", label: "↑ Entrada", on: "bg-emerald-500/20 text-emerald-300" }].map(t => (
-              <button key={t.id} type="button" role="radio" aria-checked={f.tipo === t.id} onClick={() => trocarTipo(t.id)} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${f.tipo === t.id ? t.on : "text-white/40 hover:text-white/60"}`}>{t.label}</button>
+          <div className="flex bg-tile p-1 rounded-md" role="radiogroup" aria-label="Tipo">
+            {[{ id: "saida", label: "Saída" }, { id: "entrada", label: "Entrada" }].map(t => (
+              <button key={t.id} type="button" role="radio" aria-checked={f.tipo === t.id} onClick={() => trocarTipo(t.id)} className={`flex-1 py-2 rounded-sm text-sm font-medium transition ${f.tipo === t.id ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>{t.label}</button>
             ))}
           </div>
 
           {/* Valor */}
           <div>
             <label htmlFor="valor" className={label}>{f.repetir === "parcelado" ? "Valor total" : "Valor"}</label>
-            <MoneyInput id="valor" value={f.valor} onChange={valor => set({ valor })} className={`w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-4 text-3xl font-black outline-none focus:border-[#2563eb]/60 transition ${entrada ? "text-emerald-300" : "text-white"}`} />
+            <MoneyInput id="valor" value={f.valor} onChange={valor => set({ valor })} className={`w-full rounded-md border border-line bg-surface px-4 py-4 text-3xl font-bold outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition ${entrada ? "text-pos" : "text-fg"}`} />
           </div>
 
           {/* Descrição */}
@@ -86,10 +90,9 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
             <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Categoria">
               {cats.map(c => (
                 <button key={c.id} type="button" role="radio" aria-checked={f.categoria === c.id} onClick={() => set({ categoria: c.id })}
-                  className={`flex flex-col items-center gap-1 rounded-2xl border py-2.5 px-1 transition ${f.categoria === c.id ? "bg-white/[0.12] border-white/30" : "bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]"}`}
-                  style={f.categoria === c.id ? { borderColor: c.cor } : undefined}>
-                  <span className="text-xl leading-none">{c.icon}</span>
-                  <span className={`text-[10px] font-medium leading-tight text-center ${f.categoria === c.id ? "text-white" : "text-white/45"}`}>{c.nome}</span>
+                  className={`flex flex-col items-center gap-1.5 rounded-md border py-2.5 px-1 transition ${f.categoria === c.id ? "border-brand bg-brand/[0.06]" : "bg-surface border-line hover:bg-tile"}`}>
+                  <CategoryTile categoria={c} size={32} />
+                  <span className={`text-[12px] font-medium leading-tight text-center ${f.categoria === c.id ? "text-fg" : "text-fg-2"}`}>{c.nome}</span>
                 </button>
               ))}
             </div>
@@ -100,8 +103,8 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="data" className={label.replace(" mb-2", "")}>{entrada ? "Data prevista" : "Vencimento"}</label>
               {!precisaData && (
-                <label className="flex items-center gap-1.5 text-[11px] text-white/40 cursor-pointer">
-                  <input type="checkbox" checked={f.semData} onChange={e => set({ semData: e.target.checked })} className="accent-[#2563eb]" /> Sem data definida
+                <label className="flex items-center gap-1.5 text-[12px] text-fg-2 cursor-pointer">
+                  <input type="checkbox" checked={f.semData} onChange={e => set({ semData: e.target.checked })} className="accent-brand" /> Sem data definida
                 </label>
               )}
             </div>
@@ -114,48 +117,48 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
           <div>
             <p className={label}>Repetir</p>
             <div className="flex gap-2">
-              {[{ id: "nao", label: "Uma vez" }, { id: "recorrente", label: "🔁 Fixo" }, ...(entrada ? [] : [{ id: "parcelado", label: "Parcelado" }])].map(o => (
+              {[{ id: "nao", label: "Uma vez" }, { id: "recorrente", label: "Fixo" }, ...(entrada ? [] : [{ id: "parcelado", label: "Parcelado" }])].map(o => (
                 <button key={o.id} type="button" aria-pressed={f.repetir === o.id} onClick={() => set({ repetir: o.id, semData: o.id === "nao" ? f.semData : false })}
-                  className={`flex-1 py-2.5 rounded-2xl text-sm font-medium transition border ${f.repetir === o.id ? "bg-white/[0.12] border-white/25 text-white" : "bg-white/[0.03] border-white/[0.07] text-white/40 hover:text-white/60"}`}>{o.label}</button>
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition border ${f.repetir === o.id ? "bg-tile border-line text-fg" : "bg-surface border-line text-fg-2 hover:text-fg-2"}`}>{o.label}</button>
               ))}
             </div>
             {f.repetir === "recorrente" && dia && (
               <div className="mt-3 flex gap-2">
                 {[{ id: "mensal", label: `Todo dia ${dia.getDate()}` }, { id: "semanal", label: diaSemanaLabel(dia.getDay()) }].map(o => (
                   <button key={o.id} type="button" aria-pressed={f.frequencia === o.id} onClick={() => set({ frequencia: o.id })}
-                    className={`flex-1 py-2 rounded-xl text-[13px] transition border ${f.frequencia === o.id ? "bg-[#2563eb]/15 border-[#2563eb]/40 text-blue-300" : "bg-white/[0.03] border-white/[0.07] text-white/40"}`}>{o.label}</button>
+                    className={`flex-1 py-2 rounded-md text-[13px] transition border ${f.frequencia === o.id ? "bg-brand/[0.06] border-brand text-brand-ink" : "bg-surface border-line text-fg-2"}`}>{o.label}</button>
                 ))}
               </div>
             )}
-            {f.repetir === "recorrente" && <p className="text-[11px] text-white/30 mt-2">Vira um lançamento pendente a cada ocorrência, a partir da data acima. Dá pra pausar ou editar em Atividade → Fixos & Dívidas.</p>}
+            {f.repetir === "recorrente" && <p className="text-[12px] text-fg-3 mt-2">Vira um lançamento pendente a cada ocorrência, a partir da data acima. Dá pra pausar ou editar em Atividade → Fixos & Dívidas.</p>}
             {f.repetir === "parcelado" && (
-              <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/[0.04] border border-white/[0.08] px-4 py-3">
+              <div className="mt-3 flex items-center justify-between rounded-md border border-line bg-surface px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <button type="button" aria-label="Menos parcelas" onClick={() => set({ parcelas: Math.max(2, f.parcelas - 1) })} className="w-8 h-8 rounded-xl bg-white/[0.08] text-white text-lg leading-none">−</button>
-                  <span className="text-base font-bold text-white tabular-nums w-10 text-center">{f.parcelas}x</span>
-                  <button type="button" aria-label="Mais parcelas" onClick={() => set({ parcelas: Math.min(48, f.parcelas + 1) })} className="w-8 h-8 rounded-xl bg-white/[0.08] text-white text-lg leading-none">+</button>
+                  <button type="button" aria-label="Menos parcelas" onClick={() => set({ parcelas: Math.max(2, f.parcelas - 1) })} className="w-8 h-8 rounded-md border border-line bg-surface text-fg flex items-center justify-center hover:bg-tile"><Minus size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
+                  <span className="text-base font-bold text-fg tabular-nums w-10 text-center">{f.parcelas}x</span>
+                  <button type="button" aria-label="Mais parcelas" onClick={() => set({ parcelas: Math.min(48, f.parcelas + 1) })} className="w-8 h-8 rounded-md border border-line bg-surface text-fg flex items-center justify-center hover:bg-tile"><Plus size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
                 </div>
-                <span className="text-sm text-white/60 tabular-nums">{f.valor > 0 ? `${f.parcelas}x de ${formatBRL(parcelas[parcelas.length - 1])}` : "—"}</span>
+                <span className="text-sm text-fg-2 tabular-nums">{f.valor > 0 ? `${f.parcelas}x de ${formatBRL(parcelas[parcelas.length - 1])}` : "—"}</span>
               </div>
             )}
           </div>
 
           {/* Já pago */}
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-4 py-3">
+          <div className="rounded-lg bg-surface border border-line px-4 py-3">
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm text-white/75">{entrada ? "Já recebi" : "Já paguei"}{f.repetir !== "nao" && <span className="text-white/35 text-[12px]"> (a 1ª)</span>}</span>
-              <input type="checkbox" checked={f.pago} onChange={e => set({ pago: e.target.checked, semData: false })} className="w-5 h-5 accent-emerald-500" />
+              <span className="text-sm text-fg">{entrada ? "Já recebi" : "Já paguei"}{f.repetir !== "nao" && <span className="text-fg-3 text-[12px]"> (a 1ª)</span>}</span>
+              <input type="checkbox" checked={f.pago} onChange={e => set({ pago: e.target.checked, semData: false })} className="w-5 h-5 accent-brand" />
             </label>
             {f.pago && contas.length > 1 && (
-              <select aria-label="Conta" value={f.contaId || ""} onChange={e => set({ contaId: e.target.value })} className="mt-3 w-full rounded-xl border border-white/[0.08] bg-sheet px-3 py-2.5 text-sm text-white outline-none">
+              <select aria-label="Conta" value={f.contaId || ""} onChange={e => set({ contaId: e.target.value })} className="mt-3 w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-fg outline-none">
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {formatBRL(c.saldo)}</option>)}
               </select>
             )}
           </div>
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onCancel} className="flex-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] py-3 text-sm text-white/50 hover:bg-white/[0.07] hover:text-white/70 transition">Cancelar</button>
-            <button type="submit" className={`flex-1 rounded-2xl py-3 text-sm font-semibold text-white transition ${entrada ? "bg-emerald-600 hover:bg-emerald-500" : "bg-[#2563eb] hover:bg-blue-500"}`}>Salvar</button>
+            <button type="button" onClick={onCancel} className="flex-1 rounded-lg border border-line bg-tile py-3 text-sm text-fg-2 hover:bg-tile hover:text-fg transition">Cancelar</button>
+            <button type="submit" className={`flex-1 rounded-lg py-3 text-sm font-semibold text-on-brand transition ${entrada ? "bg-brand hover:bg-brand-hover" : "bg-brand hover:bg-brand-hover"}`}>Salvar</button>
           </div>
         </form>
       </div>

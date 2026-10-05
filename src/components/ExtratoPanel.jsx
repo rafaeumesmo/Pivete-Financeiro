@@ -8,7 +8,7 @@ import { custoEfetivo } from "../lib/finance.js";
 import { useOcultarValores } from "../lib/privacy.js";
 import { Receipt } from "lucide-react";
 
-const selectCls = "rounded-xl border border-white/[0.08] bg-sheet px-3 py-2 text-[13px] text-white outline-none focus:border-[#2563eb]/60 min-w-0";
+const selectCls = "rounded-md border border-line bg-surface px-3 py-2 text-[13px] text-fg outline-none focus:border-brand min-w-0";
 
 export function ExtratoPanel({ finance, onEditar }) {
   const { lancamentos, categorias } = finance;
@@ -41,7 +41,7 @@ export function ExtratoPanel({ finance, onEditar }) {
         </select>
         <select aria-label="Categoria" value={cat} onChange={e => setCat(e.target.value)} className={selectCls}>
           <option value="todas">Todas categorias</option>
-          {categorias.map(c => <option key={c.id} value={c.id}>{c.icon} {c.nome}</option>)}
+          {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
         <select aria-label="Tipo" value={tipo} onChange={e => setTipo(e.target.value)} className={selectCls}>
           <option value="todos">Entradas e saídas</option>
@@ -51,9 +51,9 @@ export function ExtratoPanel({ finance, onEditar }) {
       </div>
 
       <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
-        {[{ l: "Entradas", v: entradas, c: "text-emerald-400" }, { l: "Saídas", v: saidas, c: "text-white" }, { l: "Saldo", v: entradas - saidas, c: entradas - saidas >= 0 || ocultar ? "text-white" : "text-red-400" }].map(x => (
-          <div key={x.l} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-            <p className="text-[9px] uppercase tracking-widest text-white/30">{x.l}</p>
+        {[{ l: "Entradas", v: entradas, c: "text-pos" }, { l: "Saídas", v: saidas, c: "text-fg" }, { l: "Saldo", v: entradas - saidas, c: entradas - saidas >= 0 || ocultar ? "text-fg" : "text-neg" }].map(x => (
+          <div key={x.l} className="rounded-md bg-surface border border-line px-3 py-2">
+            <p className="text-[12px] text-fg-3">{x.l}</p>
             <p className={`text-[13px] font-semibold tabular-nums ${x.c}`}>{formatBRL(x.v, { oculto: ocultar })}</p>
           </div>
         ))}
@@ -64,8 +64,8 @@ export function ExtratoPanel({ finance, onEditar }) {
         <EmptyHint icon={Receipt} title="Nada por aqui">Nenhum lançamento com esses filtros em {formatMonth(mes).toLowerCase()}.</EmptyHint>
       ) : porDia.map(g => (
         <div key={g.data}>
-          <p className="text-[11px] font-semibold text-white/35 mb-1.5 px-1 capitalize">{fromDateStr(g.data).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</p>
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">
+          <p className="text-[12px] font-semibold text-fg-3 mb-1.5 px-1 capitalize">{fromDateStr(g.data).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</p>
+          <div className="rounded-lg border border-line bg-surface divide-y divide-line">
             {g.itens.map(l => <LancamentoRow key={l.id} lancamento={l} categoria={findCategoria(categorias, l.categoria)} onClick={() => onEditar(l)} />)}
           </div>
         </div>

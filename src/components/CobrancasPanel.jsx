@@ -7,6 +7,8 @@ import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls }
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort } from "../lib/dates.js";
 import { Receipt } from "lucide-react";
+import { X } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
 
 // Avisos "paguei" que chegaram pelo link, lidos pela função
 // charge_payments_for (02_charges.sql) — só com o id da própria cobrança.
@@ -51,31 +53,31 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
     const nomesRecebidos = new Set(c.recebidos.map(r => r.nome.toLowerCase()));
     const novos = (avisos[c.id] || []).filter(a => !nomesRecebidos.has(a.payer_name.toLowerCase()));
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+      <div className="rounded-lg border border-line bg-surface p-4">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{c.titulo}</p>
-            <p className="text-[11px] text-white/35">{formatDateShort(c.criadaEm.slice(0, 10))} · {formatBRL(c.total)} ÷ {c.partes} · {formatBRL(c.porPessoa)} cada</p>
+            <p className="text-sm font-semibold text-fg truncate">{c.titulo}</p>
+            <p className="text-[12px] text-fg-3">{formatDateShort(c.criadaEm.slice(0, 10))} · {formatBRL(c.total)} ÷ {c.partes} · {formatBRL(c.porPessoa)} cada</p>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className={`text-sm font-bold tabular-nums ${falta ? "text-blue-300" : "text-emerald-400"}`}>{falta ? formatBRL(falta) : "Quitada"}</p>
-            {falta > 0 && <p className="text-[11px] text-white/35">a receber</p>}
+            <p className={`text-sm font-bold tabular-nums ${falta ? "text-brand-ink" : "text-pos"}`}>{falta ? formatBRL(falta) : "Quitada"}</p>
+            {falta > 0 && <p className="text-[12px] text-fg-3">a receber</p>}
           </div>
         </div>
-        <ProgressBar pct={c.aReceber ? (recebido / c.aReceber) * 100 : 100} color={falta ? "#3987e5" : "#10b981"} label={`Recebido de ${c.titulo}`} />
+        <ProgressBar pct={c.aReceber ? (recebido / c.aReceber) * 100 : 100} color={falta ? "rgb(var(--brand))" : "rgb(var(--pos))"} label={`Recebido de ${c.titulo}`} />
         {novos.map(a => (
-          <div key={a.payer_name + a.created_at} className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
-            <span className="text-[12px] text-emerald-200 truncate">🔔 <strong>{a.payer_name}</strong> marcou "paguei" pelo link</span>
+          <div key={a.payer_name + a.created_at} className="mt-2.5 flex items-center justify-between gap-2 rounded-md bg-pos/10 border border-pos/30 px-3 py-2">
+            <span className="text-[12px] text-pos truncate"><strong>{a.payer_name}</strong> marcou "paguei" pelo link</span>
             <SmallButton tone="green" onClick={() => setReceber({ cobranca: c, nome: a.payer_name, valor: c.porPessoa })}>Confirmar</SmallButton>
           </div>
         ))}
         {c.recebidos.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px] text-white/40">
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[12px] text-fg-2">
             <span>Recebido:</span>
             {c.recebidos.map(r => (
-              <span key={r.id} className="inline-flex items-center gap-1 rounded-lg bg-white/[0.05] pl-2 pr-1 py-0.5">
+              <span key={r.id} className="inline-flex items-center gap-1 rounded-md bg-tile pl-2 pr-1 py-0.5">
                 {r.nome} {formatBRL(r.valor)}
-                <button type="button" aria-label={`Apagar recebimento de ${r.nome}`} onClick={() => apagarRecebimento(c, r)} className="px-1 text-white/30 hover:text-red-300">✕</button>
+                <button type="button" aria-label={`Apagar recebimento de ${r.nome}`} onClick={() => apagarRecebimento(c, r)} className="w-7 h-7 rounded-md flex items-center justify-center text-fg-3 hover:text-neg hover:bg-tile"><X size={14} strokeWidth={ICON_STROKE} aria-hidden /></button>
               </span>
             ))}
           </div>
@@ -96,9 +98,9 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-        <label htmlFor="pix" className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35">Sua chave Pix (vai no link, opcional)</label>
-        <input id="pix" value={cob.pixKey} maxLength={100} onChange={e => cob.setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" className="mt-1.5 w-full bg-transparent text-sm text-white outline-none placeholder:text-white/20" />
+      <div className="rounded-lg border border-line bg-surface px-4 py-3">
+        <label htmlFor="pix" className="text-[12px] font-semibold text-fg-3">Sua chave Pix (vai no link, opcional)</label>
+        <input id="pix" value={cob.pixKey} maxLength={100} onChange={e => cob.setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" className="mt-1.5 w-full bg-transparent text-sm text-fg outline-none placeholder:text-fg-3" />
       </div>
 
       <SectionTitle>A receber · {formatBRL(totalAberto)}</SectionTitle>
@@ -110,7 +112,7 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
 
       {arquivadas.length > 0 && (
         <div>
-          <button type="button" onClick={() => setVerArquivadas(v => !v)} className="text-[12px] text-white/35 hover:text-white/60">{verArquivadas ? "▾" : "▸"} Arquivadas ({arquivadas.length})</button>
+          <button type="button" onClick={() => setVerArquivadas(v => !v)} className="text-[12px] text-fg-3 hover:text-fg-2">{verArquivadas ? "▾" : "▸"} Arquivadas ({arquivadas.length})</button>
           {verArquivadas && <div className="flex flex-col gap-3 mt-3">{arquivadas.map(c => <Card key={c.id} c={c} />)}</div>}
         </div>
       )}
@@ -120,7 +122,7 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
           <ReceberSheet key="rec" {...receber} contas={finance.contas} contaPadrao={finance.contaPadrao} onClose={() => setReceber(null)}
             onConfirm={(dados) => {
               cob.registrarRecebimento(receber.cobranca.id, dados);
-              showToast(`✓ Recebido ${formatBRL(dados.valor)} de ${dados.nome || "alguém"}`, "bg-emerald-600/90");
+              showToast(`Recebido ${formatBRL(dados.valor)} de ${dados.nome || "alguém"}`, "bg-emerald-600/90");
               setReceber(null);
             }} />
         )}
@@ -140,13 +142,13 @@ function ReceberSheet({ cobranca, nome: nomeInicial, valor: valorInicial, contas
         <div><label className={labelCls} htmlFor="rc-valor">Valor</label><MoneyInput id="rc-valor" value={valor} onChange={setValor} className={`${inputCls} text-lg font-bold`} /></div>
         {contas.length > 1 && (
           <div><label className={labelCls} htmlFor="rc-conta">Entrou em</label>
-            <select id="rc-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-sheet`}>
+            <select id="rc-conta" value={contaId} onChange={e => setContaId(e.target.value)} className={`${inputCls} bg-surface`}>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
         )}
-        <p className="text-[11px] text-white/30">Entra no saldo da conta como reembolso — não conta como renda.</p>
-        <button type="button" disabled={valor <= 0} onClick={() => onConfirm({ nome, valor, contaId })} className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-40">Confirmar {valor > 0 ? formatBRL(valor) : ""}</button>
+        <p className="text-[12px] text-fg-3">Entra no saldo da conta como reembolso — não conta como renda.</p>
+        <button type="button" disabled={valor <= 0} onClick={() => onConfirm({ nome, valor, contaId })} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand hover:bg-brand-hover transition disabled:opacity-40">Confirmar {valor > 0 ? formatBRL(valor) : ""}</button>
       </div>
     </Sheet>
   );

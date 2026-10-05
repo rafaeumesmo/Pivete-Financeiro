@@ -21,13 +21,14 @@ function getWeekDots(streak) {
   return dots.map(d => ({ date: d, active: activeDates.has(d), isToday: d === today }));
 }
 
-// Progressão por nível: só a cor (e o preenchimento nos dois últimos) muda.
-// Sem glow.
+// Progressão por nível: contorno cinza → âmbar → laranja → laranja
+// preenchido → azul preenchido (Lendário). Sem glow e sem vermelho
+// (vermelho é negativo/atrasado no app).
 export function streakTier(count) {
   return count === 0 ? 0 : count <= 2 ? 1 : count <= 6 ? 2 : count <= 13 ? 3 : count <= 29 ? 4 : 5;
 }
-const TIER_COR = ["text-fg-3", "text-[#F59E0B]", "text-[#F97316]", "text-[#EF4444]", "text-[#DC2626]", "text-brand-ink"];
-const TIER_FILL = [0, 0, 0, 0, 0.25, 1];
+const TIER_COR = ["text-fg-3", "text-[#F59E0B]", "text-[#F97316]", "text-[#F97316]", "text-[#F97316]", "text-brand-ink"];
+const TIER_FILL = [0, 0, 0, 1, 1, 1];
 
 export function StreakIcon({ count, size = 18, className = "" }) {
   const tier = streakTier(count);

@@ -10,6 +10,9 @@ import { CreditCard, Repeat } from "lucide-react";
 import {
   frequenciaLabel, valorMensal, parcelasRestantes, jurosAlto, fixosMensais, rendaMensal, DAY_NAMES, JUROS_ALTO_MES,
 } from "../lib/finance.js";
+import { TriangleAlert } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
+import { CategoryTile } from "./CategoryTile.jsx";
 
 export function FixosDividasPanel({ finance, showToast }) {
   const { recorrentes, dividas, categorias } = finance;
@@ -25,14 +28,14 @@ export function FixosDividasPanel({ finance, showToast }) {
     return (
       <div className={`flex items-center gap-3 px-3.5 py-3 ${r.ativo ? "" : "opacity-50"}`}>
         <button type="button" onClick={() => setRecEdit(r)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
-          <span className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: `${cat.cor}26` }}>{cat.icon}</span>
+          <CategoryTile categoria={cat} size={36} />
           <span className="min-w-0">
-            <span className="block text-[13px] font-medium text-white truncate">{r.nome}</span>
-            <span className="block text-[11px] text-white/35">{r.ativo ? frequenciaLabel(r) : "Pausado"}{r.frequencia === "semanal" ? ` · ≈ ${formatBRL(valorMensal(r))}/mês` : ""}</span>
+            <span className="block text-[13px] font-medium text-fg truncate">{r.nome}</span>
+            <span className="block text-[12px] text-fg-3">{r.ativo ? frequenciaLabel(r) : "Pausado"}{r.frequencia === "semanal" ? ` · ≈ ${formatBRL(valorMensal(r))}/mês` : ""}</span>
           </span>
         </button>
-        <span className={`text-[13px] font-semibold tabular-nums ${r.tipo === "entrada" ? "text-emerald-400" : "text-white"}`}>{formatBRL(r.valor)}</span>
-        <button type="button" onClick={() => finance.alternarRecorrente(r.id)} aria-label={r.ativo ? `Pausar ${r.nome}` : `Retomar ${r.nome}`} title={r.ativo ? "Pausar" : "Retomar"} className="w-8 h-8 rounded-lg bg-white/[0.05] text-white/45 hover:text-white flex items-center justify-center flex-shrink-0">
+        <span className={`text-[13px] font-semibold tabular-nums ${r.tipo === "entrada" ? "text-pos" : "text-fg"}`}>{formatBRL(r.valor)}</span>
+        <button type="button" onClick={() => finance.alternarRecorrente(r.id)} aria-label={r.ativo ? `Pausar ${r.nome}` : `Retomar ${r.nome}`} title={r.ativo ? "Pausar" : "Retomar"} className="w-8 h-8 rounded-md bg-tile text-fg-2 hover:text-fg flex items-center justify-center flex-shrink-0">
           {r.ativo
             ? <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
             : <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden><path d="M7 5.5v13a1 1 0 001.5.86l11-6.5a1 1 0 000-1.72l-11-6.5A1 1 0 007 5.5z" /></svg>}
@@ -50,7 +53,7 @@ export function FixosDividasPanel({ finance, showToast }) {
         {saidas.length === 0 ? (
           <EmptyHint icon={Repeat} title="Nenhum gasto fixo">Aluguel, internet, assinaturas, passagem… Cadastre uma vez e eles viram contas no deck todo mês.</EmptyHint>
         ) : (
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">{saidas.map(r => <RecRow key={r.id} r={r} />)}</div>
+          <div className="rounded-lg border border-line bg-surface divide-y divide-line">{saidas.map(r => <RecRow key={r.id} r={r} />)}</div>
         )}
       </div>
 
@@ -59,9 +62,9 @@ export function FixosDividasPanel({ finance, showToast }) {
           Renda fixa · {formatBRL(rendaMensal(recorrentes))}/mês
         </SectionTitle>
         {entradas.length === 0 ? (
-          <p className="text-[12px] text-white/30 px-1">Cadastre salário e outras entradas que se repetem — o Painel usa isso pra projeção.</p>
+          <p className="text-[12px] text-fg-3 px-1">Cadastre salário e outras entradas que se repetem — o Painel usa isso pra projeção.</p>
         ) : (
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">{entradas.map(r => <RecRow key={r.id} r={r} />)}</div>
+          <div className="rounded-lg border border-line bg-surface divide-y divide-line">{entradas.map(r => <RecRow key={r.id} r={r} />)}</div>
         )}
       </div>
 
@@ -77,30 +80,30 @@ export function FixosDividasPanel({ finance, showToast }) {
             const n = parcelasRestantes(d);
             const alto = jurosAlto(d);
             return (
-              <button key={d.id} type="button" onClick={() => setDivEdit(d)} className={`text-left rounded-2xl border p-4 transition ${alto ? "border-red-500/40 bg-red-500/[0.07]" : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.05]"}`}>
+              <button key={d.id} type="button" onClick={() => setDivEdit(d)} className={`text-left rounded-lg border p-4 transition ${alto ? "border-line bg-surface" : "border-line bg-surface hover:bg-tile"}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{d.nome}</p>
-                    <p className="text-[11px] text-white/40 truncate">{d.credor || "—"} · vence dia {d.diaVencimento}</p>
+                    <p className="text-sm font-semibold text-fg truncate">{d.nome}</p>
+                    <p className="text-[12px] text-fg-2 truncate">{d.credor || "—"} · vence dia {d.diaVencimento}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-white tabular-nums">{formatBRL(d.saldoDevedor)}</p>
-                    <p className="text-[11px] text-white/40 tabular-nums">{formatBRL(d.parcela)}/mês</p>
+                    <p className="text-sm font-bold text-fg tabular-nums">{formatBRL(d.saldoDevedor)}</p>
+                    <p className="text-[12px] text-fg-2 tabular-nums">{formatBRL(d.parcela)}/mês</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${alto ? "bg-red-500/25 text-red-200" : "bg-white/[0.06] text-white/55"}`}>{alto ? "⚠️ " : ""}{String(d.jurosMes || 0).replace(".", ",")}% a.m.</span>
-                  <span className={`text-[11px] ${n === Infinity ? "text-red-300" : "text-white/45"}`}>
+                  <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-sm inline-flex items-center gap-1 ${alto ? "bg-neg/10 text-neg" : "bg-tile text-fg-2"}`}>{alto && <TriangleAlert size={12} strokeWidth={ICON_STROKE} aria-hidden />}{String(d.jurosMes || 0).replace(".", ",")}% a.m.</span>
+                  <span className={`text-[12px] ${n === Infinity ? "text-neg" : "text-fg-2"}`}>
                     {n === Infinity ? "A parcela não cobre os juros — essa dívida só cresce" : `≈ ${n} ${n === 1 ? "parcela restante" : "parcelas restantes"}`}
                   </span>
                 </div>
-                {alto && n !== Infinity && <p className="text-[11px] text-red-200/70 mt-1.5">Juros de {JUROS_ALTO_MES}% a.m. ou mais: priorize quitar ou renegociar esta.</p>}
+                {alto && n !== Infinity && <p className="text-[12px] text-neg mt-1.5">Juros de {JUROS_ALTO_MES}% a.m. ou mais: priorize quitar ou renegociar esta.</p>}
               </button>
             );
           })}
           {quitadas.map(d => (
-            <button key={d.id} type="button" onClick={() => setDivEdit(d)} className="text-left rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3 flex items-center justify-between">
-              <span className="text-[13px] text-emerald-200">🏆 {d.nome}</span><span className="text-[11px] text-emerald-300/70">Quitada</span>
+            <button key={d.id} type="button" onClick={() => setDivEdit(d)} className="text-left rounded-lg border border-line bg-surface px-4 py-3 flex items-center justify-between">
+              <span className="text-[13px] text-fg">{d.nome}</span><span className="text-[12px] text-pos">Quitada</span>
             </button>
           ))}
         </div>
@@ -109,7 +112,7 @@ export function FixosDividasPanel({ finance, showToast }) {
       <AnimatePresence>
         {recEdit && (
           <RecorrenteSheet key="rec" rec={recEdit} categorias={categorias} onClose={() => setRecEdit(null)}
-            onSave={r => { finance.salvarRecorrente(r); setRecEdit(null); showToast(r.id ? "Fixo atualizado" : "Fixo criado 🔁", "bg-emerald-600/90"); }}
+            onSave={r => { finance.salvarRecorrente(r); setRecEdit(null); showToast(r.id ? "Fixo atualizado" : "Fixo criado", "bg-emerald-600/90"); }}
             onDelete={recEdit.id ? () => {
               if (!window.confirm(`Excluir "${recEdit.nome}"? As próximas ocorrências somem; o que já foi pago fica no extrato.`)) return;
               finance.removerRecorrente(recEdit.id); setRecEdit(null);
@@ -146,31 +149,31 @@ function RecorrenteSheet({ rec, categorias, onClose, onSave, onDelete }) {
         <div><label className={labelCls} htmlFor="r-nome">Nome</label><input id="r-nome" value={f.nome} maxLength={40} onChange={e => setF(p => ({ ...p, nome: e.target.value }))} className={inputCls} placeholder={entrada ? "Ex: Salário" : "Ex: Internet"} /></div>
         <div><label className={labelCls} htmlFor="r-valor">Valor</label><MoneyInput id="r-valor" value={f.valor} onChange={valor => setF(p => ({ ...p, valor }))} className={`${inputCls} text-lg font-bold`} /></div>
         <div><label className={labelCls} htmlFor="r-cat">Categoria</label>
-          <select id="r-cat" value={f.categoria} onChange={e => setF(p => ({ ...p, categoria: e.target.value }))} className={`${inputCls} bg-sheet`}>
-            {categorias.filter(c => c.id !== (entrada ? "dividas" : "renda")).map(c => <option key={c.id} value={c.id}>{c.icon} {c.nome}</option>)}
+          <select id="r-cat" value={f.categoria} onChange={e => setF(p => ({ ...p, categoria: e.target.value }))} className={`${inputCls} bg-surface`}>
+            {categorias.filter(c => c.id !== (entrada ? "dividas" : "renda")).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
         <div>
           <p className={labelCls}>Frequência</p>
           <div className="flex gap-2 mb-2">
             {[{ id: "mensal", l: "Mensal" }, { id: "semanal", l: "Semanal" }].map(o => (
-              <button key={o.id} type="button" aria-pressed={f.frequencia === o.id} onClick={() => setF(p => ({ ...p, frequencia: o.id }))} className={`flex-1 py-2 rounded-xl text-[13px] border transition ${f.frequencia === o.id ? "bg-[#2563eb]/15 border-[#2563eb]/40 text-blue-300" : "bg-white/[0.03] border-white/[0.07] text-white/40"}`}>{o.l}</button>
+              <button key={o.id} type="button" aria-pressed={f.frequencia === o.id} onClick={() => setF(p => ({ ...p, frequencia: o.id }))} className={`flex-1 py-2 rounded-md text-[13px] border transition ${f.frequencia === o.id ? "bg-brand/[0.06] border-brand/40 text-brand-ink" : "bg-surface border-line text-fg-2"}`}>{o.l}</button>
             ))}
           </div>
           {f.frequencia === "mensal" ? (
-            <label className="flex items-center gap-2 text-[13px] text-white/60">Todo dia
-              <input type="number" min={1} max={31} value={f.dia} onChange={e => setF(p => ({ ...p, dia: Math.max(1, Math.min(31, Number(e.target.value) || 1)) }))} className="w-20 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-white" aria-label="Dia do mês" />
+            <label className="flex items-center gap-2 text-[13px] text-fg-2">Todo dia
+              <input type="number" min={1} max={31} value={f.dia} onChange={e => setF(p => ({ ...p, dia: Math.max(1, Math.min(31, Number(e.target.value) || 1)) }))} className="w-20 rounded-md border border-line bg-tile px-3 py-2 text-fg" aria-label="Dia do mês" />
             </label>
           ) : (
-            <select aria-label="Dia da semana" value={f.diaSemana} onChange={e => setF(p => ({ ...p, diaSemana: Number(e.target.value) }))} className={`${inputCls} bg-sheet`}>
+            <select aria-label="Dia da semana" value={f.diaSemana} onChange={e => setF(p => ({ ...p, diaSemana: Number(e.target.value) }))} className={`${inputCls} bg-surface`}>
               {DAY_NAMES.map((n, i) => <option key={i} value={i}>{n}</option>)}
             </select>
           )}
         </div>
-        {erro && <p className="text-[12px] text-red-400">{erro}</p>}
-        {rec.id && <p className="text-[11px] text-white/30">Mudanças valem de hoje em diante; o que já foi pago não muda.</p>}
-        <button type="button" onClick={salvar} className="w-full rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Salvar</button>
-        {onDelete && <button type="button" onClick={onDelete} className="w-full rounded-2xl border border-red-500/25 bg-red-500/10 py-2.5 text-[13px] text-red-300 hover:bg-red-500/20 transition">Excluir</button>}
+        {erro && <p className="text-[12px] text-neg">{erro}</p>}
+        {rec.id && <p className="text-[12px] text-fg-3">Mudanças valem de hoje em diante; o que já foi pago não muda.</p>}
+        <button type="button" onClick={salvar} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand hover:bg-brand-hover transition">Salvar</button>
+        {onDelete && <button type="button" onClick={onDelete} className="w-full rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-neg hover:bg-tile transition">Excluir</button>}
       </div>
     </Sheet>
   );
@@ -202,17 +205,17 @@ function DividaSheet({ divida, onClose, onSave, onDelete }) {
           <div><label className={labelCls} htmlFor="d-parc">Parcela</label><MoneyInput id="d-parc" value={f.parcela} onChange={v => setF(p => ({ ...p, parcela: v }))} className={inputCls} /></div>
           <div><label className={labelCls} htmlFor="d-juros">Juros % a.m.</label><input id="d-juros" inputMode="decimal" value={f.jurosMes} onChange={e => setF(p => ({ ...p, jurosMes: e.target.value.replace(/[^\d,.]/g, "") }))} className={inputCls} placeholder="Ex: 2,5" /></div>
         </div>
-        <label className="flex items-center gap-2 text-[13px] text-white/60">Vence todo dia
-          <input type="number" min={1} max={31} value={f.diaVencimento} onChange={e => setF(p => ({ ...p, diaVencimento: Math.max(1, Math.min(31, Number(e.target.value) || 1)) }))} className="w-20 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-white" aria-label="Dia do vencimento" />
+        <label className="flex items-center gap-2 text-[13px] text-fg-2">Vence todo dia
+          <input type="number" min={1} max={31} value={f.diaVencimento} onChange={e => setF(p => ({ ...p, diaVencimento: Math.max(1, Math.min(31, Number(e.target.value) || 1)) }))} className="w-20 rounded-md border border-line bg-tile px-3 py-2 text-fg" aria-label="Dia do vencimento" />
         </label>
         {f.saldoDevedor > 0 && f.parcela > 0 && (
-          <p className={`text-[12px] ${n === Infinity ? "text-red-300" : "text-white/50"}`}>
+          <p className={`text-[12px] ${n === Infinity ? "text-neg" : "text-fg-2"}`}>
             {n === Infinity ? "Com essa parcela os juros ganham — a dívida nunca acaba." : `Estimativa: ${n} ${n === 1 ? "parcela" : "parcelas"} (≈ ${formatBRL(f.parcela * n)} no total).`}
           </p>
         )}
-        {erro && <p className="text-[12px] text-red-400">{erro}</p>}
-        <button type="button" onClick={salvar} className="w-full rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Salvar</button>
-        {onDelete && <button type="button" onClick={onDelete} className="w-full rounded-2xl border border-red-500/25 bg-red-500/10 py-2.5 text-[13px] text-red-300 hover:bg-red-500/20 transition">Excluir</button>}
+        {erro && <p className="text-[12px] text-neg">{erro}</p>}
+        <button type="button" onClick={salvar} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand hover:bg-brand-hover transition">Salvar</button>
+        {onDelete && <button type="button" onClick={onDelete} className="w-full rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-neg hover:bg-tile transition">Excluir</button>}
       </div>
     </Sheet>
   );

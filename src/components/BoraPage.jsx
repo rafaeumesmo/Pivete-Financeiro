@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePoll } from "../hooks/usePoll.js";
 import { PollResults } from "./PollResults.jsx";
-import { BoraDeck, gradientFor } from "./BoraDeck.jsx";
+import { BoraDeck } from "./BoraDeck.jsx";
 import { BoraTournament } from "./BoraTournament.jsx";
 import { getNick, setNick as persistNick } from "../lib/anon";
 import { Brand } from "./Brand.jsx";
 import { APP_NAME } from "../config.js";
+import { Link2Off, WifiOff, CircleHelp, Swords, Hand } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
+import { btnCls, inputCls } from "./ui.jsx";
 
 function getPollId() {
   const m = window.location.hash.match(/^#\/bora\/([^/?]+)/);
@@ -16,7 +19,7 @@ function getPollId() {
 function Shell({ children }) {
   return (
     <div
-      className="min-h-screen bg-deep flex flex-col items-center px-4"
+      className="min-h-screen bg-page flex flex-col items-center px-4"
       style={{ paddingTop: "max(env(safe-area-inset-top), 20px)", paddingBottom: "max(env(safe-area-inset-bottom), 20px)" }}
     >
       <div className="w-full max-w-md flex-1 flex flex-col">{children}</div>
@@ -27,8 +30,8 @@ function Shell({ children }) {
 function Branding() {
   return (
     <div className="flex items-center justify-center gap-1.5 py-4 flex-shrink-0">
-      <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/30">feito no</span>
-      <span className="text-sm font-black text-white"><Brand icon /></span>
+      <span className="text-[12px] text-fg-3">feito no</span>
+      <span className="text-sm font-bold text-fg"><Brand icon /></span>
     </div>
   );
 }
@@ -37,11 +40,10 @@ function CreateCTA() {
   return (
     <a
       href={`${window.location.origin}${window.location.pathname}`}
-      className="mt-6 block rounded-2xl px-5 py-4 text-center transition hover:brightness-110"
-      style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.15), rgba(124,58,237,0.15))", border: "1px solid rgb(var(--ink) / 0.08)" }}
+      className="mt-6 block rounded-lg px-5 py-4 text-center bg-surface border border-line hover:bg-tile transition"
     >
-      <p className="text-sm font-semibold text-white">Gostou? Crie seu Bora no {APP_NAME}</p>
-      <p className="text-[12px] text-white/40 mt-0.5">Decisões em grupo no swipe — de graça, sem complicação.</p>
+      <p className="text-sm font-semibold text-fg">Gostou? Crie seu Bora no {APP_NAME}</p>
+      <p className="text-[12px] text-fg-2 mt-0.5">Decisões em grupo no swipe — de graça, sem complicação.</p>
     </a>
   );
 }
@@ -56,7 +58,7 @@ export default function BoraPage() {
   const [saving, setSaving] = useState(false);
 
   const deckOptions = useMemo(
-    () => options.map((o, i) => ({ id: o.id, emoji: o.emoji, label: o.label, gradient: gradientFor(i) })),
+    () => options.map((o) => ({ id: o.id, emoji: o.emoji, label: o.label })),
     [options],
   );
   const hasVoted = myVotes.length > 0;
@@ -70,16 +72,16 @@ export default function BoraPage() {
 
   // ── Estados de carregamento / erro ─────────────────────────
   if (loading || phase === null) {
-    return <Shell><Branding /><div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" /></div></Shell>;
+    return <Shell><Branding /><div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-line border-t-brand animate-spin" /></div></Shell>;
   }
   if (error === "notfound" || (!poll && error !== "network" && error !== "load" && error !== "config")) {
-    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><div className="text-5xl">🔗</div><p className="text-white/50 text-sm">Enquete não encontrada ou link inválido.</p><CreateCTA /></div></Shell>;
+    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><span className="w-12 h-12 rounded-md bg-tile text-fg-2 flex items-center justify-center" aria-hidden><Link2Off size={24} strokeWidth={ICON_STROKE} /></span><p className="text-fg-2 text-sm">Enquete não encontrada ou link inválido.</p><CreateCTA /></div></Shell>;
   }
   if (error === "config" || error === "network" || error === "load") {
-    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><div className="text-5xl">📡</div><p className="text-white/50 text-sm">Não foi possível carregar a enquete.</p><p className="text-white/25 text-xs">Verifique sua conexão e tente novamente.</p><button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 rounded-xl bg-white/[0.06] border border-white/10 text-sm text-white/50 hover:text-white/70 transition">Tentar novamente</button></div></Shell>;
+    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><span className="w-12 h-12 rounded-md bg-tile text-fg-2 flex items-center justify-center" aria-hidden><WifiOff size={24} strokeWidth={ICON_STROKE} /></span><p className="text-fg-2 text-sm">Não foi possível carregar a enquete.</p><p className="text-fg-3 text-xs">Verifique sua conexão e tente novamente.</p><button onClick={() => window.location.reload()} className={`${btnCls.secondary} mt-2 px-4 py-2 text-sm`}>Tentar novamente</button></div></Shell>;
   }
   if (options.length === 0) {
-    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><div className="text-5xl">🤷</div><p className="text-white/50 text-sm">Essa enquete não tem opções.</p><CreateCTA /></div></Shell>;
+    return <Shell><Branding /><div className="flex-1 flex flex-col items-center justify-center text-center gap-3"><span className="w-12 h-12 rounded-md bg-tile text-fg-2 flex items-center justify-center" aria-hidden><CircleHelp size={24} strokeWidth={ICON_STROKE} /></span><p className="text-fg-2 text-sm">Essa enquete não tem opções.</p><CreateCTA /></div></Shell>;
   }
 
   async function handleComplete(boraIds) {
@@ -110,15 +112,15 @@ export default function BoraPage() {
 
       {/* Cabeçalho */}
       <div className="text-center mb-5 flex-shrink-0">
-        {closed && <span className="inline-block text-[10px] font-semibold tracking-widest uppercase text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full mb-3">Encerrada</span>}
-        <h1 className="text-[24px] font-bold text-white leading-tight">{poll.title}</h1>
+        {closed && <span className="inline-block text-[12px] font-medium text-fg-2 bg-tile px-2 py-0.5 rounded-sm mb-3">Encerrada</span>}
+        <h1 className="text-[24px] font-semibold text-fg leading-tight">{poll.title}</h1>
         {phase === "deck" && (
-          <p className="text-[13px] text-white/35 mt-1.5">
+          <p className="text-[13px] text-fg-3 mt-1.5">
             {poll.type === "single" ? "Duelo de cards" : "Arrasta os cards"} · você é {nick.trim() || "anônimo"}
           </p>
         )}
         {phase === "intro" && (
-          <p className="text-[13px] text-white/35 mt-1.5">
+          <p className="text-[13px] text-fg-3 mt-1.5">
             {poll.type === "multiple" ? "Dá Bora em quantas quiser" : "Escolha sua favorita"}
             {totalVoters > 0 && ` · ${totalVoters} já ${totalVoters === 1 ? "votou" : "votaram"}`}
           </p>
@@ -130,13 +132,13 @@ export default function BoraPage() {
           {/* ── Intro: apelido ─────────────────────────────────── */}
           {phase === "intro" && (
             <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col justify-center">
-              <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 text-center">
-                <div className="text-4xl mb-3">{poll.type === "single" ? "⚔️" : "🤙"}</div>
-                <p className="text-sm text-white/60 mb-4 leading-relaxed">
+              <div className="rounded-lg border border-line bg-surface p-6 text-center">
+                <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden>{poll.type === "single" ? <Swords size={24} strokeWidth={ICON_STROKE} /> : <Hand size={24} strokeWidth={ICON_STROKE} />}</span>
+                <p className="text-sm text-fg-2 mb-4 leading-relaxed">
                   {poll.type === "single" ? (
-                    <>As opções se enfrentam em duelos. <span className="text-emerald-400 font-medium">Toque na sua favorita</span> até sobrar uma campeã.</>
+                    <>As opções se enfrentam em duelos. <span className="text-pos font-medium">Toque na sua favorita</span> até sobrar uma campeã.</>
                   ) : (
-                    <>Arraste os cards: <span className="text-emerald-400 font-medium">direita = Bora</span>, <span className="text-red-400 font-medium">esquerda = Passo</span>.</>
+                    <>Arraste os cards: <span className="text-pos font-medium">direita = Bora</span>, <span className="text-neg font-medium">esquerda = Passo</span>.</>
                   )}
                 </p>
                 <input
@@ -146,15 +148,15 @@ export default function BoraPage() {
                   placeholder="Seu apelido (ex: Rafa)"
                   maxLength={24}
                   autoFocus
-                  className="w-full rounded-2xl bg-white/[0.05] border border-white/[0.1] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#2563eb]/60 transition text-center mb-3"
+                  className={`${inputCls} text-center mb-3`}
                 />
-                {errMsg && <p className="text-[12px] text-red-400 mb-3">{errMsg}</p>}
-                <motion.button whileTap={{ scale: 0.97 }} onClick={startDeck} className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition">
-                  Começar a votar →
+                {errMsg && <p className="text-[12px] text-neg mb-3">{errMsg}</p>}
+                <motion.button whileTap={{ scale: 0.97 }} onClick={startDeck} className="w-full py-3.5 rounded-lg bg-brand text-sm font-semibold text-on-brand hover:bg-brand-hover transition">
+                  Começar a votar
                 </motion.button>
               </div>
               {totalVoters > 0 && (
-                <button onClick={() => setPhase("results")} className="mt-3 text-[13px] text-white/40 hover:text-white/60 transition">Ver resultado parcial</button>
+                <button onClick={() => setPhase("results")} className="mt-3 text-[13px] text-fg-2 hover:text-fg-2 transition">Ver resultado parcial</button>
               )}
             </motion.div>
           )}
@@ -163,7 +165,7 @@ export default function BoraPage() {
           {phase === "deck" && (
             <motion.div key="deck" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col justify-center">
               {saving ? (
-                <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-white/60 animate-spin" /></div>
+                <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-line border-t-brand animate-spin" /></div>
               ) : poll.type === "single" ? (
                 <BoraTournament options={deckOptions} onChampion={(id) => handleComplete([id])} />
               ) : (
@@ -177,16 +179,16 @@ export default function BoraPage() {
             <motion.div key="results" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               {hasVoted && (
                 <div className="text-center mb-4">
-                  <p className="text-base font-bold text-white">Seus votos foram registrados 🎉</p>
-                  <p className="text-[12px] text-white/40 mt-0.5">
+                  <p className="text-base font-semibold text-fg">Seus votos foram registrados</p>
+                  <p className="text-[12px] text-fg-2 mt-0.5">
                     Você deu Bora em {myVotes.length} opç{myVotes.length === 1 ? "ão" : "ões"}.
                   </p>
                 </div>
               )}
-              {errMsg && <p className="text-[12px] text-red-400 text-center mb-3">{errMsg}</p>}
+              {errMsg && <p className="text-[12px] text-neg text-center mb-3">{errMsg}</p>}
               <PollResults poll={poll} tally={tally} totalVoters={totalVoters} isCreator={isCreator} onClosePoll={closePoll} />
               {!closed && (
-                <button onClick={() => setPhase("deck")} className="w-full mt-3 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-sm font-medium text-white/60 hover:bg-white/[0.08] transition">
+                <button onClick={() => setPhase("deck")} className={`${btnCls.secondary} w-full mt-3 py-2.5 text-sm`}>
                   {hasVoted ? "Votar de novo" : "Votar agora"}
                 </button>
               )}

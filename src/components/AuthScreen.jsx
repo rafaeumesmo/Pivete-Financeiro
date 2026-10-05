@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Globe, Mail, MailCheck } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
 
 export function AuthScreen({ onSendLink, onGoogle }) {
   const [email,   setEmail]   = useState("");
@@ -42,21 +44,21 @@ export function AuthScreen({ onSendLink, onGoogle }) {
       className="flex flex-col items-center justify-center px-6 pb-6 text-center"
     >
       <div className="w-full max-w-sm">
-        <div className="text-4xl mb-3">🌐</div>
-        <p className="text-sm text-white/40 mb-6 leading-relaxed">
+        <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><Globe size={24} strokeWidth={ICON_STROKE} /></span>
+        <p className="text-sm text-fg-2 mb-6 leading-relaxed">
           Compartilhe tasks com amigos e veja o que eles estão decidindo em tempo real.
         </p>
 
         {sent ? (
-          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-6">
-            <div className="text-3xl mb-3">📬</div>
-            <p className="text-sm font-semibold text-emerald-300 mb-1">Link enviado!</p>
-            <p className="text-[13px] text-white/40">
-              Verifique seu email <span className="text-white/70 font-medium">{email}</span> e clique no link para entrar.
+          <div className="rounded-lg bg-pos/10 border border-pos/30 p-6">
+            <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-surface text-pos flex items-center justify-center" aria-hidden><MailCheck size={24} strokeWidth={ICON_STROKE} /></span>
+            <p className="text-sm font-semibold text-pos mb-1">Link enviado!</p>
+            <p className="text-[13px] text-fg-2">
+              Verifique seu email <span className="text-fg font-medium">{email}</span> e clique no link para entrar.
             </p>
             <button
               onClick={() => setSent(false)}
-              className="mt-4 text-[12px] text-white/30 hover:text-white/50 transition"
+              className="mt-4 text-[12px] text-fg-3 hover:text-fg-2 transition"
             >
               Usar outro email
             </button>
@@ -70,7 +72,7 @@ export function AuthScreen({ onSendLink, onGoogle }) {
                 onClick={handleGoogle}
                 disabled={googleLoading}
                 whileTap={{ scale: 0.97 }}
-                className="w-full py-3.5 rounded-2xl bg-[#fff] border border-black/10 text-sm font-semibold text-neutral-900 hover:bg-[#fff]/90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-lg bg-[#fff] border border-black/10 text-sm font-semibold text-neutral-900 hover:bg-[#fff]/90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {googleLoading ? (
                   <span className="w-4 h-4 rounded-full border-2 border-neutral-300 border-t-neutral-900 animate-spin" />
@@ -86,8 +88,8 @@ export function AuthScreen({ onSendLink, onGoogle }) {
                   </>
                 )}
               </motion.button>
-              <div className="flex items-center gap-3 text-[11px] text-white/25">
-                <span className="flex-1 h-px bg-white/[0.08]" />ou<span className="flex-1 h-px bg-white/[0.08]" />
+              <div className="flex items-center gap-3 text-[12px] text-fg-3">
+                <span className="flex-1 h-px bg-tile" />ou<span className="flex-1 h-px bg-tile" />
               </div>
             </>
           )}
@@ -97,26 +99,26 @@ export function AuthScreen({ onSendLink, onGoogle }) {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="seu@email.com"
-              className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-4 py-3.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#2563eb]/60 transition"
+              className="w-full rounded-lg border border-line bg-tile px-4 py-3.5 text-sm text-fg placeholder:text-fg-3 outline-none focus:border-brand transition"
             />
-            {error && <p className="text-[12px] text-red-400 text-left px-1">{error}</p>}
+            {error && <p className="text-[12px] text-neg text-left px-1">{error}</p>}
             <motion.button
               type="submit"
               disabled={loading || !email.trim()}
               whileTap={{ scale: 0.97 }}
-              className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-lg bg-brand text-sm font-semibold text-on-brand hover:bg-brand-hover transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
-                <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <span className="w-4 h-4 rounded-full border-2 border-on-brand/30 border-t-on-brand animate-spin" />
               ) : (
-                <>Enviar magic link ✉️</>
+                <><Mail size={16} strokeWidth={ICON_STROKE} aria-hidden />Enviar magic link</>
               )}
             </motion.button>
           </form>
           </div>
         )}
 
-        <p className="text-[11px] text-white/20 mt-6 leading-relaxed">
+        <p className="text-[12px] text-fg-3 mt-6 leading-relaxed">
           Sem senha. Um link seguro é enviado pro seu email toda vez que quiser entrar.
         </p>
       </div>

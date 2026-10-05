@@ -75,21 +75,21 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3">
+      <div className="rounded-lg border border-line bg-surface p-3">
         <div className="flex items-center justify-between mb-3 px-1">
-          <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition">
+          <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="w-7 h-7 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold text-white">{formatMonth(toDateStr(view).slice(0, 7))}</span>
-            {!(noMesAtual && sel === hoje) && <button onClick={() => { const t = new Date(); setView(new Date(t.getFullYear(), t.getMonth(), 1)); setSel(hoje); }} className="text-[10px] font-semibold text-blue-300 hover:text-white transition">Hoje</button>}
+            <span className="text-[13px] font-semibold text-fg">{formatMonth(toDateStr(view).slice(0, 7))}</span>
+            {!(noMesAtual && sel === hoje) && <button onClick={() => { const t = new Date(); setView(new Date(t.getFullYear(), t.getMonth(), 1)); setSel(hoje); }} className="text-[12px] font-semibold text-brand-ink hover:text-fg transition">Hoje</button>}
           </div>
-          <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition">
+          <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="w-7 h-7 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
         <div className="grid grid-cols-7 mb-1">
-          {DAY_SHORT.map((d, i) => <div key={i} className="text-center text-[9px] font-semibold text-white/25">{d}</div>)}
+          {DAY_SHORT.map((d, i) => <div key={i} className="text-center text-[12px] font-semibold text-fg-3">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-y-0.5">
           {grid.map(ds => {
@@ -100,11 +100,11 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
             const isSel = ds === sel;
             return (
               <button key={ds} onClick={() => inMonth && setSel(ds)} disabled={!inMonth} aria-label={`${formatDateShort(ds)}${t.saidas ? `, saídas ${formatBRL(t.saidas, { oculto: ocultar })}` : ""}${t.entradas ? `, entradas ${formatBRL(t.entradas, { oculto: ocultar })}` : ""}`}
-                className={`flex flex-col items-center gap-0.5 py-1 rounded-lg ${isSel ? "bg-[#2563eb]/20" : ""}`}>
-                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-medium ${!inMonth ? "text-white/10" : ds === hoje ? "bg-[#2563eb] text-white" : atrasado ? "text-red-300" : "text-white/70"}`}>{fromDateStr(ds).getDate()}</span>
-                <span className="h-3 text-[8.5px] leading-3 tabular-nums">
-                  {inMonth && t.saidas > 0 && <span className={atrasado ? "text-red-400" : t.pendente > 0 ? "text-white/55" : "text-white/25"}>{ocultar ? "•••" : formatBRL(t.saidas, { compact: true }).replace("R$ ", "")}</span>}
-                  {inMonth && !t.saidas && t.entradas > 0 && <span className="text-emerald-400/80">+{ocultar ? "•••" : formatBRL(t.entradas, { compact: true }).replace("R$ ", "")}</span>}
+                className={`flex flex-col items-center gap-0.5 py-1 rounded-md ${isSel ? "bg-brand/[0.06]" : ""}`}>
+                <span className={`w-7 h-7 rounded-md flex items-center justify-center text-[12px] font-medium ${!inMonth ? "text-fg-3/40" : ds === hoje ? "bg-brand text-on-brand" : atrasado ? "text-neg" : "text-fg"}`}>{fromDateStr(ds).getDate()}</span>
+                <span className="h-3 text-[10px] leading-3 tabular-nums">
+                  {inMonth && t.saidas > 0 && <span className={atrasado ? "text-neg" : t.pendente > 0 ? "text-fg-2" : "text-fg-3"}>{ocultar ? "•••" : formatBRL(t.saidas, { compact: true }).replace("R$ ", "")}</span>}
+                  {inMonth && !t.saidas && t.entradas > 0 && <span className="text-pos">+{ocultar ? "•••" : formatBRL(t.entradas, { compact: true }).replace("R$ ", "")}</span>}
                 </span>
               </button>
             );
@@ -115,17 +115,17 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
       <div>
         <SectionTitle>{selLabel}</SectionTitle>
         <div className="grid grid-cols-3 gap-2 mb-3">
-          {[{ l: "A pagar", v: tDia.pendente, c: "text-white" }, { l: "Saídas", v: tDia.saidas, c: "text-white/70" }, { l: "Entradas", v: tDia.entradas, c: "text-emerald-400" }].map(x => (
-            <div key={x.l} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-              <p className="text-[9px] uppercase tracking-widest text-white/30">{x.l}</p>
+          {[{ l: "A pagar", v: tDia.pendente, c: "text-fg" }, { l: "Saídas", v: tDia.saidas, c: "text-fg" }, { l: "Entradas", v: tDia.entradas, c: "text-pos" }].map(x => (
+            <div key={x.l} className="rounded-md bg-surface border border-line px-3 py-2">
+              <p className="text-[12px] text-fg-3">{x.l}</p>
               <p className={`text-[13px] font-semibold tabular-nums ${x.c}`}>{formatBRL(x.v, { oculto: ocultar })}</p>
             </div>
           ))}
         </div>
         {doDia.length === 0 ? (
-          <p className="text-[12px] text-white/30 px-1">Nada vence nesse dia.</p>
+          <p className="text-[12px] text-fg-3 px-1">Nada vence nesse dia.</p>
         ) : (
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">
+          <div className="rounded-lg border border-line bg-surface divide-y divide-line">
             {doDia.map(l => {
               const previsto = l.status === "previsto";
               return (
@@ -143,7 +143,7 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
         {semData.length === 0 ? (
           <EmptyHint icon={CalendarDays} title="Tudo com data">Lançamentos sem data aparecem aqui pra você encaixar num dia.</EmptyHint>
         ) : (
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">
+          <div className="rounded-lg border border-line bg-surface divide-y divide-line">
             {semData.map(l => (
               <LancamentoRow key={l.id} lancamento={l} categoria={findCategoria(categorias, l.categoria)} onClick={() => onEditar(l)}
                 actions={<SmallButton tone="blue" onClick={() => finance.atualizarLancamento(l.id, { data: sel })}>+ {sel === hoje ? "hoje" : formatDateShort(sel)}</SmallButton>} />

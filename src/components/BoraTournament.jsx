@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { formatBRL } from "../lib/money.js";
+import { Trophy, Vote } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
 
 /*
  * Torneio (duelo de cards) pra enquetes de ESCOLHA ÚNICA.
@@ -24,20 +26,19 @@ function DuelCard({ option, state, onPick, slide }) {
       animate={targets[state]}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       whileTap={state === "idle" ? { scale: 0.97 } : undefined}
-      className={`tema-escuro relative w-full sm:w-[260px] h-[30vh] sm:h-[400px] rounded-3xl overflow-hidden shadow-2xl select-none bg-gradient-to-br ${option.gradient} cursor-pointer`}
-      style={winning ? { boxShadow: "0 0 0 3px #34d399, 0 0 44px rgba(52,211,153,0.55)" } : undefined}
+      className={`relative w-full sm:w-[260px] h-[30vh] sm:h-[400px] rounded-lg overflow-hidden shadow select-none bg-brand text-on-brand cursor-pointer ${winning ? "ring-4 ring-pos ring-offset-2 ring-offset-page" : ""}`}
     >
-      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[64px] sm:text-[80px] filter drop-shadow-2xl">{option.emoji || "🗳️"}</span>
+        {option.emoji
+          ? <span className="text-[56px] sm:text-[72px] leading-none">{option.emoji}</span>
+          : <span className="w-16 h-16 rounded-lg bg-on-brand/15 flex items-center justify-center" aria-hidden><Vote size={32} strokeWidth={ICON_STROKE} /></span>}
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-5">
-        <h3 className="text-xl font-bold text-white leading-tight">{option.label}</h3>
-        {option.budget_cents > 0 && <span className="inline-block mt-1 text-[11px] font-semibold bg-black/30 text-white/85 px-2 py-0.5 rounded-full">💸 {formatBRL(option.budget_cents)}/pessoa</span>}
+      <div className="absolute bottom-0 left-0 right-0 p-5 text-left">
+        <h3 className="text-lg font-semibold leading-tight">{option.label}</h3>
+        {option.budget_cents > 0 && <p className="mt-1 text-[13px] text-on-brand/75">{formatBRL(option.budget_cents)} por pessoa</p>}
       </div>
       {winning && (
-        <motion.div initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} className="absolute top-4 right-4 text-3xl filter drop-shadow-lg">🏆</motion.div>
+        <motion.span initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} className="absolute top-4 right-4 w-9 h-9 rounded-md bg-on-brand text-pos flex items-center justify-center" aria-hidden><Trophy size={18} strokeWidth={ICON_STROKE} /></motion.span>
       )}
     </motion.button>
   );
@@ -77,18 +78,18 @@ export function BoraTournament({ options, onChampion }) {
       {/* Progresso */}
       <div className="w-full max-w-[260px] sm:max-w-[420px]">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[12px] font-medium text-white/40">Duelo {ci} de {total}</span>
-          <span className="text-[11px] text-white/25">Toque na sua preferida</span>
+          <span className="text-[12px] font-medium text-fg-2">Duelo {ci} de {total}</span>
+          <span className="text-[12px] text-fg-3">Toque na sua preferida</span>
         </div>
-        <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-          <motion.div className="h-full rounded-full bg-[#7c3aed]" initial={{ width: 0 }} animate={{ width: `${(ci / total) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
+        <div className="h-1.5 rounded-sm bg-tile overflow-hidden">
+          <motion.div className="h-full rounded-sm bg-brand" initial={{ width: 0 }} animate={{ width: `${(ci / total) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
         </div>
       </div>
 
       {/* Arena: empilhado no mobile, lado a lado no desktop */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 w-full">
         <DuelCard option={champion} state={stateOf(champion)} onPick={pick} slide="x" />
-        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-white/[0.08] border border-white/15 flex items-center justify-center text-sm font-black text-white/60 -my-1 sm:my-0 z-10">VS</div>
+        <div className="flex-shrink-0 w-10 h-10 rounded-md bg-surface border border-line flex items-center justify-center text-[13px] font-semibold text-fg-2 -my-1 sm:my-0 z-10">vs</div>
         <DuelCard option={challenger} state={stateOf(challenger)} onPick={pick} slide="x" />
       </div>
     </div>
