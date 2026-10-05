@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { SK, load, save, REMOTE_UPDATE_EVENT } from "./storage.js";
 
-// Tema claro/escuro. A escolha fica em SK.tema — que está em SYNC_KEYS, então
+// Tema claro/escuro (padrão: claro). A escolha fica em SK.tema — que está em SYNC_KEYS, então
 // logado ela acompanha a conta em qualquer aparelho. As cores em si são
 // variáveis CSS trocadas pelo data-theme do <html> (tailwind.config.js).
 const EVENT = "fin:tema";
-const FUNDO = { escuro: "#111114", claro: "#f4f5f7" };
+const FUNDO = { escuro: "#111114", claro: "#F4F5F7" };
 
 export function getTema() {
-  return load(SK.tema, "escuro") === "claro" ? "claro" : "escuro";
+  return load(SK.tema, "claro") === "escuro" ? "escuro" : "claro";
 }
 
 function aplicar(tema) {
@@ -20,7 +20,7 @@ function aplicar(tema) {
 }
 
 export function setTema(tema) {
-  save(SK.tema, tema === "claro" ? "claro" : "escuro");
+  save(SK.tema, tema === "escuro" ? "escuro" : "claro");
   aplicar(getTema());
 }
 
