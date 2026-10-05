@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { getAnonId } from "../lib/anon";
+import { somenteUltima } from "../lib/ultima.js";
 
 /*
  * Carrega uma enquete (poll + opções + votos), assina realtime nos votos e no
@@ -13,6 +14,7 @@ export function usePoll(pollId) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
   const anonId = useRef(getAnonId());
+  const ultimaLeitura = useRef(somenteUltima());
 
   const load = useCallback(async () => {
     if (!supabase || !pollId) { setError("config"); setLoading(false); return; }
@@ -36,11 +38,15 @@ export function usePoll(pollId) {
     setLoading(false);
   }, [pollId]);
 
-  // Recarrega só os votos (leve, usado no realtime).
+  // Recarrega só os votos (leve, usado no realtime e depois de votar). Voto
+  // único apaga o anterior e insere o novo: o evento do delete dispara uma
+  // leitura sem o voto que pode responder por último. Só a mais recente vale.
   const reloadVotes = useCallback(async () => {
     if (!supabase || !pollId) return;
-    const { data } = await supabase.from("poll_votes").select("*").eq("poll_id", pollId);
-    setVotes(data || []);
+    await ultimaLeitura.current(
+      () => supabase.from("poll_votes").select("*").eq("poll_id", pollId),
+      ({ data }) => setVotes(data || []),
+    );
   }, [pollId]);
 
   useEffect(() => {
