@@ -1,8 +1,9 @@
 import { supabase } from "../supabaseClient";
 import {
-  SK, DADOS_KEYS, load, save, setSaveHook, REMOTE_UPDATE_EVENT, dadosPersistentes, tornarPersistente, tornarTemporario,
+  SK, DADOS_KEYS, load, save, setSaveHook, REMOTE_UPDATE_EVENT,
 } from "./storage.js";
 import { planSync } from "./syncPlan.js";
+import { mesclarConvidado } from "./mesclar.js";
 
 /*
  * Espelha os dados pessoais (localStorage) na tabela user_data quando o
@@ -14,7 +15,12 @@ import { planSync } from "./syncPlan.js";
  * - Ao logar e ao voltar pra aba, baixa o que está no servidor. Chave suja ou
  *   com envio pendente não é sobrescrita: a edição local vence.
  * - Conflito entre dois aparelhos editando ao mesmo tempo: o último envio vence.
+ * - Primeiro login neste aparelho (sem dono): os dados do convidado são
+ *   juntados com os da conta (lib/mesclar.js) e o resumo sai no evento
+ *   MESCLADO_EVENT, pra tela mostrar o que veio.
  */
+
+export const MESCLADO_EVENT = "fin:mesclado";
 
 // Configurações do aparelho (notificações, onboarding, soneca) ficam de fora.
 export const SYNC_KEYS = [...DADOS_KEYS, SK.tema];
@@ -116,17 +122,13 @@ export async function startSync(uid) {
   userId = uid;
   const mySession = ++session;
 
-  // Acabou de entrar: o que foi feito sem conta nesta aba vira dado local e o
-  // planSync decide o que sobe. Sobra de outra conta no aparelho sai antes,
-  // pra não se misturar (o planSync apagaria tudo junto, inclusive o da aba).
-  if (!dadosPersistentes()) {
-    const owner = load(OWNER_KEY, null);
-    if (owner && owner !== uid) {
-      SYNC_KEYS.forEach((k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
-      setDirty([]);
-      try { localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
-    }
-    tornarPersistente();
+  // Sobra de OUTRA conta no aparelho (sessão que caiu sem logout) sai antes,
+  // pra não se misturar com esta.
+  const dono = load(OWNER_KEY, null);
+  if (dono && dono !== uid) {
+    SYNC_KEYS.forEach((k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
+    setDirty([]);
+    try { localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
   }
 
   let rows;
@@ -139,25 +141,36 @@ export async function startSync(uid) {
   if (mySession !== session) return;
   lastPull = Date.now();
 
-  const plan = planSync({
-    uid,
-    owner: load(OWNER_KEY, null),
-    localKeys: SYNC_KEYS.filter(hasLocal),
-    remoteKeys: rows.map((r) => r.key),
-    dirtyKeys: getDirty().filter((k) => SYNC_KEYS.includes(k)),
-  });
-
-  if (plan.wipeLocal) {
-    setDirty([]);
-    SYNC_KEYS.forEach((k) => applyRemote(k, null));
-  }
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
-  plan.apply.forEach((k) => applyRemote(k, byKey.get(k)));
+  let enviar;
+  if (load(OWNER_KEY, null) === null) {
+    // Convidado → conta: junta sem apagar nada.
+    const local = Object.fromEntries(SYNC_KEYS.filter(hasLocal).map((k) => [k, load(k, null)]));
+    const m = mesclarConvidado({ local, remoto: Object.fromEntries(byKey) });
+    Object.entries(m.valores).forEach(([k, v]) => applyRemote(k, v));
+    enviar = m.enviar;
+    if (Object.keys(m.trazidos).length || m.duplicados.length || m.saldoMantido) {
+      try { window.dispatchEvent(new CustomEvent(MESCLADO_EVENT, { detail: { trazidos: m.trazidos, duplicados: m.duplicados, saldoMantido: m.saldoMantido } })); } catch { /* ignore */ }
+    }
+  } else {
+    const plan = planSync({
+      uid,
+      owner: uid,
+      localKeys: SYNC_KEYS.filter(hasLocal),
+      remoteKeys: rows.map((r) => r.key),
+      dirtyKeys: getDirty().filter((k) => SYNC_KEYS.includes(k)),
+    });
+    plan.apply.forEach((k) => applyRemote(k, byKey.get(k)));
+    enviar = plan.push;
+  }
   // Conta que já tem dados não refaz o tutorial (onboarded é por aparelho:
   // num navegador ou domínio novo ele começa vazio).
   if (rows.length > 0 && !load(SK.onboarded, false)) applyRemote(SK.onboarded, true);
   save(OWNER_KEY, uid);
-  await push(plan.push);
+  // Pendente até chegar: se o envio falhar, a próxima sync reenvia em vez de
+  // deixar o servidor (sem a junção) ganhar.
+  setDirty([...getDirty(), ...enviar]);
+  await push(enviar);
   if (mySession !== session) return;
   ready = true;
 
@@ -171,6 +184,26 @@ export function stopSync() {
   userId = null;
   ready = false;
   session++;
+}
+
+// "Limpar dados deste aparelho" com conta: troca os dados daqui pelos da
+// conta, sem nunca mandar vazio pro servidor (os setters do app gravariam o
+// vazio e a sync subiria). Antes envia o que estiver pendente, senão se
+// perderia. Sem conseguir enviar ou ler a conta, retorna false sem mexer em nada.
+export async function limparAparelho() {
+  if (!supabase || !userId || !ready) return false;
+  const mySession = session;
+  timers.forEach((t) => clearTimeout(t));
+  timers.clear();
+  if (!(await push(getDirty().filter((k) => SYNC_KEYS.includes(k))))) return false;
+  let rows;
+  try { rows = await fetchRemote(); } catch { return false; }
+  if (mySession !== session) return false;
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  setDirty([]);
+  SYNC_KEYS.forEach((k) => applyRemote(k, byKey.has(k) ? byKey.get(k) : null));
+  lastPull = Date.now();
+  return true;
 }
 
 // Logout: envia o que ainda não subiu e apaga os dados pessoais deste
@@ -189,6 +222,5 @@ export async function finishSync({ force = false } = {}) {
   SYNC_KEYS.forEach((k) => applyRemote(k, null));
   setDirty([]);
   try { localStorage.removeItem(OWNER_KEY); } catch { /* ignore */ }
-  tornarTemporario();
   return true;
 }

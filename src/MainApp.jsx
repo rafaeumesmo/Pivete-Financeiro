@@ -14,7 +14,9 @@ import { SetupProfile } from "./components/SetupProfile.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
 import { migrateAnonPolls } from "./lib/polls.js";
-import { startSync, stopSync, finishSync } from "./lib/sync.js";
+import { startSync, stopSync, finishSync, limparAparelho, MESCLADO_EVENT } from "./lib/sync.js";
+import { resumoTexto, duplicadoTexto, SALDO_MANTIDO_TEXTO } from "./lib/mesclar.js";
+import { registrarDiaUso, deveAvisarConta, MOTIVOS_CONTA } from "./lib/convidado.js";
 import { todayKey, daysBetween, addDays } from "./lib/dates.js";
 import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
@@ -30,7 +32,7 @@ import { btnCls, inputCls } from "./components/ui.jsx";
 import { Sheet } from "./components/Sheet.jsx";
 import { useBreakpoint } from "./hooks/useBreakpoint.js";
 import { ICON_STROKE } from "./lib/icons.js";
-import { Plus, Vote, X, LogIn, TriangleAlert, Bell, Zap, Flame } from "lucide-react";
+import { Plus, Vote, X, LogIn, TriangleAlert, Bell, Zap, Flame, Smartphone, Wallet } from "lucide-react";
 import { FinDeck } from "./components/FinDeck.jsx";
 import { Brand } from "./components/Brand.jsx";
 import { useFinance, CONTA_INICIAL } from "./hooks/useFinance.js";
@@ -134,6 +136,12 @@ export default function MainApp() {
   const splits = useSplits(auth.user?.id);
   const cob    = useCobrancas(finance);
 
+  // Aviso discreto pro convidado (lib/convidado.js): conta dias de uso.
+  const [diasUso, setDiasUso] = usePersistedState(SK.diasUso, []);
+  const [avisoContaDispensado, setAvisoContaDispensado] = usePersistedState(SK.avisoContaDispensado, null);
+  useEffect(() => { setDiasUso((d) => registrarDiaUso(d, todayKey())); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- setter estável, roda no mount
+  const avisarConta = !auth.isLoading && deveAvisarConta({ logado: auth.isLoggedIn, diasUso, dispensadoEm: avisoContaDispensado, hoje: todayKey() });
+
   // Perfil efetivo da UI: logado → tabela "profiles" do Supabase é a fonte de
   // verdade; deslogado → perfil local do localStorage. Assim o nome/nick/emoji
   // persistem entre reloads e dispositivos quando há sessão.
@@ -145,6 +153,8 @@ export default function MainApp() {
       }
     : profile;
   const [showAuthModal,      setShowAuthModal]      = useState(false);
+  const [authMotivo,         setAuthMotivo]         = useState(null);  // texto do porquê da conta (MOTIVOS_CONTA)
+  const [mesclado,           setMesclado]           = useState(null);  // resumo da junção convidado → conta
 
   // Estados voláteis — resetam no reload (intencionalmente)
   const [toast,             setToast]             = useState({ visible: false, message: "", color: "" });
@@ -225,6 +235,9 @@ export default function MainApp() {
     const gap = daysBetween(streak.lastActiveDate, today);
     return gap === 1 && new Date().getHours() >= 18;
   })();
+
+  // Pede conta explicando o motivo no contexto (null = entrar, sem motivo).
+  function pedirConta(motivo = null) { setAuthMotivo(motivo); setShowAuthModal(true); }
 
   function showToast(message, color) { setToast({ visible: true, message, color }); setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1800); }
 
@@ -337,8 +350,15 @@ export default function MainApp() {
     showToast("Sessão encerrada.", "bg-white/10");
   }
 
-  function clearAllData() {
-    if (!window.confirm("Apagar todos os dados? Lançamentos, contas, dívidas, caixinhas e histórico serão removidos deste aparelho.")) return;
+  async function clearAllData() {
+    // A confirmação fica no Perfil (ProfileTab).
+    // Com conta: só o aparelho. Os setters abaixo gravariam vazio e a sync
+    // mandaria pra conta; limparAparelho troca o local pelo que está na conta.
+    if (auth.isLoggedIn) {
+      if (await limparAparelho()) showToast("Dados deste aparelho limpos. Sua conta não mudou.", "bg-emerald-600/90");
+      else showToast("Não deu pra falar com a sua conta agora. Nada foi apagado.", "bg-red-600/90");
+      return;
+    }
     [...Object.values(SK), NOTIF_LAST_PEAK, NOTIF_LAST_STREAK].forEach((key) => { try { localStorage.removeItem(key); sessionStorage.removeItem(key); } catch {} });
     finance.setLancamentos([]);
     finance.setRecorrentes([]);
@@ -371,7 +391,13 @@ export default function MainApp() {
   }, [auth.user?.id]);
 
   // Logado: espelha os dados pessoais na conta (lib/sync.js) pra que apareçam
-  // em qualquer navegador. Deslogado: só na aba (lib/storage.js), some ao fechar.
+  // em qualquer navegador. Convidado: só neste aparelho (lib/storage.js); no
+  // primeiro login os dados dele são juntados com os da conta.
+  useEffect(() => {
+    const f = (e) => setMesclado(e.detail);
+    window.addEventListener(MESCLADO_EVENT, f);
+    return () => window.removeEventListener(MESCLADO_EVENT, f);
+  }, []);
   useEffect(() => {
     if (!auth.user?.id) return;
     startSync(auth.user.id);
@@ -411,7 +437,7 @@ export default function MainApp() {
   const keyboardEnabled = activeTab === "home" && !showOnboarding && !showAuthModal && !streakBroken;
   const abrirStreak = () => setShowStreakDetail(true);
   const entrarBtn = !auth.isLoggedIn && (
-    <button type="button" onClick={() => setShowAuthModal(true)} className={`${btnCls.secondary} h-9 px-3 text-[13px] ${bp === "tablet" ? "w-11 px-0" : bp === "desktop" ? "w-full" : ""}`} aria-label="Entrar" title="Entrar">
+    <button type="button" onClick={() => pedirConta()} className={`${btnCls.secondary} h-9 px-3 text-[13px] ${bp === "tablet" ? "w-11 px-0" : bp === "desktop" ? "w-full" : ""}`} aria-label="Entrar" title="Entrar">
       {bp === "tablet" ? <LogIn size={18} strokeWidth={ICON_STROKE} aria-hidden /> : "Entrar"}
     </button>
   );
@@ -436,6 +462,13 @@ export default function MainApp() {
     <div className="h-full overflow-y-auto">
       <div className={`mx-auto w-full ${isDesktop ? "max-w-[1120px] px-10 py-8" : "max-w-[640px] px-4 sm:px-6 pt-4 pb-28 md:pb-10 md:pt-8"}`}>
         {riskBanner}
+        {avisarConta && (
+          <div className="mb-5 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
+            <Smartphone size={18} strokeWidth={ICON_STROKE} className="text-fg-2 flex-shrink-0" aria-hidden />
+            <p className="text-[13px] text-fg flex-1 leading-snug">Seus dados estão só neste aparelho. <button type="button" onClick={() => pedirConta(MOTIVOS_CONTA.guardar)} className="font-semibold text-brand-ink hover:underline">Crie uma conta pra não perder.</button></p>
+            <button type="button" onClick={() => setAvisoContaDispensado(todayKey())} aria-label="Dispensar aviso" className="w-8 h-8 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition flex-shrink-0"><X size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
+          </div>
+        )}
         <div className={isDesktop ? "grid grid-cols-[minmax(0,1fr)_360px] gap-10 items-start" : ""}>
           <FinDeck
             isDesktop={isDesktop} finance={finance}
@@ -475,11 +508,12 @@ export default function MainApp() {
       setShowNotifSettings={setShowNotifSettings} setShowAboutModal={setShowAboutModal}
       handleLogout={handleLogout}
       clearAllData={clearAllData} isDesktop={isDesktop}
+      isLoggedIn={auth.isLoggedIn} onCriarConta={() => pedirConta(MOTIVOS_CONTA.guardar)}
       snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
       finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
     />
   );
-  const social_ = <SocialExplore isDesktop={isDesktop} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={() => setShowAuthModal(true)} initialTab={socialTab} />;
+  const social_ = <SocialExplore isDesktop={isDesktop} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={pedirConta} initialTab={socialTab} />;
 
   // ════════════════════════════════════════════════════════
   return (
@@ -564,8 +598,22 @@ export default function MainApp() {
           />
         )}
         {showAuthModal && !auth.isLoggedIn && (
-          <Sheet key="auth-modal" title={`Entrar no ${APP_NAME}`} onClose={() => setShowAuthModal(false)}>
-            <div className="-mx-5 -mb-5"><AuthScreen onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} /></div>
+          <Sheet key="auth-modal" title={authMotivo ? "Criar conta ou entrar" : `Entrar no ${APP_NAME}`} onClose={() => setShowAuthModal(false)}>
+            <div className="-mx-5 -mb-5"><AuthScreen motivo={authMotivo} onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} /></div>
+          </Sheet>
+        )}
+        {mesclado && (
+          <Sheet key="mesclado" title="Seus dados vieram junto" onClose={() => setMesclado(null)}>
+            <p className="text-sm text-fg">{resumoTexto(mesclado.trazidos) || "Juntamos os dados deste aparelho com os da sua conta."}</p>
+            {mesclado.saldoMantido && <p className="mt-3 text-[13px] text-fg-2 flex items-start gap-1.5"><Wallet size={14} strokeWidth={ICON_STROKE} className="text-warn flex-shrink-0 mt-0.5" aria-hidden />{SALDO_MANTIDO_TEXTO}</p>}
+            {mesclado.duplicados.length > 0 && (
+              <div className="mt-4 rounded-md bg-tile px-4 py-3">
+                <p className="text-[13px] font-semibold text-fg mb-1.5 flex items-center gap-1.5"><TriangleAlert size={14} strokeWidth={ICON_STROKE} className="text-warn" aria-hidden />Pode ter ficado repetido</p>
+                <ul className="text-[13px] text-fg-2 space-y-0.5">{mesclado.duplicados.map((d, i) => <li key={i}>{duplicadoTexto(d)}</li>)}</ul>
+                <p className="text-[12px] text-fg-3 mt-2 leading-relaxed">Estava na conta e neste aparelho. Confira em Atividade → Fixos e no Perfil → Contas e apague o que sobrar.</p>
+              </div>
+            )}
+            <button type="button" onClick={() => setMesclado(null)} className={`${btnCls.primary} w-full py-3 text-sm mt-5`}>Beleza</button>
           </Sheet>
         )}
         {showProfileEditor && (
@@ -589,7 +637,7 @@ export default function MainApp() {
         )}
         {showAboutModal && (
           <Sheet key="about" title={`Sobre o ${APP_NAME}`} kicker="Versão 0.0.0" onClose={() => setShowAboutModal(false)} z="z-50">
-            <p className="text-sm text-fg-2 leading-relaxed mb-5">Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, os dados somem ao fechar a aba; com conta, ficam salvos nela.</p>
+            <p className="text-sm text-fg-2 leading-relaxed mb-5">Organização financeira pessoal no ritmo do swipe: pague, adie ou divida cada conta em um gesto. Sem conta, os dados ficam só neste aparelho; com conta, ficam salvos nela e aparecem em qualquer aparelho.</p>
             <button type="button" onClick={() => setShowAboutModal(false)} className={`${btnCls.secondary} w-full py-2.5 text-sm`}>Fechar</button>
           </Sheet>
         )}

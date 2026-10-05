@@ -10,8 +10,9 @@ import { useOcultarValores } from "../lib/privacy.js";
 import { EyeButton, btnCls } from "./ui.jsx";
 import { StreakIcon } from "./StreakWidgets.jsx";
 import { Avatar } from "./Avatar.jsx";
+import { Sheet } from "./Sheet.jsx";
 import { ICON_STROKE } from "../lib/icons.js";
-import { Globe, Lock, Wallet, Timer, Info, Sun, Moon, AlarmClock, Bell, LogOut, TriangleAlert, ChevronRight, Trash2, Pencil } from "lucide-react";
+import { Globe, Lock, Wallet, Timer, Info, Sun, Moon, AlarmClock, Bell, LogOut, TriangleAlert, ChevronRight, Trash2, Pencil, CloudUpload } from "lucide-react";
 
 // Cabeçalho dos blocos Público / Privado do perfil.
 function BlockHeader({ Icon, title, sub, action, isDesktop }) {
@@ -53,12 +54,13 @@ function Linha({ Icon, children, tone = "text-fg", onClick, right }) {
 export function ProfileTab({
   profile, stats, streak, notifSettings,
   openProfileEditor, setShowNotifSettings, setShowAboutModal,
-  handleLogout, clearAllData, isDesktop = false,
+  handleLogout, clearAllData, isDesktop = false, isLoggedIn = false, onCriarConta,
   snoozeDefault, onSnoozeDefaultChange,
   finance, conquistas, reservaMeses, setReservaMeses, onNavigate, showToast,
 }) {
   const [tema, setTema] = useTema();
   const [showDanger, setShowDanger] = useState(false);
+  const [confirmarApagar, setConfirmarApagar] = useState(false);
   const [ocultar] = useOcultarValores();
 
   const totalDecisions = stats.accepted + stats.rejected + stats.shared;
@@ -135,10 +137,15 @@ export function ProfileTab({
         <Linha Icon={AlarmClock} right={<Segmented label="Tempo de adiamento" value={snoozeDefault} onChange={v => onSnoozeDefaultChange?.(v)} options={[{ id: "1h", label: "1 hora" }, { id: "1d", label: "1 dia" }]} />}>Tempo de adiamento</Linha>
         <Linha Icon={Bell} onClick={() => setShowNotifSettings(true)} right={<>{notifSettings.enabled && <span className="text-[13px] text-fg-2 mr-1">Ativas</span>}{chevron}</>}>Notificações</Linha>
         <Linha Icon={Info} onClick={() => setShowAboutModal(true)} right={chevron}>Sobre</Linha>
-        <Linha Icon={LogOut} tone="text-neg" onClick={handleLogout}>Sair</Linha>
+        {isLoggedIn
+          ? <Linha Icon={LogOut} tone="text-neg" onClick={handleLogout}>Sair</Linha>
+          : <>
+              <Linha Icon={CloudUpload} onClick={onCriarConta} right={chevron}>Criar conta e guardar os dados</Linha>
+              <Linha Icon={Trash2} tone="text-neg" onClick={() => setConfirmarApagar(true)}>Apagar dados deste aparelho</Linha>
+            </>}
       </div>
 
-      <div className="mt-4">
+      {isLoggedIn && <div className="mt-4">
         <button
           type="button"
           onClick={() => setShowDanger(v => !v)}
@@ -158,14 +165,30 @@ export function ProfileTab({
               transition={{ duration: 0.18 }}
               className="overflow-hidden"
             >
-              <button type="button" onClick={clearAllData} className={`${btnCls.secondary} mt-2 w-full justify-start px-4 py-3 text-[13px] !text-neg`}>
+              <button type="button" onClick={() => setConfirmarApagar(true)} className={`${btnCls.secondary} mt-2 w-full justify-start px-4 py-3 text-[13px] !text-neg`}>
                 <Trash2 size={16} strokeWidth={ICON_STROKE} aria-hidden />
-                Limpar todos os dados locais
+                Limpar os dados deste aparelho
               </button>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </div>}
+
+      <AnimatePresence>
+        {confirmarApagar && (
+          <Sheet key="apagar" title={isLoggedIn ? "Limpar os dados deste aparelho?" : "Apagar dados deste aparelho?"} onClose={() => setConfirmarApagar(false)}>
+            <p className="text-sm text-fg-2 leading-relaxed">
+              {isLoggedIn
+                ? "Só este aparelho é limpo: sua conta não muda e os dados dela são baixados de novo aqui. O que ainda não tinha subido é enviado antes. Pra tirar tudo deste aparelho, use Sair."
+                : "Lançamentos, contas, fixos, caixinhas, cobranças e histórico somem deste aparelho. Sem conta, não tem como recuperar depois."}
+            </p>
+            <div className="flex gap-2 mt-5">
+              <button type="button" onClick={() => setConfirmarApagar(false)} className={`${btnCls.secondary} flex-1 py-3 text-sm`}>Cancelar</button>
+              <button type="button" onClick={() => { setConfirmarApagar(false); clearAllData(); }} className={`${btnCls.secondary} flex-1 py-3 text-sm !text-neg`}>Apagar</button>
+            </div>
+          </Sheet>
+        )}
+      </AnimatePresence>
     </div>
   );
 

@@ -4,6 +4,7 @@ import { fetchMyPolls, deletePoll } from "../lib/polls";
 import { CobrancasPanel } from "./CobrancasPanel.jsx";
 import { DividirPanel } from "./DividirPanel.jsx";
 import { Avatar as AvatarBase } from "./Avatar.jsx";
+import { MOTIVOS_CONTA } from "../lib/convidado.js";
 import { CONQUISTAS } from "../lib/conquistas.js";
 import { btnCls, inputCls } from "./ui.jsx";
 import { ICON_STROKE } from "../lib/icons.js";
@@ -385,14 +386,14 @@ export function SocialExplore({
         {subTab === "cobrancas" && <CobrancasPanel cob={cob} finance={finance} nome={nome} showToast={showToast} />}
         {subTab === "dividir" && (
           !isLoggedIn
-            ? <LoginPrompt onRequireLogin={onRequireLogin} texto="Entre pra criar grupos com amigos, lançar despesas divididas e ver quem deve pra quem. Entrando, seus saldos, contas e extrato também ficam salvos na sua conta." />
+            ? <LoginPrompt onRequireLogin={onRequireLogin} titulo="Divida com a galera" motivo={MOTIVOS_CONTA.dividir} />
             : <DividirPanel splits={splits} social={social} userId={userId} finance={finance} showToast={showToast} />
         )}
         {subTab === "amigos" && (
           <div className="flex flex-col gap-6">
             {isLoggedIn
               ? <FriendsPanel social={social} showToast={showToast} isDesktop={isDesktop} />
-              : <LoginPrompt onRequireLogin={onRequireLogin} texto="Entre pra adicionar amigos e dividir contas com eles." />}
+              : <LoginPrompt onRequireLogin={onRequireLogin} titulo="Chame os amigos" motivo={MOTIVOS_CONTA.amigos} />}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-[15px] font-semibold text-fg">Bora? — decidir o rolê</h3>
@@ -407,16 +408,14 @@ export function SocialExplore({
   );
 }
 
-function LoginPrompt({ onRequireLogin, texto }) {
+function LoginPrompt({ onRequireLogin, titulo, motivo }) {
   return (
     <div className="rounded-lg p-6 text-center bg-surface border border-line">
       <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><Users size={24} strokeWidth={ICON_STROKE} /></span>
-      <p className="text-base font-semibold text-fg mb-1">Entre pra dividir com amigos</p>
-      <p className="text-[13px] text-fg-2 leading-relaxed mb-4 max-w-xs mx-auto">
-        {texto}
-      </p>
-      <button onClick={onRequireLogin} className={`${btnCls.primary} px-5 py-2.5 text-sm`}>
-        Entrar com email
+      <p className="text-base font-semibold text-fg mb-1">{titulo}</p>
+      <p className="text-[13px] text-fg-2 leading-relaxed mb-4 max-w-xs mx-auto">{motivo}</p>
+      <button type="button" onClick={() => onRequireLogin(motivo)} className={`${btnCls.primary} px-5 py-2.5 text-sm`}>
+        Criar conta
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Check, ChevronLeft, CloudUpload, Split, X } from "lucide-react";
+import { Check, ChevronLeft, Smartphone, Split, X } from "lucide-react";
 import { Brand } from "./Brand.jsx";
 import { Carimbo } from "./SwipeCard.jsx";
 import { CategoryTile } from "./CategoryTile.jsx";
@@ -64,7 +64,7 @@ function OBStep1() {
       <div className="text-center">
         <h3 className="text-fg font-semibold text-[17px] mb-2">Pagou ou vai deixar pra depois?</h3>
         <p className="text-fg-2 text-sm leading-relaxed">
-          Cada card é uma conta vencendo nos próximos 7 dias. Pagou? Arrasta pra <span className="text-pos font-medium">direita</span> e o valor sai do saldo.
+          Cada card é uma conta vencendo nos próximos 7 dias. Pagou? Arraste pra <span className="text-pos font-medium">direita</span> e o valor sai do saldo.
           Não rola agora? Pra <span className="text-neg font-medium">esquerda</span>, que ela volta depois.
         </p>
       </div>
@@ -96,7 +96,7 @@ function OBStep2() {
       <div className="text-center">
         <h3 className="text-fg font-semibold text-[17px] mb-2">Rachou com a galera? Pra cima</h3>
         <p className="text-fg-2 text-sm leading-relaxed">
-          Arrasta pra <span className="text-brand-ink font-medium">cima</span>, escolhe entre quantas pessoas dividir e manda o link da cobrança. Cada um avisa quando pagar.
+          Arraste pra <span className="text-brand-ink font-medium">cima</span>, escolha entre quantas pessoas dividir e mande o link da cobrança. Cada um avisa quando pagar.
         </p>
       </div>
     </motion.div>
@@ -107,9 +107,9 @@ function OBStep3({ onBack, onFinish }) {
   return (
     <motion.div initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }} transition={{ duration: 0.22 }} className="flex flex-col gap-4">
       <div className="text-center pt-1">
-        <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><CloudUpload size={24} strokeWidth={ICON_STROKE} /></span>
-        <h3 className="text-fg font-semibold text-[17px] mb-1.5">Quer guardar? Entra na conta</h3>
-        <p className="text-fg-2 text-[13px] leading-relaxed">Sem conta dá pra usar de boa, mas nada fica salvo: fechou a aba, já era. Com conta, fica tudo guardado e aparece em qualquer aparelho.</p>
+        <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><Smartphone size={24} strokeWidth={ICON_STROKE} /></span>
+        <h3 className="text-fg font-semibold text-[17px] mb-1.5">Sem cadastro, de boa</h3>
+        <p className="text-fg-2 text-[13px] leading-relaxed">Tudo fica salvo neste aparelho. Quando quiser usar em outro aparelho ou dividir com os amigos, crie uma conta e seus dados vão junto.</p>
       </div>
       <div className="rounded-md bg-tile px-4 py-3">
         <p className="text-[13px] font-semibold text-fg mb-1">Quer ver funcionando antes?</p>

@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { Cloud, Mail, MailCheck } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
 
-export function AuthScreen({ onSendLink, onGoogle }) {
+// motivo: por que a conta está sendo pedida agora (lib/convidado.js MOTIVOS_CONTA).
+export function AuthScreen({ onSendLink, onGoogle, motivo = null }) {
   const [email,   setEmail]   = useState("");
   const [sent,    setSent]    = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,7 @@ export function AuthScreen({ onSendLink, onGoogle }) {
       <div className="w-full max-w-sm">
         <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><Cloud size={24} strokeWidth={ICON_STROKE} /></span>
         <p className="text-sm text-fg-2 mb-6 leading-relaxed">
-          Entra pra deixar suas contas guardadas e ver tudo em qualquer aparelho.
+          {motivo || "Entra pra deixar suas contas guardadas e ver tudo em qualquer aparelho."}
         </p>
 
         {sent ? (

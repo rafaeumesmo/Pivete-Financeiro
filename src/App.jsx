@@ -4,9 +4,15 @@ import CobrancaPage from "./CobrancaPage.jsx";
 import BoraPage from "./components/BoraPage.jsx";
 import { Landing } from "./components/Landing.jsx";
 import { supabase } from "./supabaseClient";
-import { SK, load, save, dadosPersistentes, tornarTemporario } from "./lib/storage.js";
+import { SK, load, save } from "./lib/storage.js";
 import { telaInicial } from "./lib/landing.js";
 import { UpdatePrompt } from "./components/UpdatePrompt.jsx";
+
+// Tem sessão salva neste aparelho (storageKey é onde o supabase-js guarda a
+// sessão; é "protected" só no .d.ts).
+function temSessaoSalva() {
+  try { return !!supabase && localStorage.getItem(supabase.auth.storageKey) !== null; } catch { return false; }
+}
 
 function getRoute() {
   const h = window.location.hash;
@@ -43,12 +49,12 @@ export default function App() {
 
 function Rotas() {
   const [route, setRoute] = useState(getRoute);
-  // noApp: logado neste aparelho, já clicou "Começar" nesta aba, ou entrou.
+  // noApp: logado neste aparelho, já clicou "Começar" (convidado), ou entrou.
   // saiu: deslogou — volta pra Landing, com "Entrar" em destaque, até logar
   // de novo ou escolher usar sem conta. Fica salvo pra sobreviver a reload.
-  const [noApp, setNoApp] = useState(() => dadosPersistentes() || load(SK.landingSeen, false));
+  const [noApp, setNoApp] = useState(() => temSessaoSalva() || load(SK.landingSeen, false));
   const [saiu, setSaiu] = useState(() => load(SK.saiuDaConta, false));
-  const session = useSessao(route === "app", () => { tornarTemporario(); save(SK.saiuDaConta, true); setSaiu(true); });
+  const session = useSessao(route === "app", () => { save(SK.saiuDaConta, true); setSaiu(true); });
   useEffect(() => {
     if (!session) return;
     setNoApp(true);
