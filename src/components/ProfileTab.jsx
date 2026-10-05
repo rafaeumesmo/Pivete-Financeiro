@@ -34,7 +34,7 @@ function Segmented({ value, onChange, options, label }) {
     <div className="inline-flex p-0.5 rounded-md bg-tile" role="radiogroup" aria-label={label}>
       {options.map(o => (
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
-          className={`text-[12px] font-medium px-2.5 py-1 rounded-sm transition ${value === o.id ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>{o.label}</button>
+          className={`text-[12px] lg:text-[13px] font-medium px-2.5 py-1 rounded-sm transition ${value === o.id ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>{o.label}</button>
       ))}
     </div>
   );
@@ -77,14 +77,17 @@ export function ProfileTab({
   // ── Section builders (px removed when desktop — parent provides it) ──
 
   // ── Público x privado ──
-  // Público: identidade, nível, ofensiva e conquistas — nenhum valor em R$.
+  // Público: identidade, nível, sequência e conquistas — nenhum valor em R$.
   // Privado: tudo que é dinheiro. Fica em user_data (RLS: só o dono lê) e nunca
   // entra em profiles, que é o que a aba Social enxerga. O olho só mascara a tela.
 
 
+  const PUBLICO_SUB = "Seus amigos veem nível, sequência e conquistas — nada de valores em R$.";
+  const PRIVADO_SUB = "Só você vê — renda, saldos e reserva nunca vão pro seu perfil na aba Social.";
+
   const publicSection = (
     <div className="mb-8">
-      <BlockHeader isDesktop={isDesktop} Icon={Globe} title="Público" sub="Seus amigos veem nível, ofensiva e conquistas — nada de valores em R$." />
+      <BlockHeader isDesktop={isDesktop} Icon={Globe} title="Público" sub={PUBLICO_SUB} />
       <div className={isDesktop ? "" : "px-5"}>
         <ConquistasSection desbloqueadas={conquistas} />
       </div>
@@ -173,30 +176,29 @@ export function ProfileTab({
           )}
         </AnimatePresence>
       </div>}
-
-      <AnimatePresence>
-        {confirmarApagar && (
-          <Sheet key="apagar" title={isLoggedIn ? "Limpar os dados deste aparelho?" : "Apagar dados deste aparelho?"} onClose={() => setConfirmarApagar(false)}>
-            <p className="text-sm text-fg-2 leading-relaxed">
-              {isLoggedIn
-                ? "Só este aparelho é limpo: sua conta não muda e os dados dela são baixados de novo aqui. O que ainda não tinha subido é enviado antes. Pra tirar tudo deste aparelho, use Sair."
-                : "Lançamentos, contas, fixos, caixinhas, cobranças e histórico somem deste aparelho. Sem conta, não tem como recuperar depois."}
-            </p>
-            <div className="flex gap-2 mt-5">
-              <button type="button" onClick={() => setConfirmarApagar(false)} className={`${btnCls.secondary} flex-1 py-3 text-sm`}>Cancelar</button>
-              <button type="button" onClick={() => { setConfirmarApagar(false); clearAllData(); }} className={`${btnCls.secondary} flex-1 py-3 text-sm !text-neg`}>Apagar</button>
-            </div>
-          </Sheet>
-        )}
-      </AnimatePresence>
     </div>
   );
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full pb-8">
+  const confirmacao = (
+    <AnimatePresence>
+      {confirmarApagar && (
+        <Sheet key="apagar" title={isLoggedIn ? "Limpar os dados deste aparelho?" : "Apagar dados deste aparelho?"} onClose={() => setConfirmarApagar(false)}>
+          <p className="text-sm text-fg-2 leading-relaxed">
+            {isLoggedIn
+              ? "Só este aparelho é limpo: sua conta não muda e os dados dela são baixados de novo aqui. O que ainda não tinha subido é enviado antes. Pra tirar tudo deste aparelho, use Sair."
+              : "Lançamentos, contas, fixos, caixinhas, cobranças e histórico somem deste aparelho. Sem conta, não tem como recuperar depois."}
+          </p>
+          <div className="flex gap-2 mt-5">
+            <button type="button" onClick={() => setConfirmarApagar(false)} className={`${btnCls.secondary} flex-1 py-3 text-sm`}>Cancelar</button>
+            <button type="button" onClick={() => { setConfirmarApagar(false); clearAllData(); }} className={`${btnCls.secondary} flex-1 py-3 text-sm !text-neg`}>Apagar</button>
+          </div>
+        </Sheet>
+      )}
+    </AnimatePresence>
+  );
 
-      {/* ── Identidade ────────────────────────────────────────── */}
-      <div className="px-5 pt-6 mb-8">
+  const identidade = (
+      <div className={isDesktop ? "" : "px-5 pt-6 mb-8"}>
         <div className="flex items-center gap-4">
           <button type="button" onClick={openProfileEditor} aria-label="Editar perfil" className="rounded-full flex-shrink-0 hover:opacity-80 transition">
             <Avatar emoji={profile.avatar} className="w-16 h-16 text-[32px]" iconSize={28} />
@@ -229,15 +231,44 @@ export function ProfileTab({
           </p>
         </div>
       </div>
+  );
 
-      {/* ── Content ───────────────────────────────────────────── */}
-      <div className={isDesktop ? "px-5 pb-4 max-w-xl" : ""}>
-        {publicSection}
-        <BlockHeader isDesktop={isDesktop} Icon={Lock} title="Privado" sub="Só você vê — renda, saldos e reserva nunca vão pro seu perfil na aba Social." action={<EyeButton />} />
-        {statsSection}
-        {financeSections}
-        {settingsSection}
-      </div>
+  // Desktop: perfil, privacidade e configurações numa coluna fixa à esquerda;
+  // conquistas e o lado privado (dinheiro) ocupam o resto.
+  if (isDesktop) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-[340px_minmax(0,1fr)] gap-10 items-start">
+        <aside className="sticky top-8 max-h-[calc(100dvh-4rem)] overflow-y-auto flex flex-col gap-6 pb-1">
+          {identidade}
+          <div className="rounded-lg border border-line bg-surface p-4 flex items-start gap-3">
+            <span className="w-8 h-8 rounded-md bg-tile text-fg flex items-center justify-center flex-shrink-0" aria-hidden><Globe size={16} strokeWidth={ICON_STROKE} /></span>
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-semibold text-fg leading-tight">Público</h3>
+              <p className="text-[14px] text-fg-2 leading-snug mt-0.5">{PUBLICO_SUB}</p>
+            </div>
+          </div>
+          {settingsSection}
+        </aside>
+        <div className="min-w-0 pb-8">
+          <div className="mb-10"><ConquistasSection desbloqueadas={conquistas} /></div>
+          <BlockHeader isDesktop Icon={Lock} title="Privado" sub={PRIVADO_SUB} action={<EyeButton />} />
+          {statsSection}
+          {financeSections}
+        </div>
+        {confirmacao}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full pb-8">
+      {identidade}
+      {publicSection}
+      <BlockHeader Icon={Lock} title="Privado" sub={PRIVADO_SUB} action={<EyeButton />} />
+      {statsSection}
+      {financeSections}
+      {settingsSection}
+      {confirmacao}
     </motion.div>
   );
 }

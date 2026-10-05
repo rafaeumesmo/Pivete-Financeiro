@@ -97,7 +97,7 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-line bg-surface px-4 py-3">
+      <div className="rounded-lg border border-line bg-surface px-4 py-3 lg:max-w-xl">
         <label htmlFor="pix" className="text-[12px] font-semibold text-fg-3">Sua chave Pix (vai no link, opcional)</label>
         <input id="pix" value={cob.pixKey} maxLength={100} onChange={e => cob.setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" className="mt-1.5 w-full bg-transparent text-sm text-fg outline-none placeholder:text-fg-3" />
       </div>
@@ -107,12 +107,12 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
         <EmptyHint icon={Receipt} title="Nenhuma cobrança aberta">
           No deck, arraste uma conta pra cima ("Dividir") — você escolhe entre quantas pessoas e manda o link. Quem recebe vê o valor e marca "paguei", sem precisar de conta.
         </EmptyHint>
-      ) : abertas.map(c => <Card key={c.id} c={c} />)}
+      ) : <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2">{abertas.map(c => <Card key={c.id} c={c} />)}</div>}
 
       {arquivadas.length > 0 && (
         <div>
           <button type="button" onClick={() => setVerArquivadas(v => !v)} className="text-[12px] text-fg-3 hover:text-fg-2">{verArquivadas ? "▾" : "▸"} Arquivadas ({arquivadas.length})</button>
-          {verArquivadas && <div className="flex flex-col gap-3 mt-3">{arquivadas.map(c => <Card key={c.id} c={c} />)}</div>}
+          {verArquivadas && <div className="flex flex-col gap-3 mt-3 lg:grid lg:grid-cols-2">{arquivadas.map(c => <Card key={c.id} c={c} />)}</div>}
         </div>
       )}
 

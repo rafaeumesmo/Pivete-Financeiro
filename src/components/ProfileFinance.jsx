@@ -58,8 +58,8 @@ function ContaSheet({ conta, podeExcluir, onClose, onSave, onDelete }) {
         <div>
           <label className={labelCls} htmlFor="c-saldo">Saldo atual</label>
           <MoneyInput id="c-saldo" value={saldo} onChange={setSaldo} className={`${inputCls} text-lg font-bold ${negativo ? "text-neg" : ""}`} />
-          <label className="flex items-center gap-2 mt-2 text-[12px] text-fg-2"><input type="checkbox" checked={negativo} onChange={e => setNegativo(e.target.checked)} className="accent-brand" /> Saldo negativo (cheque especial)</label>
-          {conta.id && <p className="text-[12px] text-fg-3 mt-1.5">Ajustar o saldo aqui não cria lançamento — use pra corrigir com o extrato do banco.</p>}
+          <label className="flex items-center gap-2 mt-2 text-[12px] lg:text-[13px] text-fg-2"><input type="checkbox" checked={negativo} onChange={e => setNegativo(e.target.checked)} className="accent-brand" /> Saldo negativo (cheque especial)</label>
+          {conta.id && <p className="text-[12px] lg:text-[13px] text-fg-3 mt-1.5">Ajustar o saldo aqui não cria lançamento — use pra corrigir com o extrato do banco.</p>}
         </div>
         <button type="button" disabled={!nome.trim()} onClick={() => onSave({ ...(conta.id ? { id: conta.id } : {}), nome: nome.trim(), saldo: negativo ? -saldo : saldo })} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand hover:bg-brand-hover transition disabled:opacity-40">Salvar</button>
         {conta.id && podeExcluir && <button type="button" onClick={onDelete} className="w-full rounded-lg border border-neg/30 bg-neg/10 py-2.5 text-[13px] text-neg hover:bg-neg/10 transition">Excluir conta</button>}
@@ -80,23 +80,23 @@ export function ReservaSection({ custo, reserva, reservaMeses, setReservaMeses, 
           <span className="text-[13px] text-fg-2">Meta</span>
           <div className="inline-flex p-0.5 rounded-md bg-tile" role="radiogroup" aria-label="Meses de reserva">
             {[3, 6, 12].map(n => (
-              <button key={n} type="button" role="radio" aria-checked={reservaMeses === n} onClick={() => setReservaMeses(n)} className={`text-[12px] font-medium px-2.5 py-1 rounded-sm transition ${reservaMeses === n ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>{n} meses</button>
+              <button key={n} type="button" role="radio" aria-checked={reservaMeses === n} onClick={() => setReservaMeses(n)} className={`text-[12px] lg:text-[13px] font-medium px-2.5 py-1 rounded-sm transition ${reservaMeses === n ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>{n} meses</button>
             ))}
           </div>
         </div>
         {custo === 0 ? (
-          <p className="text-[12px] text-fg-3">Cadastre seus gastos fixos pra calcular o custo de vida mensal.</p>
+          <p className="text-[12px] lg:text-[13px] text-fg-3">Cadastre seus gastos fixos pra calcular o custo de vida mensal.</p>
         ) : (
           <>
             <div className="flex items-baseline justify-between mb-2">
               <p className="text-lg font-bold text-fg tabular-nums">{formatBRL(reserva, o)}</p>
-              <p className="text-[12px] text-fg-2 tabular-nums">de {formatBRL(alvo, o)}</p>
+              <p className="text-[12px] lg:text-[13px] text-fg-2 tabular-nums">de {formatBRL(alvo, o)}</p>
             </div>
             <ProgressBar pct={alvo ? (reserva / alvo) * 100 : 0} color={reserva >= alvo ? "rgb(var(--pos))" : "rgb(var(--brand))"} label="Reserva de emergência" />
-            <p className="text-[12px] text-fg-2 mt-2">
+            <p className="text-[12px] lg:text-[13px] text-fg-2 mt-2">
               Cobre <strong className="text-fg">{meses.toFixed(1).replace(".", ",")} {meses < 2 ? "mês" : "meses"}</strong> do seu custo de {formatBRL(custo, o)}/mês (fixos + parcelas + variável médio).
             </p>
-            <p className="text-[12px] text-fg-3 mt-1">Reserva = soma das caixinhas.</p>
+            <p className="text-[12px] lg:text-[13px] text-fg-3 mt-1">Reserva = soma das caixinhas.</p>
             {!temCaixinhaReserva && <SmallButton tone="blue" className="mt-3" onClick={() => onCriarCaixinha(alvo)}>Criar caixinha "Reserva de emergência"</SmallButton>}
           </>
         )}
@@ -110,20 +110,21 @@ export function ConquistasSection({ desbloqueadas }) {
   return (
     <div>
       <SectionTitle>Conquistas · {n}/{CONQUISTAS.length}</SectionTitle>
-      <div className="grid grid-cols-2 gap-2">
+      {/* Ocupa toda a largura do pai: 2 colunas até o desktop, 3 a partir dele. */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3">
         {CONQUISTAS.map(q => {
           const ok = !!desbloqueadas[q.id];
           const Icone = conquistaIcons[q.id] || Trophy;
           return (
-            <div key={q.id} className="rounded-lg border border-line bg-surface px-3 py-3">
+            <div key={q.id} className="rounded-lg border border-line bg-surface px-3 py-3 lg:px-4 lg:py-4">
               <div className="flex items-center gap-2.5 mb-1.5">
                 <span className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${ok ? "bg-tile text-fg" : "bg-tile text-fg-3"}`} aria-hidden>
                   {ok ? <Icone size={16} strokeWidth={ICON_STROKE} /> : <Lock size={14} strokeWidth={ICON_STROKE} />}
                 </span>
-                <span className={`text-[13px] font-semibold leading-tight ${ok ? "text-fg" : "text-fg-2"}`}>{q.nome}</span>
+                <span className={`text-[13px] lg:text-[15px] font-semibold leading-tight ${ok ? "text-fg" : "text-fg-2"}`}>{q.nome}</span>
               </div>
-              <p className="text-[12px] text-fg-2 leading-snug">{q.desc}</p>
-              <p className={`text-[12px] font-medium mt-1 ${ok ? "text-fg" : "text-fg-3"}`}>+{q.xp} XP{ok ? "" : " · bloqueada"}</p>
+              <p className="text-[12px] lg:text-[14px] text-fg-2 leading-snug">{q.desc}</p>
+              <p className={`text-[12px] lg:text-[13px] font-medium mt-1 lg:mt-2 ${ok ? "text-fg" : "text-fg-3"}`}>+{q.xp} XP{ok ? "" : " · bloqueada"}</p>
             </div>
           );
         })}
@@ -192,7 +193,7 @@ function CategoriaSheet({ categoria, onClose, onSave, onDelete }) {
         </div>
         <button type="button" disabled={!nome.trim()} onClick={() => onSave({ ...(categoria.id ? { id: categoria.id } : {}), nome: nome.trim(), iconKey })} className={`${btnCls.primary} w-full py-3 text-sm`}>Salvar</button>
         {onDelete && <button type="button" onClick={onDelete} className={`${btnCls.secondary} w-full py-2.5 text-[13px] !text-neg`}>Excluir categoria</button>}
-        {categoria.id && !onDelete && <p className="text-[12px] text-fg-3 text-center">Categorias padrão podem ser renomeadas, mas não excluídas.</p>}
+        {categoria.id && !onDelete && <p className="text-[12px] lg:text-[13px] text-fg-3 text-center">Categorias padrão podem ser renomeadas, mas não excluídas.</p>}
       </div>
     </Sheet>
   );

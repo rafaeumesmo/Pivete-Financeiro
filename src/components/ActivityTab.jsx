@@ -37,12 +37,12 @@ export function ActivityTab({ finance, showToast, onPago }) {
 
   return (
     <motion.div className="h-full overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div className="px-5 pt-5">
-        <h2 className="font-semibold text-fg text-xl">Atividade</h2>
+      <div className="px-5 pt-5 lg:px-0 lg:pt-0">
+        <h2 className="font-semibold text-fg text-xl lg:text-2xl">Atividade</h2>
       </div>
 
-      <div className="px-5 pt-4">
-        <div className="flex gap-1 bg-tile p-1 rounded-md overflow-x-auto" role="tablist">
+      <div className="px-5 pt-4 lg:px-0 lg:pt-5">
+        <div className="flex gap-1 bg-tile p-1 rounded-md overflow-x-auto lg:w-fit" role="tablist">
           {tabs.map(tab => (
             <button key={tab.id} role="tab" aria-selected={subTab === tab.id} onClick={() => setSubTab(tab.id)}
               className={`relative flex-shrink-0 px-3.5 py-1.5 rounded-sm text-[13px] font-medium transition whitespace-nowrap ${subTab === tab.id ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"}`}>
@@ -56,7 +56,7 @@ export function ActivityTab({ finance, showToast, onPago }) {
         </div>
       </div>
 
-      <div className="px-5 pt-5 pb-10">
+      <div className="px-5 pt-5 pb-10 lg:px-0 lg:pt-6">
         {subTab === "calendario" && <FinCalendar finance={finance} onPagar={pedirPagamento} onEditar={setEditando} />}
         {subTab === "caixinhas"  && <CaixinhasPanel finance={finance} showToast={showToast} onActivity={() => onPago?.(null, {})} />}
         {subTab === "fixos"      && <FixosDividasPanel finance={finance} showToast={showToast} />}

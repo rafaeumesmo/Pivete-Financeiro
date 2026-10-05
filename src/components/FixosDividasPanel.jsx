@@ -43,9 +43,10 @@ export function FixosDividasPanel({ finance, showToast }) {
     );
   }
 
+  // Desktop: gastos fixos à esquerda; renda fixa e dívidas à direita.
   return (
-    <div className="flex flex-col gap-6">
-      <div>
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
+      <div className="lg:row-span-2">
         <SectionTitle action={<SmallButton tone="blue" onClick={() => setRecEdit({ tipo: "saida" })}>+ Fixo</SmallButton>}>
           Gastos fixos · {formatBRL(fixosMensais(recorrentes))}/mês
         </SectionTitle>

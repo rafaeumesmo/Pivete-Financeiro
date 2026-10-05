@@ -74,9 +74,10 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
 
   function mudarMes(delta) { setView(v => new Date(v.getFullYear(), v.getMonth() + delta, 1)); }
 
+  // Desktop: calendário à esquerda; o dia e os sem data à direita.
   return (
-    <div className="flex flex-col gap-5">
-      <div className="rounded-lg border border-line bg-surface p-3">
+    <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-x-8 lg:gap-y-6 lg:items-start">
+      <div className="rounded-lg border border-line bg-surface p-3 lg:row-span-2 lg:p-5">
         <div className="flex items-center justify-between mb-3 px-1">
           <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="w-7 h-7 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition">
             <ChevronLeft size={16} strokeWidth={ICON_STROKE} aria-hidden />

@@ -32,6 +32,8 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
           Separe dinheiro pra reserva de emergência, viagem, troca de celular… Cada aporte sai de uma conta e fica guardado aqui.
         </EmptyHint>
       )}
+      {/* Desktop: cards em 2 colunas. */}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2">
       {metas.map(m => {
         const pct = m.alvo > 0 ? (m.guardado / m.alvo) * 100 : 0;
         const completa = m.guardado >= m.alvo && m.alvo > 0;
@@ -62,6 +64,7 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
           </div>
         );
       })}
+      </div>
 
       <AnimatePresence>
         {editando && (

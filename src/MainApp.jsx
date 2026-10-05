@@ -541,15 +541,15 @@ export default function MainApp() {
                 {activeTab === "social" && social_}
                 {activeTab === "activity" && (
                   <div className="flex-1 overflow-y-auto">
-                    <div className="max-w-2xl mx-auto">
+                    <div className="mx-auto w-full max-w-[1120px] px-10 py-8">
                       <ActivityTab finance={finance} showToast={showToast} onPago={handlePagoFora} />
                     </div>
                   </div>
                 )}
                 {activeTab === "create" && createForm}
                 {activeTab === "profile" && (
-                  <div className="flex flex-1 flex-col items-center overflow-y-auto">
-                    <div className="w-full max-w-[900px]">{profileTab}</div>
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="mx-auto w-full max-w-[1120px] px-10 py-8">{profileTab}</div>
                   </div>
                 )}
               </>

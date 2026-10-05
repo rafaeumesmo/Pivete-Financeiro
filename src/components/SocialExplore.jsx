@@ -15,7 +15,7 @@ import { Users, UserPlus, Star, Trash2, Search, X, Check, Vote, Link2 } from "lu
  * amigos e enquetes Bora?.
  * Renderiza o MESMO conteúdo nos dois layouts; só o container muda:
  *   - mobile  (< 1024px): coluna única, largura toda, scroll vertical
- *   - desktop (≥ 1024px): container centralizado max-w-[720px], cards proporcionais
+ *   - desktop (≥ 1024px): mesma largura útil da home (1040px), cards em 2 colunas
  * A safe area do iPhone é tratada pela bottom nav (sibling), então aqui basta
  * um padding inferior generoso pra nada ficar colado.
  */
@@ -353,22 +353,22 @@ export function SocialExplore({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex flex-col h-full overflow-y-auto ${isDesktop ? "px-8 pt-8" : "px-5 pt-4"}`}
+      className={`flex flex-col h-full overflow-y-auto ${isDesktop ? "px-10 pt-8" : "px-5 pt-4"}`}
     >
-      <div className={`w-full ${isDesktop ? "max-w-[720px] mx-auto" : ""} pb-10`}>
+      <div className={`w-full ${isDesktop ? "max-w-[1040px] mx-auto" : ""} pb-10`}>
         <div className="mb-4">
           <h2 className={`font-semibold text-fg ${isDesktop ? "text-2xl" : "text-xl"}`}>Dividir e cobrar</h2>
           <p className="text-sm text-fg-2 mt-0.5">Só o que você escolhe dividir sai do seu aparelho.</p>
         </div>
 
-        <div className="flex gap-1 bg-tile p-1 rounded-md mb-6 overflow-x-auto" role="tablist">
+        <div className={`flex gap-1 bg-tile p-1 rounded-md mb-6 overflow-x-auto ${isDesktop ? "w-fit" : ""}`} role="tablist">
           {tabs.map(tab => (
             <button
               key={tab.id}
               role="tab"
               aria-selected={subTab === tab.id}
               onClick={() => setSubTab(tab.id)}
-              className={`relative flex-1 whitespace-nowrap px-3.5 py-1.5 rounded-sm text-[13px] font-medium transition ${
+              className={`relative ${isDesktop ? "" : "flex-1"} whitespace-nowrap px-3.5 py-1.5 rounded-sm text-[13px] font-medium transition ${
                 subTab === tab.id ? "bg-surface text-fg shadow" : "text-fg-2 hover:text-fg"
               }`}
             >
