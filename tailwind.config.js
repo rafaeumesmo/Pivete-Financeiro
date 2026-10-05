@@ -7,6 +7,8 @@ import colors from "tailwindcss/colors";
 //   fg, fg-2, fg-3                          → texto primário/secundário/terciário
 //   brand, brand-hover, brand-ink           → cor de marca (fundo / hover / texto sobre fundo neutro)
 //   on-brand                                → texto/ícone sobre fundo de marca (branco nos dois temas)
+//   on-nav, on-pos, on-neg                  → idem sobre bg-nav / bg-pos / bg-neg
+//                                             (cada on-X só em cima de bg-X)
 //   pos, neg, warn                          → só pra valores e status
 //
 // Legado: o app foi escrito pro escuro com "white/xx" como tinta; aqui "white"
@@ -33,6 +35,9 @@ const TOKENS = {
   "brand-hover": { claro: "#1A35B5", escuro: "#2E4FE6" },
   "brand-ink":   { claro: "#1F3FD6", escuro: "#8FA2FF" },
   "on-brand":    { claro: "#FFFFFF", escuro: "#FFFFFF" },
+  "on-nav":      { claro: "#FFFFFF", escuro: "#FFFFFF" },
+  "on-pos":      { claro: "#FFFFFF", escuro: "#FFFFFF" },
+  "on-neg":      { claro: "#FFFFFF", escuro: "#FFFFFF" },
   pos:           { claro: "#16A34A", escuro: "#22C55E" },
   neg:           { claro: "#DC2626", escuro: "#EF4444" },
   warn:          { claro: "#D97706", escuro: "#F59E0B" },

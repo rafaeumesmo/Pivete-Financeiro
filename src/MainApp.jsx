@@ -38,7 +38,8 @@ import { DEFAULT_CATEGORIAS } from "./lib/categories.js";
 import { SK, load, usePersistedState } from "./lib/storage.js";
 import { formatBRL } from "./lib/money.js";
 import { decisoesDoMes } from "./lib/finance.js";
-import { APP_NAME, AVATAR_EMOJIS } from "./config.js";
+import { APP_NAME, AVATAR_EMOJIS, AVATAR_PADRAO } from "./config.js";
+import { Avatar } from "./components/Avatar.jsx";
 import { avaliarConquistas, CONQUISTAS, nivel, xpTotal } from "./lib/conquistas.js";
 
 // Anti-spam keys for notifications (1 dispatch per type per day)
@@ -109,7 +110,7 @@ export default function MainApp() {
   // Estados persistidos — sobrevivem ao reload
   const finance = useFinance();
   const [stats,     setStats]     = usePersistedState(SK.stats,   { accepted: 0, rejected: 0, shared: 0 });
-  const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@voce", avatar: "👤" });
+  const [profile,   setProfile]   = usePersistedState(SK.profile, { name: "Seu Nome", handle: "@voce", avatar: AVATAR_PADRAO });
   const [decisions, setDecisions] = usePersistedState(SK.decisions, []); // histórico imutável
   const [streak,        setStreak]        = usePersistedState(SK.streak, { count: 0, best: 0, lastActiveDate: null, freezesAvailable: 1 });
   const [reservaMeses,  setReservaMeses]  = usePersistedState(SK.reservaMeses, 6);
@@ -140,7 +141,7 @@ export default function MainApp() {
     ? {
         name:   auth.profile.display_name || auth.profile.username,
         handle: `@${auth.profile.username}`,
-        avatar: auth.profile.avatar_emoji || "👤",
+        avatar: auth.profile.avatar_emoji || AVATAR_PADRAO,
       }
     : profile;
   const [showAuthModal,      setShowAuthModal]      = useState(false);
@@ -569,7 +570,7 @@ export default function MainApp() {
         )}
         {showProfileEditor && (
           <Sheet key="profile-editor" title="Editar perfil" kicker="Atualize nome, nick e avatar." onClose={closeProfileEditor} maxWidth="max-w-md" z="z-50">
-            <div className="flex justify-center mb-4"><div className="w-14 h-14 rounded-full bg-tile border border-line text-3xl flex items-center justify-center">{editedProfile.avatar}</div></div>
+            <div className="flex justify-center mb-4"><Avatar emoji={editedProfile.avatar} className="w-14 h-14 text-3xl" iconSize={26} /></div>
             <div className="space-y-3 mb-4">
               <input value={editedProfile.name} onChange={(e) => setEditedProfile((p) => ({ ...p, name: e.target.value }))} placeholder="Seu nome" aria-label="Nome" className={inputCls} />
               <div>

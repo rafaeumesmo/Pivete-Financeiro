@@ -49,7 +49,7 @@ export function ActivityTab({ finance, showToast, onPago }) {
               {tab.label}
               {counts[tab.id] > 0 && <span className="ml-1 text-[12px] text-fg-3 tabular-nums">{counts[tab.id]}</span>}
               {tab.badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-sm bg-neg text-on-brand text-[11px] font-semibold flex items-center justify-center px-[3px]">{tab.badge > 9 ? "9+" : tab.badge}</span>
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-sm bg-neg text-on-neg text-[11px] font-semibold flex items-center justify-center px-[3px]">{tab.badge > 9 ? "9+" : tab.badge}</span>
               )}
             </button>
           ))}

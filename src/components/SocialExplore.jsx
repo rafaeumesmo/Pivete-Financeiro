@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { fetchMyPolls, deletePoll } from "../lib/polls";
 import { CobrancasPanel } from "./CobrancasPanel.jsx";
 import { DividirPanel } from "./DividirPanel.jsx";
+import { Avatar as AvatarBase } from "./Avatar.jsx";
 import { CONQUISTAS } from "../lib/conquistas.js";
 import { btnCls, inputCls } from "./ui.jsx";
 import { ICON_STROKE } from "../lib/icons.js";
-import { User, Users, UserPlus, Star, Trash2, Search, X, Check, Vote, Link2 } from "lucide-react";
+import { Users, UserPlus, Star, Trash2, Search, X, Check, Vote, Link2 } from "lucide-react";
 
 /*
  * SocialExplore — aba Social: cobranças, divisão de contas (Supabase),
@@ -18,13 +19,10 @@ import { User, Users, UserPlus, Star, Trash2, Search, X, Check, Vote, Link2 } fr
  * um padding inferior generoso pra nada ficar colado.
  */
 
+const AVATAR_TAM = { sm: ["w-7 h-7 text-sm", 14], md: ["w-10 h-10 text-xl", 18], lg: ["w-11 h-11 text-2xl", 20] };
 function Avatar({ emoji, close, size = "md" }) {
-  const dim = size === "lg" ? "w-11 h-11 text-2xl" : size === "sm" ? "w-7 h-7 text-sm" : "w-10 h-10 text-xl";
-  return (
-    <div className={`${dim} rounded-full flex items-center justify-center flex-shrink-0 bg-tile border ${close ? "border-brand" : "border-line"}`}>
-      {emoji || <User size={size === "sm" ? 14 : 18} strokeWidth={ICON_STROKE} className="text-fg-2" aria-hidden />}
-    </div>
-  );
+  const [cls, icon] = AVATAR_TAM[size];
+  return <AvatarBase emoji={emoji} className={cls} iconSize={icon} destaque={close} />;
 }
 
 function StarButton({ active, onClick, disabled, big = false }) {
@@ -170,7 +168,7 @@ function FriendsPanel({ social, showToast, isDesktop }) {
         <div>
           <h3 className="text-[15px] font-semibold text-fg mb-3 flex items-center gap-2">
             Pedidos recebidos
-            <span className="bg-neg text-on-brand text-[12px] font-semibold px-1.5 py-0.5 rounded-sm tabular-nums">{pendingIncoming.length}</span>
+            <span className="bg-neg text-on-neg text-[12px] font-semibold px-1.5 py-0.5 rounded-sm tabular-nums">{pendingIncoming.length}</span>
           </h3>
           <div className={grid}>
             {pendingIncoming.map(({ friendshipId, profile }) => (
@@ -376,7 +374,7 @@ export function SocialExplore({
               {tab.label}
               {tab.count > 0 && <span className="ml-1 text-[12px] text-fg-3 tabular-nums">{tab.count}</span>}
               {tab.badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-sm bg-neg text-on-brand text-[11px] font-semibold flex items-center justify-center px-[3px]">
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] rounded-sm bg-neg text-on-neg text-[11px] font-semibold flex items-center justify-center px-[3px]">
                   {tab.badge > 9 ? "9+" : tab.badge}
                 </span>
               )}

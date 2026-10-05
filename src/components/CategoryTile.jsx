@@ -2,6 +2,7 @@ import { categoriaIcon, ICON_STROKE } from "../lib/icons.js";
 
 // Tile quadrado com o ícone da categoria. `onBrand` é a variante usada dentro
 // do card de swipe (fundo de marca).
+// on-color: parent bg-brand — a variante onBrand só existe dentro do card de swipe.
 export function CategoryTile({ categoria, size = 40, onBrand = false, className = "" }) {
   const Icon = categoriaIcon(categoria);
   return (

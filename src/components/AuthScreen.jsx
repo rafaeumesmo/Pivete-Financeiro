@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe, Mail, MailCheck } from "lucide-react";
+import { Cloud, Mail, MailCheck } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
 
 export function AuthScreen({ onSendLink, onGoogle }) {
@@ -44,9 +44,9 @@ export function AuthScreen({ onSendLink, onGoogle }) {
       className="flex flex-col items-center justify-center px-6 pb-6 text-center"
     >
       <div className="w-full max-w-sm">
-        <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><Globe size={24} strokeWidth={ICON_STROKE} /></span>
+        <span className="mx-auto mb-3 w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center" aria-hidden><Cloud size={24} strokeWidth={ICON_STROKE} /></span>
         <p className="text-sm text-fg-2 mb-6 leading-relaxed">
-          Compartilhe tasks com amigos e veja o que eles estão decidindo em tempo real.
+          Entra pra deixar suas contas guardadas e ver tudo em qualquer aparelho.
         </p>
 
         {sent ? (
@@ -111,7 +111,7 @@ export function AuthScreen({ onSendLink, onGoogle }) {
               {loading ? (
                 <span className="w-4 h-4 rounded-full border-2 border-on-brand/30 border-t-on-brand animate-spin" />
               ) : (
-                <><Mail size={16} strokeWidth={ICON_STROKE} aria-hidden />Enviar magic link</>
+                <><Mail size={16} strokeWidth={ICON_STROKE} aria-hidden />Me manda o link</>
               )}
             </motion.button>
           </form>
@@ -119,7 +119,7 @@ export function AuthScreen({ onSendLink, onGoogle }) {
         )}
 
         <p className="text-[12px] text-fg-3 mt-6 leading-relaxed">
-          Sem senha. Um link seguro é enviado pro seu email toda vez que quiser entrar.
+          Sem senha pra decorar: a gente manda um link seguro pro seu email toda vez que você quiser entrar.
         </p>
       </div>
     </motion.div>

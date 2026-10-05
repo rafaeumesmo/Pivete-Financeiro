@@ -6,11 +6,10 @@ import { SectionTitle, SmallButton, EmptyHint, inputCls, labelCls } from "./ui.j
 import { findCategoria } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
 import { todayKey } from "../lib/dates.js";
-import { CreditCard, Repeat } from "lucide-react";
+import { CreditCard, Pause, Play, Repeat, TriangleAlert } from "lucide-react";
 import {
   frequenciaLabel, valorMensal, parcelasRestantes, jurosAlto, fixosMensais, rendaMensal, DAY_NAMES, JUROS_ALTO_MES,
 } from "../lib/finance.js";
-import { TriangleAlert } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
 import { CategoryTile } from "./CategoryTile.jsx";
 
@@ -37,8 +36,8 @@ export function FixosDividasPanel({ finance, showToast }) {
         <span className={`text-[13px] font-semibold tabular-nums ${r.tipo === "entrada" ? "text-pos" : "text-fg"}`}>{formatBRL(r.valor)}</span>
         <button type="button" onClick={() => finance.alternarRecorrente(r.id)} aria-label={r.ativo ? `Pausar ${r.nome}` : `Retomar ${r.nome}`} title={r.ativo ? "Pausar" : "Retomar"} className="w-8 h-8 rounded-md bg-tile text-fg-2 hover:text-fg flex items-center justify-center flex-shrink-0">
           {r.ativo
-            ? <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-            : <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden><path d="M7 5.5v13a1 1 0 001.5.86l11-6.5a1 1 0 000-1.72l-11-6.5A1 1 0 007 5.5z" /></svg>}
+            ? <Pause size={14} strokeWidth={ICON_STROKE} aria-hidden />
+            : <Play size={14} strokeWidth={ICON_STROKE} aria-hidden />}
         </button>
       </div>
     );

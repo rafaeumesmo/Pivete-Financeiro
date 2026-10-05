@@ -5,6 +5,10 @@ export const APP_NAME = "Pivete Financeiro";
 export const APP_TAGLINE = "Seu dinheiro, um swipe por vez.";
 export const BRAND_COLOR = "rgb(var(--brand-ink))";
 
+// Avatar de quem ainda não escolheu (default da coluna avatar_emoji no
+// Supabase). Na tela vira o ícone User (components/Avatar.jsx).
+export const AVATAR_PADRAO = "👤";
+
 // Opções de avatar do perfil (criação e edição). O gatinho vem primeiro: é o da marca.
 export const AVATAR_EMOJIS = ["🐱", "🐶", "🦊", "🐼", "🐨", "🐯", "🦁", "🐻", "🐰", "🐸", "🐵", "🐧", "🦉", "🐢", "🐙", "🦄"];
 

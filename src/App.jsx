@@ -6,6 +6,7 @@ import { Landing } from "./components/Landing.jsx";
 import { supabase } from "./supabaseClient";
 import { SK, load, save, dadosPersistentes, tornarTemporario } from "./lib/storage.js";
 import { telaInicial } from "./lib/landing.js";
+import { UpdatePrompt } from "./components/UpdatePrompt.jsx";
 
 function getRoute() {
   const h = window.location.hash;
@@ -37,6 +38,10 @@ function useSessao(ativo, onSaiu) {
 }
 
 export default function App() {
+  return <><Rotas /><UpdatePrompt /></>;
+}
+
+function Rotas() {
   const [route, setRoute] = useState(getRoute);
   // noApp: logado neste aparelho, já clicou "Começar" nesta aba, ou entrou.
   // saiu: deslogou — volta pra Landing, com "Entrar" em destaque, até logar

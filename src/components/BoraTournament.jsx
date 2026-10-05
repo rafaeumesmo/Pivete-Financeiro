@@ -10,6 +10,7 @@ import { ICON_STROKE } from "../lib/icons.js";
  * desafiante, até sobrar uma campeã. N opções → N-1 duelos (cobre par/ímpar e
  * o caso de só 2 opções = 1 duelo). Sem login.
  */
+// on-color: parent bg-brand — textos de apoio dentro do card azul.
 function DuelCard({ option, state, onPick, slide }) {
   // state: "idle" | "win" | "lose"
   const targets = {

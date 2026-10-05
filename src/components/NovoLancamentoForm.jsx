@@ -158,7 +158,7 @@ export function NovoLancamentoForm({ isDesktop, categorias, contas, contaPadrao,
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCancel} className="flex-1 rounded-lg border border-line bg-tile py-3 text-sm text-fg-2 hover:bg-tile hover:text-fg transition">Cancelar</button>
-            <button type="submit" className={`flex-1 rounded-lg py-3 text-sm font-semibold text-on-brand transition ${entrada ? "bg-brand hover:bg-brand-hover" : "bg-brand hover:bg-brand-hover"}`}>Salvar</button>
+            <button type="submit" className="flex-1 rounded-lg py-3 text-sm font-semibold bg-brand text-on-brand hover:bg-brand-hover transition">Salvar</button>
           </div>
         </form>
       </div>

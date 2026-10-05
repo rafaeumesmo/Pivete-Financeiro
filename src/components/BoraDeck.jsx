@@ -13,6 +13,7 @@ import { ActionButtons } from "./ActionButtons.jsx";
 const SWIPE_THRESHOLD = 100;
 
 
+// on-color: parent bg-brand — textos de apoio dentro do card azul.
 function BoraCard({ option, isTop, stackIndex, onSwipe }) {
   const prefersReducedMotion = useReducedMotion();
   const x = useMotionValue(0);

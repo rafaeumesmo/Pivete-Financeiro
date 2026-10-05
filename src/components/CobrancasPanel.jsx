@@ -6,8 +6,7 @@ import { MoneyInput } from "./MoneyInput.jsx";
 import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls } from "./ui.jsx";
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort } from "../lib/dates.js";
-import { Receipt } from "lucide-react";
-import { X } from "lucide-react";
+import { Receipt, X } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
 
 // Avisos "paguei" que chegaram pelo link, lidos pela função

@@ -46,6 +46,7 @@ export function Sidebar({ compact, activeTab, onTab, badges, streak, onStreak, f
 }
 
 // Mobile: pílula escura flutuante. Ativo = fundo de marca + rótulo.
+// on-color: parent bg-nav — itens inativos ficam direto na pílula.
 export function BottomNav({ activeTab, onTab, badges }) {
   return (
     <nav className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 p-1.5 rounded-full bg-nav shadow" style={{ bottom: "max(env(safe-area-inset-bottom), 16px)" }} aria-label="Navegação principal">
@@ -58,7 +59,7 @@ export function BottomNav({ activeTab, onTab, badges }) {
             onClick={() => onTab(id)}
             aria-current={ativo ? "page" : undefined}
             aria-label={label}
-            className={`flex items-center gap-2 h-11 rounded-full transition-colors text-on-brand ${ativo ? "bg-brand px-4" : "w-12 justify-center opacity-70 hover:opacity-100"}`}
+            className={`flex items-center gap-2 h-11 rounded-full transition-colors ${ativo ? "bg-brand text-on-brand px-4" : "text-on-nav w-12 justify-center opacity-70 hover:opacity-100"}`}
           >
             <span className="relative"><Icon size={20} strokeWidth={ICON_STROKE} aria-hidden /><NavBadge count={badges[id] || 0} /></span>
             {ativo && <span className="text-[13px] font-semibold">{label}</span>}

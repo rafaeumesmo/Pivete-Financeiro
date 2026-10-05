@@ -90,17 +90,18 @@ export function SwipeCard({ item, onSwipe, isTop, stackIndex, labels, onTap, chi
     >
       <div className="w-full h-full rounded-lg overflow-hidden shadow relative select-none bg-brand text-on-brand">
         {children}
-        <Carimbo opacity={greenOpacity} bg="rgb(var(--pos) / 0.92)" Icon={Check} label={labels.right} />
-        <Carimbo opacity={redOpacity} bg="rgb(var(--neg) / 0.92)" Icon={X} label={labels.left} />
-        {allowUp && <Carimbo opacity={blueOpacity} bg="rgb(17 19 24 / 0.92)" Icon={Split} label={labels.up} />}
+        <Carimbo opacity={greenOpacity} cls="bg-pos/[0.92] text-on-pos" Icon={Check} label={labels.right} />
+        <Carimbo opacity={redOpacity} cls="bg-neg/[0.92] text-on-neg" Icon={X} label={labels.left} />
+        {allowUp && <Carimbo opacity={blueOpacity} cls="bg-nav/[0.92] text-on-nav" Icon={Split} label={labels.up} />}
       </div>
     </motion.div>
   );
 }
 
-function Carimbo({ opacity, bg, Icon, label }) {
+// Também usado no mini card do Onboarding/Landing.
+export function Carimbo({ opacity, cls, Icon, label }) {
   return (
-    <motion.div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 pointer-events-none text-on-brand" style={{ backgroundColor: bg, opacity }}>
+    <motion.div className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 pointer-events-none ${cls}`} style={{ opacity }}>
       <Icon size={40} strokeWidth={ICON_STROKE} aria-hidden />
       <span className="text-xl font-semibold">{label}</span>
     </motion.div>

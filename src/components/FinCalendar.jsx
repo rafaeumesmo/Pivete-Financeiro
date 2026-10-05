@@ -6,7 +6,8 @@ import { formatBRL } from "../lib/money.js";
 import { useOcultarValores } from "../lib/privacy.js";
 import { toDateStr, fromDateStr, addDays, formatDateShort, todayKey, formatMonth } from "../lib/dates.js";
 import { ocorrencias, custoEfetivo } from "../lib/finance.js";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
 
 const DAY_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -78,14 +79,14 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
       <div className="rounded-lg border border-line bg-surface p-3">
         <div className="flex items-center justify-between mb-3 px-1">
           <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="w-7 h-7 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            <ChevronLeft size={16} strokeWidth={ICON_STROKE} aria-hidden />
           </button>
           <div className="flex items-center gap-2">
             <span className="text-[13px] font-semibold text-fg">{formatMonth(toDateStr(view).slice(0, 7))}</span>
             {!(noMesAtual && sel === hoje) && <button onClick={() => { const t = new Date(); setView(new Date(t.getFullYear(), t.getMonth(), 1)); setSel(hoje); }} className="text-[12px] font-semibold text-brand-ink hover:text-fg transition">Hoje</button>}
           </div>
           <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="w-7 h-7 rounded-md flex items-center justify-center text-fg-2 hover:text-fg hover:bg-tile transition">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} aria-hidden />
           </button>
         </div>
         <div className="grid grid-cols-7 mb-1">

@@ -7,8 +7,7 @@ import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey } from "../lib/dates.js";
 import { saldosComigo, totaisSaldos, partesIguais } from "../lib/splits.js";
 import { makeId } from "../lib/finance.js";
-import { Users } from "lucide-react";
-import { X } from "lucide-react";
+import { ChevronLeft, Users, X } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
 
 const nomeDe = (p) => p ? `@${p.username}` : "alguém";
@@ -111,7 +110,7 @@ function GrupoDetalhe({ grupo, saldos, splits, userId, finance, showToast, onVol
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-3">
         <button type="button" onClick={onVoltar} aria-label="Voltar aos grupos" className="w-8 h-8 rounded-md bg-tile text-fg-2 hover:text-fg flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          <ChevronLeft size={16} strokeWidth={ICON_STROKE} aria-hidden />
         </button>
         <div className="min-w-0 flex-1"><p className="text-base font-bold text-fg truncate">{grupo.name}</p><p className="text-[12px] text-fg-3 truncate">{grupo.members.map(nomeDe).join(", ")}</p></div>
         <SmallButton tone="blue" onClick={() => setDespesa(true)}>+ Despesa</SmallButton>

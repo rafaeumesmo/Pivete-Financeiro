@@ -8,10 +8,13 @@ export default defineConfig({
     react(),
     // Título da aba vem do mesmo APP_NAME do app (src/config.js).
     { name: "app-name-title", transformIndexHtml: (html) => html.replaceAll("%APP_NAME%", APP_NAME) },
-    // PWA: manifest + service worker que pré-carrega o build (abre offline).
-    // Chamadas ao Supabase não são cacheadas — o app já é local-first.
+    // PWA: manifest + service worker que pré-carrega o build (abre offline),
+    // fonte inclusa. Chamadas ao Supabase não são cacheadas. Cada build gera
+    // um precache com revisões novas; o registro e o aviso de "versão nova"
+    // ficam em components/UpdatePrompt.jsx (registerType "prompt").
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
+      injectRegister: false,
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "badge.png"],
       manifest: {
         name: APP_NAME,
@@ -22,8 +25,9 @@ export default defineConfig({
         scope: "/",
         display: "standalone",
         orientation: "portrait",
-        background_color: "#111114",
-        theme_color: "#111114",
+        // Tema claro é o padrão (lib/theme.js); splash e barra seguem ele.
+        background_color: "#F4F5F7",
+        theme_color: "#F4F5F7",
         icons: [
           { src: "icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icon-512.png", sizes: "512x512", type: "image/png" },

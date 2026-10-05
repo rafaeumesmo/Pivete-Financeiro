@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { normalizeUsername, validateUsername } from "../lib/username";
+import { AVATAR_PADRAO } from "../config.js";
 
 export function useAuth() {
   const [session, setSession]       = useState(undefined); // undefined = carregando
@@ -87,7 +88,7 @@ export function useAuth() {
         id: session.user.id,
         username: uname,
         display_name: (displayName || uname).trim(),
-        avatar_emoji: avatarEmoji || "👤",
+        avatar_emoji: avatarEmoji || AVATAR_PADRAO,
       })
       .select()
       .single();

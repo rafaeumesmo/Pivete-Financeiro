@@ -8,6 +8,7 @@ import { CategoryTile } from "./CategoryTile.jsx";
 
 // Conteúdo dos cards do deck (vão dentro de <SwipeCard>, fundo de marca).
 // Tudo em text-on-brand: "white" é a tinta do tema e escurece no claro.
+// on-color: parent bg-brand — vai dentro do <SwipeCard>.
 function CardLayout({ categoria, topRight, valor, valorSub, titulo, meta, alerta }) {
   return (
     <div className="relative z-10 h-full flex flex-col justify-between p-5 text-on-brand pointer-events-none">

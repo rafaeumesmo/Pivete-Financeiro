@@ -9,6 +9,7 @@ import { useTema } from "../lib/theme.js";
 import { useOcultarValores } from "../lib/privacy.js";
 import { EyeButton, btnCls } from "./ui.jsx";
 import { StreakIcon } from "./StreakWidgets.jsx";
+import { Avatar } from "./Avatar.jsx";
 import { ICON_STROKE } from "../lib/icons.js";
 import { Globe, Lock, Wallet, Timer, Info, Sun, Moon, AlarmClock, Bell, LogOut, TriangleAlert, ChevronRight, Trash2, Pencil } from "lucide-react";
 
@@ -174,8 +175,8 @@ export function ProfileTab({
       {/* ── Identidade ────────────────────────────────────────── */}
       <div className="px-5 pt-6 mb-8">
         <div className="flex items-center gap-4">
-          <button type="button" onClick={openProfileEditor} aria-label="Editar perfil" className="w-16 h-16 rounded-full bg-tile border border-line flex items-center justify-center text-[32px] select-none flex-shrink-0 hover:bg-line transition">
-            {profile.avatar}
+          <button type="button" onClick={openProfileEditor} aria-label="Editar perfil" className="rounded-full flex-shrink-0 hover:opacity-80 transition">
+            <Avatar emoji={profile.avatar} className="w-16 h-16 text-[32px]" iconSize={28} />
           </button>
           <div className="flex-1 min-w-0">
             <h2 className="text-[20px] font-semibold text-fg leading-tight truncate">{profile.name}</h2>
