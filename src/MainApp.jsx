@@ -19,6 +19,8 @@ import { migrateAnonPolls, fetchMyPolls } from "./lib/polls.js";
 import { startSync, stopSync, finishSync, limparAparelho, MESCLADO_EVENT } from "./lib/sync.js";
 import { resumoTexto, duplicadoTexto, SALDO_MANTIDO_TEXTO } from "./lib/mesclar.js";
 import { registrarDiaUso, deveAvisarConta, MOTIVOS_CONTA } from "./lib/convidado.js";
+import { reciboDoMes, estatisticasMes, nomeMesCurto } from "./lib/recibo.js";
+import { ReciboAviso, ReciboSheet } from "./components/Recibo.jsx";
 import { todayKey, daysBetween, addDays } from "./lib/dates.js";
 import { ActivityTab } from "./components/ActivityTab.jsx";
 import { ProfileTab } from "./components/ProfileTab.jsx";
@@ -166,6 +168,15 @@ export default function MainApp() {
   const [diasUso, setDiasUso] = usePersistedState(SK.diasUso, []);
   const [avisoContaDispensado, setAvisoContaDispensado] = usePersistedState(SK.avisoContaDispensado, null);
   useEffect(() => { setDiasUso((d) => registrarDiaUso(d, todayKey())); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- setter estável, roda no mount
+  // Recibo do mês fechado: aviso na Início do dia 1 ao 7 (some ao abrir ou
+  // fechar); depois fica no Perfil. Grátis, inclusive pra convidado.
+  const [reciboVisto, setReciboVisto] = usePersistedState(SK.reciboVisto, null);
+  const [reciboAberto, setReciboAberto] = useState(false);
+  const recibo = reciboDoMes(todayKey());
+  const reciboDados = { decisions, revisoes: finance.revisoes, conquistas, categorias: finance.categorias };
+  const reciboSuficiente = estatisticasMes({ ...reciboDados, ym: recibo.ym }).suficiente;
+  function abrirRecibo() { setReciboVisto(recibo.ym); setReciboAberto(true); }
+
   const avisarConta = !auth.isLoading && deveAvisarConta({ logado: auth.isLoggedIn, diasUso, dispensadoEm: avisoContaDispensado, hoje: todayKey() });
 
   // Perfil efetivo da UI: logado → tabela "profiles" do Supabase é a fonte de
@@ -489,6 +500,9 @@ export default function MainApp() {
     <div className="h-full overflow-y-auto">
       <div className={`mx-auto w-full ${isDesktop ? "max-w-[1120px] px-10 py-8" : "max-w-[640px] px-4 sm:px-6 pt-4 pb-28 md:pb-10 md:pt-8"}`}>
         {riskBanner}
+        {recibo.emDestaque && reciboVisto !== recibo.ym && (
+          <ReciboAviso ym={recibo.ym} suficiente={reciboSuficiente} onAbrir={abrirRecibo} onDispensar={() => setReciboVisto(recibo.ym)} />
+        )}
         {avisarConta && (
           <div className="mb-5 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
             <Smartphone size={18} strokeWidth={ICON_STROKE} className="text-fg-2 flex-shrink-0" aria-hidden />
@@ -536,6 +550,7 @@ export default function MainApp() {
       handleLogout={handleLogout}
       clearAllData={clearAllData} isDesktop={isDesktop}
       isLoggedIn={auth.isLoggedIn} onCriarConta={() => pedirConta(MOTIVOS_CONTA.guardar)}
+      reciboMes={nomeMesCurto(recibo.ym)} onAbrirRecibo={abrirRecibo}
       snoozeDefault={snoozeDefault} onSnoozeDefaultChange={setSnoozeDefault}
       finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
     />
@@ -629,6 +644,9 @@ export default function MainApp() {
           <Sheet key="auth-modal" title={authMotivo ? "Criar conta ou entrar" : `Entrar no ${APP_NAME}`} onClose={() => setShowAuthModal(false)}>
             <div className="-mx-5 -mb-5"><AuthScreen motivo={authMotivo} onSendLink={auth.sendMagicLink} onGoogle={auth.signInWithGoogle} /></div>
           </Sheet>
+        )}
+        {reciboAberto && (
+          <ReciboSheet key="recibo" ym={recibo.ym} dados={reciboDados} userId={auth.user?.id ?? null} onClose={() => setReciboAberto(false)} showToast={showToast} />
         )}
         {mesclado && (
           <Sheet key="mesclado" title="Seus dados vieram junto" onClose={() => setMesclado(null)}>

@@ -17,11 +17,11 @@ export const LIMITES_GRATIS = {
   categorias: 3, // personalizadas (as padrão não contam); seletor de ícone é livre
 };
 
-// Escudos de sequência acumulados. Hoje (flag desligada) o máximo é 2 pra
-// todo mundo; com o Pro ligado, grátis guarda 1 e Pro guarda 3. Quem já tem
-// mais que o máximo não perde: o limite só impede de ganhar outro.
+// Escudos de sequência acumulados. Grátis guarda 2 (como sempre foi); com o
+// Pro ligado, Pro guarda 4. Quem já tem mais que o máximo não perde: o
+// limite só impede de ganhar outro.
 export const ESCUDOS_HOJE = 2;
-export const ESCUDOS = { gratis: 1, pro: 3 };
+export const ESCUDOS = { gratis: 2, pro: 4 };
 
 export function temPro({ plano, logado }) {
   return !!logado && plano === "pro";

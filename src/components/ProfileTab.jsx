@@ -12,7 +12,7 @@ import { StreakIcon } from "./StreakWidgets.jsx";
 import { Avatar } from "./Avatar.jsx";
 import { Sheet } from "./Sheet.jsx";
 import { ICON_STROKE } from "../lib/icons.js";
-import { Globe, Lock, Wallet, Timer, Info, Sun, Moon, AlarmClock, Bell, LogOut, TriangleAlert, ChevronRight, Trash2, Pencil, CloudUpload } from "lucide-react";
+import { Globe, Lock, Wallet, Timer, Info, Sun, Moon, AlarmClock, Bell, LogOut, TriangleAlert, ChevronRight, Trash2, Pencil, CloudUpload, Receipt } from "lucide-react";
 
 // Cabeçalho dos blocos Público / Privado do perfil.
 function BlockHeader({ Icon, title, sub, action, isDesktop }) {
@@ -54,7 +54,7 @@ function Linha({ Icon, children, tone = "text-fg", onClick, right }) {
 export function ProfileTab({
   profile, stats, streak, notifSettings,
   openProfileEditor, setShowNotifSettings, setShowAboutModal,
-  handleLogout, clearAllData, isDesktop = false, isLoggedIn = false, onCriarConta,
+  handleLogout, clearAllData, isDesktop = false, isLoggedIn = false, onCriarConta, reciboMes, onAbrirRecibo,
   snoozeDefault, onSnoozeDefaultChange,
   finance, conquistas, reservaMeses, setReservaMeses, onNavigate, showToast,
 }) {
@@ -135,6 +135,7 @@ export function ProfileTab({
     <div className={isDesktop ? "" : "px-5"}>
       <h3 className="text-[15px] font-semibold text-fg mb-3">Configurações</h3>
       <div className="rounded-lg border border-line bg-surface divide-y divide-line overflow-hidden">
+        {onAbrirRecibo && <Linha Icon={Receipt} onClick={onAbrirRecibo} right={<><span className="text-[13px] text-fg-2 mr-1">{reciboMes}</span>{chevron}</>}>Recibo do mês</Linha>}
         {/* Tema — salvo na conta quando logado (SK.tema em SYNC_KEYS) */}
         <Linha Icon={tema === "claro" ? Sun : Moon} right={<Segmented label="Tema" value={tema} onChange={setTema} options={[{ id: "claro", label: "Claro" }, { id: "escuro", label: "Escuro" }]} />}>Tema</Linha>
         <Linha Icon={AlarmClock} right={<Segmented label="Tempo de adiamento" value={snoozeDefault} onChange={v => onSnoozeDefaultChange?.(v)} options={[{ id: "1h", label: "1 hora" }, { id: "1d", label: "1 dia" }]} />}>Tempo de adiamento</Linha>

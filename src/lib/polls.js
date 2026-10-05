@@ -74,6 +74,14 @@ export async function fetchMyPolls(userId = null) {
   }));
 }
 
+// Quantos Bora? criei num mês (YYYY-MM, data local). Pro título do recibo;
+// sem rede ou demorando mais de 3s, conta 0 (o recibo sai do mesmo jeito).
+export async function contarBoraNoMes(userId, ym) {
+  const mes = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+  const contar = fetchMyPolls(userId).then((ps) => ps.filter((p) => p.created_at && mes(p.created_at) === ym).length);
+  return Promise.race([contar, new Promise((r) => setTimeout(() => r(0), 3000))]).catch(() => 0);
+}
+
 // Apaga a enquete (com opções e votos) se eu sou o criador — via RPC
 // delete_poll (supabase/policies/05_polls_delete.sql).
 export async function deletePoll(pollId) {

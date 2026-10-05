@@ -32,6 +32,7 @@ export const SK = {
   landingSeen:   "fin_landing_seen",   // clicou "Começar" na Landing — por aparelho, fora de SYNC_KEYS
   diasUso:       "fin_dias_uso",       // dias distintos em que o convidado abriu o app (aviso de criar conta)
   avisoContaDispensado: "fin_aviso_conta_dispensado", // data em que fechou o aviso de criar conta
+  reciboVisto:   "fin_recibo_visto",   // mês (YYYY-MM) do recibo já aberto/dispensado — some o aviso da Início
   saiuDaConta:   "fin_saiu_da_conta",  // deslogou: abre na Landing (modo "entrar de novo") até logar ou escolher usar sem conta
   syncOwner:     "fin_sync_owner",     // id do usuário dono dos dados deste navegador (lib/sync.js)
 };

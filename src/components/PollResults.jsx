@@ -5,6 +5,7 @@ import { formatBRL } from "../lib/money.js";
 import { Trophy, Share2 } from "lucide-react";
 import { ICON_STROKE } from "../lib/icons.js";
 import { btnCls } from "./ui.jsx";
+import { FONTE, carregarFonte, roundRect, wrapText, compartilharCanvas } from "../lib/canvasImagem.js";
 
 const ACCENT = "#1F3FD6"; // cor de marca
 const WIN = "#16A34A";
@@ -23,7 +24,7 @@ function buildResultImage(poll, tally, totalVoters) {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  const FONT = '"Plus Jakarta Sans Variable", system-ui, sans-serif';
+  const FONT = FONTE;
   ctx.fillStyle = "#F4F5F7"; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, headH);
   ctx.fillStyle = "#E6E8EC"; ctx.fillRect(0, headH - 2, W, 2);
@@ -62,27 +63,6 @@ function buildResultImage(poll, tally, totalVoters) {
   return canvas;
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function wrapText(ctx, text, x, y, maxW, lh) {
-  const words = String(text).split(" ");
-  let line = "", yy = y;
-  for (const w of words) {
-    const test = line ? line + " " + w : w;
-    if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, x, yy); line = w; yy += lh; }
-    else line = test;
-  }
-  ctx.fillText(line, x, yy);
-}
-
 export function PollResults({ poll, tally, totalVoters, isCreator, onClosePoll, showToast }) {
   const busy = useRef(false);
 
@@ -95,20 +75,10 @@ export function PollResults({ poll, tally, totalVoters, isCreator, onClosePoll, 
     if (busy.current) return;
     busy.current = true;
     try {
+      await carregarFonte();
       const canvas = buildResultImage(poll, sorted, totalVoters);
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
-      const file = new File([blob], "bora-resultado.png", { type: "image/png" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: poll.title });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "bora-resultado.png"; a.click();
-        URL.revokeObjectURL(url);
-        showToast?.("Imagem do resultado baixada!", "bg-emerald-600/90");
-      }
-    } catch { showToast?.("Não foi possível gerar a imagem.", "bg-red-600/90"); }
-    finally { busy.current = false; }
+      await compartilharCanvas(canvas, { arquivo: "bora-resultado.png", titulo: poll.title, showToast, baixadoTexto: "Imagem do resultado baixada!" });
+    } finally { busy.current = false; }
   }
 
   return (

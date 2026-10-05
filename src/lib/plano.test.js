@@ -69,10 +69,10 @@ describe("plano", () => {
       expect(limitesValem(convidado, LIGADO)).toBe(true);
       expect(limitesValem(pro, LIGADO)).toBe(false);
     });
-    it("escudo: grátis guarda 1, Pro guarda 3, convidado 1", () => {
-      expect(maxEscudos(gratis, LIGADO)).toBe(1);
-      expect(maxEscudos(pro, LIGADO)).toBe(3);
-      expect(maxEscudos({ plano: "pro", logado: false }, LIGADO)).toBe(1);
+    it("escudo: grátis guarda 2 (como hoje), Pro guarda 4, convidado 2", () => {
+      expect(maxEscudos(gratis, LIGADO)).toBe(2);
+      expect(maxEscudos(pro, LIGADO)).toBe(4);
+      expect(maxEscudos({ plano: "pro", logado: false }, LIGADO)).toBe(2);
     });
   });
 
