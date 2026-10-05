@@ -6,7 +6,9 @@ import { ActionButtons } from "./ActionButtons.jsx";
 import { SnoozeSetupModal } from "./SnoozeSetupModal.jsx";
 import { Sheet } from "./Sheet.jsx";
 import { PainelPanel } from "./PainelPanel.jsx";
-import { EyeButton } from "./ui.jsx";
+import { EyeButton, btnCls } from "./ui.jsx";
+import { CircleCheck, Receipt, Scissors, Plus, Minus } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
 import { findCategoria } from "../lib/categories.js";
 import { useOcultarValores } from "../lib/privacy.js";
 import { formatBRL, splitCents } from "../lib/money.js";
@@ -60,7 +62,7 @@ export function FinDeck({
     const willEmpty = deck.length === 1;
     const { quitouDivida } = finance.pagar(l.id, contaId);
     registrar(l, l.tipo === "entrada" ? "Recebi" : "Paguei", "right");
-    showToast(l.tipo === "entrada" ? `✓ Recebido ${brl(l.valor)}` : `✓ Pago ${brl(l.valor)}`, "bg-emerald-600/90 backdrop-blur-md");
+    showToast(l.tipo === "entrada" ? `Recebido ${brl(l.valor)}` : `Pago ${brl(l.valor)}`, "bg-emerald-600/90");
     try { navigator.vibrate?.([30, 50, 30]); } catch {}
     if (quitouDivida) onQuitouDivida?.(l);
     if (willEmpty) onDeckComplete?.();
@@ -70,7 +72,7 @@ export function FinDeck({
     exit("left", vel);
     finance.adiar(l.id, computeSnoozeUntil(pref));
     registrar(l, "Adiei", "left");
-    showToast("⏰  Adiado", "bg-amber-600/90 backdrop-blur-md");
+    showToast("Adiado", "bg-amber-600/90");
     try { navigator.vibrate?.(30); } catch {}
   }
 
@@ -78,7 +80,7 @@ export function FinDeck({
     exit("up", vel);
     const dividido = finance.dividir(l.id, partes, contaId);
     registrar(l, "Dividi", "up");
-    showToast(`↑ Dividido em ${partes} · ${brl(dividido.divisao.porPessoa)} por pessoa`, "bg-blue-600/90 backdrop-blur-md");
+    showToast(`Dividido em ${partes} · ${brl(dividido.divisao.porPessoa)} por pessoa`, "bg-blue-600/90");
     try { navigator.vibrate?.(80); } catch {}
     onDividido?.(dividido);
     if (deck.length === 1) onDeckComplete?.();
@@ -91,7 +93,7 @@ export function FinDeck({
       exit(direction, vel);
       finance.revisar(item.key, direction === "right" ? "valeu" : "cortar");
       onActivity();
-      showToast(direction === "right" ? "👍 Valeu a pena" : `✂️ Cortar · ${brl(item.valorMensal)}`, direction === "right" ? "bg-emerald-600/90 backdrop-blur-md" : "bg-red-600/90 backdrop-blur-md");
+      showToast(direction === "right" ? "Valeu a pena" : `Cortar · ${brl(item.valorMensal)}`, direction === "right" ? "bg-emerald-600/90" : "bg-red-600/90");
       return true;
     }
     const l = item;
@@ -185,7 +187,7 @@ export function FinDeck({
                   const cat = findCategoria(categorias, it.categoria);
                   const itemLabels = mode === "revisar" ? LABELS_REVISAO : it.tipo === "entrada" ? LABELS_ENTRADA : LABELS_SAIDA;
                   return (
-                    <SwipeCard key={it.id || it.key} item={it} gradient={cat.gradient} isTop={isTop} stackIndex={arr.length - 1 - i} onSwipe={handleSwipe} labels={itemLabels}>
+                    <SwipeCard key={it.id || it.key} item={it} isTop={isTop} stackIndex={arr.length - 1 - i} onSwipe={handleSwipe} labels={itemLabels}>
                       {mode === "revisar" ? <RevisaoCardContent item={it} categoria={cat} /> : <LancamentoCardContent lancamento={it} categoria={cat} />}
                     </SwipeCard>
                   );
@@ -193,12 +195,7 @@ export function FinDeck({
               </AnimatePresence>
             </div>
           </div>
-          <div className={`flex-shrink-0 flex items-center justify-between ${isDesktop ? "w-full max-w-[520px] px-2" : "px-8 py-2"}`}>
-            <div className="flex items-center gap-1.5 text-red-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">{labels.left}</span></div>
-            {labels.up && <div className="flex flex-col items-center text-blue-400/50"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 mb-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" /></svg><span className="text-[9px] font-semibold tracking-widest uppercase">{labels.up}</span></div>}
-            <div className="flex items-center gap-1.5 text-emerald-400/50"><span className="text-[9px] font-semibold tracking-widest uppercase">{labels.right}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
-          </div>
-          <div className={`flex-shrink-0 flex items-center justify-center ${isDesktop ? "" : "pb-4"}`}>
+          <div className={`flex-shrink-0 flex items-center justify-center ${isDesktop ? "" : "pt-3 pb-4"}`}>
             <ActionButtons labels={labels} onAction={(dir) => top && handleSwipe(dir, top)} disabled={!top || modalOpen} />
           </div>
         </div>
@@ -244,9 +241,9 @@ export function FinDeck({
 function ContaOption({ conta, selected, onSelect }) {
   const [ocultar] = useOcultarValores();
   return (
-    <button type="button" onClick={onSelect} className={`w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${selected ? "border-[#2563eb] bg-[#2563eb]/15" : "border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07]"}`}>
-      <span className="text-sm font-medium text-white">{conta.nome}</span>
-      <span className={`text-[12px] tabular-nums ${conta.saldo < 0 && !ocultar ? "text-red-400" : "text-white/45"}`}>{formatBRL(conta.saldo, { oculto: ocultar })}</span>
+    <button type="button" onClick={onSelect} aria-pressed={selected} className={`w-full flex items-center justify-between rounded-md border px-4 py-3 text-left transition ${selected ? "border-brand bg-brand/[0.06]" : "border-line bg-surface hover:bg-tile"}`}>
+      <span className="text-sm font-medium text-fg">{conta.nome}</span>
+      <span className={`text-[13px] tabular-nums ${conta.saldo < 0 && !ocultar ? "text-neg" : "text-fg-2"}`}>{formatBRL(conta.saldo, { oculto: ocultar })}</span>
     </button>
   );
 }
@@ -260,7 +257,7 @@ export function ContaPickerSheet({ lancamento, contas, contaPadrao, onClose, onC
       <div className="flex flex-col gap-2 mb-4">
         {contas.map(c => <ContaOption key={c.id} conta={c} selected={c.id === contaId} onSelect={() => setContaId(c.id)} />)}
       </div>
-      <button type="button" onClick={() => onConfirm(contaId)} className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition">
+      <button type="button" onClick={() => onConfirm(contaId)} className={`${btnCls.primary} w-full py-3 text-sm`}>
         {entrada ? "Recebi" : "Paguei"} {formatBRL(lancamento.valor, { oculto: ocultar })}
       </button>
     </Sheet>
@@ -273,52 +270,52 @@ function DividirSheet({ lancamento, contas, contaPadrao, onClose, onConfirm }) {
   const [minha, ...outras] = splitCents(lancamento.valor, partes);
   const [ocultar] = useOcultarValores();
   const brl = (v) => formatBRL(v, { oculto: ocultar });
+  const stepper = "w-8 h-8 rounded-md border border-line bg-surface text-fg flex items-center justify-center hover:bg-tile transition";
   return (
     <Sheet title="Dividir conta" kicker={`${lancamento.descricao} · ${brl(lancamento.valor)}`} onClose={onClose}>
-      <p className="text-[12px] text-white/40 mb-4 leading-relaxed">Você paga o total agora e cobra a parte dos outros. Só a sua parte entra nos seus gastos.</p>
-      <div className="flex items-center justify-between rounded-2xl bg-white/[0.04] border border-white/[0.08] px-4 py-3 mb-3">
-        <span className="text-sm text-white/70">Dividir entre</span>
+      <p className="text-[13px] text-fg-2 mb-4 leading-relaxed">Você paga o total agora e cobra a parte dos outros. Só a sua parte entra nos seus gastos.</p>
+      <div className="flex items-center justify-between rounded-md border border-line px-4 py-3 mb-3">
+        <span className="text-sm text-fg-2">Dividir entre</span>
         <div className="flex items-center gap-3">
-          <button type="button" aria-label="Menos pessoas" onClick={() => setPartes(p => Math.max(2, p - 1))} className="w-8 h-8 rounded-xl bg-white/[0.08] text-white text-lg leading-none">−</button>
-          <span className="text-base font-bold text-white tabular-nums w-16 text-center">{partes} pessoas</span>
-          <button type="button" aria-label="Mais pessoas" onClick={() => setPartes(p => Math.min(20, p + 1))} className="w-8 h-8 rounded-xl bg-white/[0.08] text-white text-lg leading-none">+</button>
+          <button type="button" aria-label="Menos pessoas" onClick={() => setPartes(p => Math.max(2, p - 1))} className={stepper}><Minus size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
+          <span className="text-base font-semibold text-fg tabular-nums w-20 text-center">{partes} pessoas</span>
+          <button type="button" aria-label="Mais pessoas" onClick={() => setPartes(p => Math.min(20, p + 1))} className={stepper}><Plus size={16} strokeWidth={ICON_STROKE} aria-hidden /></button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Sua parte</p><p className="text-base font-bold text-white tabular-nums">{brl(minha)}</p></div>
-        <div className="rounded-2xl bg-[#2563eb]/10 border border-[#2563eb]/25 px-4 py-3"><p className="text-[10px] uppercase tracking-widest text-blue-300/60 mb-1">A receber</p><p className="text-base font-bold text-blue-300 tabular-nums">{brl(outras.reduce((a, b) => a + b, 0))}</p><p className="text-[10px] text-white/35">{brl(outras[0])} por pessoa</p></div>
+        <div className="rounded-md border border-line px-4 py-3"><p className="text-[13px] text-fg-2 mb-1">Sua parte</p><p className="text-base font-semibold text-fg tabular-nums">{brl(minha)}</p></div>
+        <div className="rounded-md border border-line px-4 py-3"><p className="text-[13px] text-fg-2 mb-1">A receber</p><p className="text-base font-semibold text-fg tabular-nums">{brl(outras.reduce((a, b) => a + b, 0))}</p><p className="text-[12px] text-fg-3">{brl(outras[0])} por pessoa</p></div>
       </div>
       {contas.length > 1 && (
         <div className="flex flex-col gap-2 mb-4">
-          <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-white/35">Pagou com</p>
+          <p className="text-[13px] font-medium text-fg-2">Pagou com</p>
           {contas.map(c => <ContaOption key={c.id} conta={c} selected={c.id === contaId} onSelect={() => setContaId(c.id)} />)}
         </div>
       )}
-      <button type="button" onClick={() => onConfirm(partes, contaId)} className="w-full rounded-2xl bg-[#2563eb] py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Paguei e vou dividir</button>
+      <button type="button" onClick={() => onConfirm(partes, contaId)} className={`${btnCls.primary} w-full py-3 text-sm`}>Paguei e vou dividir</button>
     </Sheet>
   );
 }
 
 function DeckVazio({ stats, onNavigate, onRevisar }) {
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, type: "spring" }} className="flex-1 flex flex-col items-center justify-center px-8 text-center max-w-md mx-auto w-full">
-      <div className="text-6xl mb-5">🎉</div>
-      <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Tudo em dia!</h3>
-      <p className="text-white/40 text-sm mb-6 leading-relaxed">Nenhuma conta vencendo nos próximos 7 dias.</p>
-      <p className="text-[10px] font-semibold tracking-[0.1em] uppercase text-white/25 mb-2">Neste mês</p>
-      <div className="flex gap-3 mb-6">
-        {[{ label: "Pagas", value: stats.accepted, color: "text-emerald-400" }, { label: "Adiadas", value: stats.rejected, color: "text-amber-400" }, { label: "Divididas", value: stats.shared, color: "text-blue-400" }].map(({ label, value, color }) => (
-          <div key={label} className="flex flex-col items-center bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-            <span className={`text-2xl font-bold ${color}`}>{value}</span>
-            <span className="text-xs text-white/40 mt-0.5">{label}</span>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto w-full">
+      <span className="w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center mb-4" aria-hidden><CircleCheck size={24} strokeWidth={ICON_STROKE} /></span>
+      <h3 className="text-xl font-semibold text-fg mb-1.5">Tudo em dia</h3>
+      <p className="text-fg-2 text-sm mb-6 leading-relaxed">Nenhuma conta vencendo nos próximos 7 dias.</p>
+      <div className="w-full grid grid-cols-3 gap-2 mb-6">
+        {[{ label: "Pagas", value: stats.accepted }, { label: "Adiadas", value: stats.rejected }, { label: "Divididas", value: stats.shared }].map(({ label, value }) => (
+          <div key={label} className="flex flex-col items-center bg-surface border border-line rounded-lg px-3 py-3">
+            <span className="text-xl font-semibold text-fg tabular-nums">{value}</span>
+            <span className="text-[12px] text-fg-2 mt-0.5">{label} no mês</span>
           </div>
         ))}
       </div>
       <div className="w-full flex flex-col gap-2">
-        <motion.button onClick={() => onNavigate("create")} className="w-full py-3.5 rounded-2xl bg-[#2563eb] text-white font-semibold text-sm hover:bg-blue-500 transition-colors" whileTap={{ scale: 0.97 }}>+ Novo lançamento</motion.button>
+        <button type="button" onClick={() => onNavigate("create")} className={`${btnCls.primary} w-full py-3 text-sm`}><Plus size={18} strokeWidth={ICON_STROKE} aria-hidden />Novo lançamento</button>
         <div className="flex gap-2">
-          <motion.button onClick={onRevisar} className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-white/60 text-sm hover:text-white/80 transition" whileTap={{ scale: 0.97 }}>✂️ Revisar gastos</motion.button>
-          <motion.button onClick={() => onNavigate("activity")} className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-white/60 text-sm hover:text-white/80 transition" whileTap={{ scale: 0.97 }}>Ver atividade</motion.button>
+          <button type="button" onClick={onRevisar} className={`${btnCls.secondary} flex-1 py-3 text-sm`}><Scissors size={16} strokeWidth={ICON_STROKE} aria-hidden />Revisar gastos</button>
+          <button type="button" onClick={() => onNavigate("activity")} className={`${btnCls.secondary} flex-1 py-3 text-sm`}>Ver atividade</button>
         </div>
       </div>
     </motion.div>
@@ -330,35 +327,35 @@ function ResumoRevisao({ itens, revisoes, onRecomecar, onVoltar }) {
   const revisados = itens.filter(it => revisoes[it.key]).length;
   const [ocultar] = useOcultarValores();
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, type: "spring" }} className="flex-1 flex flex-col items-center justify-center px-8 text-center max-w-md mx-auto w-full overflow-y-auto py-6">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto w-full overflow-y-auto py-6">
       {itens.length === 0 ? (
         <>
-          <div className="text-5xl mb-4">🧾</div>
-          <h3 className="text-xl font-bold text-white mb-2">Nada pra revisar ainda</h3>
-          <p className="text-white/40 text-sm mb-6 leading-relaxed">Cadastre gastos fixos ou pague algumas contas — eles aparecem aqui pra você decidir o que vale a pena.</p>
+          <span className="w-12 h-12 rounded-md bg-tile text-fg flex items-center justify-center mb-4" aria-hidden><Receipt size={24} strokeWidth={ICON_STROKE} /></span>
+          <h3 className="text-xl font-semibold text-fg mb-1.5">Nada pra revisar ainda</h3>
+          <p className="text-fg-2 text-sm mb-6 leading-relaxed">Cadastre gastos fixos ou pague algumas contas — eles aparecem aqui pra você decidir o que vale a pena.</p>
         </>
       ) : (
         <>
-          <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-white/35 mb-2">Revisão concluída · {revisados} {revisados === 1 ? "item" : "itens"}</p>
-          <p className="text-white/55 text-sm mb-1">Você poderia economizar</p>
-          <p className={`text-[44px] font-black tabular-nums leading-none mb-1 ${total > 0 ? "text-emerald-400" : "text-white/70"}`}>{formatBRL(total, { oculto: ocultar })}</p>
-          <p className="text-white/40 text-sm mb-5">por mês</p>
+          <p className="text-[13px] text-fg-2 mb-3">Revisão concluída · {revisados} {revisados === 1 ? "item" : "itens"}</p>
+          <p className="text-fg-2 text-sm mb-1">Você poderia economizar</p>
+          <p className={`text-[40px] font-bold tabular-nums leading-none mb-1 ${total > 0 ? "text-pos" : "text-fg"}`}>{formatBRL(total, { oculto: ocultar })}</p>
+          <p className="text-fg-2 text-sm mb-5">por mês</p>
           {cortes.length > 0 ? (
-            <div className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.07] divide-y divide-white/[0.05] mb-5 text-left">
+            <div className="w-full rounded-lg bg-surface border border-line divide-y divide-line mb-5 text-left">
               {cortes.map(c => (
                 <div key={c.key} className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-[13px] text-white/75 truncate">✂️ {c.nome}</span>
-                  <span className="text-[13px] text-white/55 tabular-nums flex-shrink-0 ml-3">{formatBRL(c.valorMensal, { oculto: ocultar })}</span>
+                  <span className="text-[13px] text-fg truncate">{c.nome}</span>
+                  <span className="text-[13px] text-fg-2 tabular-nums flex-shrink-0 ml-3">{formatBRL(c.valorMensal, { oculto: ocultar })}</span>
                 </div>
               ))}
             </div>
-          ) : <p className="text-white/40 text-sm mb-5">Tudo valeu a pena — nada pra cortar. 👌</p>}
-          <p className="text-[11px] text-white/25 mb-5 leading-relaxed">Fixos contam o valor mensal; gastos avulsos dos últimos 30 dias entram como estimativa do que se repete por mês.</p>
+          ) : <p className="text-fg-2 text-sm mb-5">Tudo valeu a pena — nada pra cortar.</p>}
+          <p className="text-[12px] text-fg-3 mb-5 leading-relaxed">Fixos contam o valor mensal; gastos avulsos dos últimos 30 dias entram como estimativa do que se repete por mês.</p>
         </>
       )}
       <div className="w-full flex gap-2">
-        <button onClick={onVoltar} className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-white/60 text-sm hover:text-white/80 transition">Voltar às contas</button>
-        {itens.length > 0 && <button onClick={onRecomecar} className="flex-1 py-3 rounded-2xl bg-white/[0.08] text-white text-sm font-semibold hover:bg-white/[0.12] transition">Revisar de novo</button>}
+        <button type="button" onClick={onVoltar} className={`${btnCls.secondary} flex-1 py-3 text-sm`}>Voltar às contas</button>
+        {itens.length > 0 && <button type="button" onClick={onRecomecar} className={`${btnCls.secondary} flex-1 py-3 text-sm`}>Revisar de novo</button>}
       </div>
     </motion.div>
   );

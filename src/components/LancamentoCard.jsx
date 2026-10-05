@@ -1,68 +1,75 @@
+import { TriangleAlert } from "lucide-react";
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey } from "../lib/dates.js";
 import { vencimentoInfo } from "../lib/finance.js";
 import { useOcultarValores } from "../lib/privacy.js";
+import { ICON_STROKE } from "../lib/icons.js";
+import { CategoryTile } from "./CategoryTile.jsx";
 
-// Conteúdo do card de lançamento no deck (vai dentro de <SwipeCard>).
+// Conteúdo dos cards do deck (vão dentro de <SwipeCard>, fundo de marca).
+// Tudo em text-on-brand: "white" é a tinta do tema e escurece no claro.
+function CardLayout({ categoria, topRight, valor, valorSub, titulo, meta, alerta }) {
+  return (
+    <div className="relative z-10 h-full flex flex-col justify-between p-5 text-on-brand pointer-events-none">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <CategoryTile categoria={categoria} size={36} onBrand />
+        <span className="text-[13px] font-medium text-on-brand/80 truncate flex-1">{categoria.nome}</span>
+        {topRight && <span className="text-[13px] font-medium text-on-brand/80 flex-shrink-0">{topRight}</span>}
+      </div>
+
+      <div className="text-center px-2">
+        <p className="text-[40px] leading-none font-bold tracking-tight tabular-nums">{valor}</p>
+        {valorSub && <p className="text-[13px] text-on-brand/70 mt-2">{valorSub}</p>}
+      </div>
+
+      <div className="min-w-0">
+        <h2 className="text-[17px] font-semibold leading-snug truncate">{titulo}</h2>
+        <p className="text-[13px] text-on-brand/70 mt-0.5 flex items-center gap-1.5 min-w-0">
+          {alerta && <TriangleAlert size={14} strokeWidth={ICON_STROKE} className="flex-shrink-0" aria-hidden />}
+          <span className="truncate">{meta.filter(Boolean).join(" · ")}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function LancamentoCardContent({ lancamento: l, categoria }) {
   const [ocultar] = useOcultarValores();
   const venc = vencimentoInfo(l.data, todayKey(), l.tipo);
   const entrada = l.tipo === "entrada";
   return (
-    <>
-      <div className="absolute top-5 left-5 z-10 flex flex-col items-start gap-1.5">
-        <span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{categoria.nome}</span>
-        {entrada && <span className="text-[10px] font-semibold bg-emerald-400/25 text-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300/30">A receber</span>}
-        {l.recorrenteId && <span className="text-[10px] font-semibold bg-black/25 text-white/75 px-2.5 py-1 rounded-full border border-white/10">🔁 Fixo</span>}
-        {l.dividaId && <span className="text-[10px] font-semibold bg-black/25 text-white/75 px-2.5 py-1 rounded-full border border-white/10">💳 Parcela de dívida</span>}
-        {l.parcela && <span className="text-[10px] font-semibold bg-black/25 text-white/75 px-2.5 py-1 rounded-full border border-white/10">Parcela {l.parcela.numero}/{l.parcela.total}</span>}
-      </div>
-      <div className="absolute right-5 top-5 z-10 text-4xl filter drop-shadow-lg">{categoria.icon}</div>
-
-      {l.voltou && (
-        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <span className="bg-amber-500/30 border border-amber-400/50 text-amber-200 text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm whitespace-nowrap shadow-lg">⏰ De volta!</span>
-        </div>
-      )}
-
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 text-center px-6 pointer-events-none">
-        <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/55 mb-1">{entrada ? "Entrada" : "A pagar"}</p>
-        <p className="text-[44px] leading-none font-black text-white tracking-tight tabular-nums drop-shadow-lg">{formatBRL(l.valor, { oculto: ocultar })}</p>
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-        <h2 className="text-2xl font-bold text-white tracking-tight mb-2 leading-tight truncate">{l.descricao || categoria.nome}</h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full ${venc.atrasado ? "bg-red-500/35 text-red-100 animate-pulse" : venc.dias === 0 ? "bg-amber-400/30 text-amber-100" : "bg-black/25 text-white/80"}`}>
-            {venc.atrasado ? "⚠️" : "🗓"} {venc.label}
-          </span>
-          {l.data && <span className="text-[11px] text-white/55">{formatDateShort(l.data)}</span>}
-        </div>
-      </div>
-    </>
+    <CardLayout
+      categoria={categoria}
+      topRight={entrada ? "A receber" : null}
+      valor={formatBRL(l.valor, { oculto: ocultar })}
+      titulo={l.descricao || categoria.nome}
+      alerta={venc.atrasado}
+      meta={[
+        l.voltou && "De volta",
+        venc.label,
+        l.data && formatDateShort(l.data),
+        l.recorrenteId && "Fixo",
+        l.dividaId && "Parcela de dívida",
+        l.parcela && `Parcela ${l.parcela.numero}/${l.parcela.total}`,
+      ]}
+    />
   );
 }
 
 // Conteúdo do card no modo "Revisar gastos".
 export function RevisaoCardContent({ item, categoria }) {
   const [ocultar] = useOcultarValores();
+  const fixo = item.origem === "fixo";
   return (
-    <>
-      <div className="absolute top-5 left-5 z-10 flex flex-col items-start gap-1.5">
-        <span className="text-[10px] font-semibold tracking-widest uppercase bg-white/20 backdrop-blur-sm text-white/90 px-3 py-1 rounded-full border border-white/20">{categoria.nome}</span>
-        <span className="text-[10px] font-semibold bg-black/25 text-white/75 px-2.5 py-1 rounded-full border border-white/10">
-          {item.origem === "fixo" ? (item.frequencia === "semanal" ? "🔁 Fixo semanal" : "🔁 Fixo mensal") : `Gasto de ${formatDateShort(item.data)}`}
-        </span>
-      </div>
-      <div className="absolute right-5 top-5 z-10 text-4xl filter drop-shadow-lg">{categoria.icon}</div>
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 text-center px-6 pointer-events-none">
-        <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-white/55 mb-1">{item.origem === "fixo" ? "Por mês" : "Gasto"}</p>
-        <p className="text-[44px] leading-none font-black text-white tracking-tight tabular-nums drop-shadow-lg">{formatBRL(item.valorMensal, { oculto: ocultar })}</p>
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-        <h2 className="text-2xl font-bold text-white tracking-tight mb-1.5 leading-tight truncate">{item.nome || categoria.nome}</h2>
-        <p className="text-sm text-white/65">Valeu a pena?</p>
-      </div>
-    </>
+    <CardLayout
+      categoria={categoria}
+      valor={formatBRL(item.valorMensal, { oculto: ocultar })}
+      valorSub={fixo ? "por mês" : null}
+      titulo={item.nome || categoria.nome}
+      meta={[
+        fixo ? (item.frequencia === "semanal" ? "Fixo semanal" : "Fixo mensal") : formatDateShort(item.data),
+        "Valeu a pena?",
+      ]}
+    />
   );
 }

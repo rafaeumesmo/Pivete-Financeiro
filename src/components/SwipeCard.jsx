@@ -1,11 +1,13 @@
 import { motion, useMotionValue, useTransform, animate, useReducedMotion } from "framer-motion";
+import { Check, X, Split } from "lucide-react";
+import { ICON_STROKE } from "../lib/icons.js";
 import { SWIPE_THRESHOLD, SWIPE_UP_THRESHOLD } from "../lib/deck.js";
 
 // Casca genérica de card arrastável: física do arrasto, animação de saída e
-// os carimbos coloridos de cada direção. O conteúdo vem de `children`, então
+// os carimbos de cada direção. Fundo de marca sólido; texto em on-brand. O conteúdo vem de `children`, então
 // o mesmo card serve pro deck de contas e pro "Revisar gastos".
 // labels: { right, left, up } — `up` ausente desliga o swipe pra cima.
-export function SwipeCard({ item, gradient, onSwipe, isTop, stackIndex, labels, onTap, children }) {
+export function SwipeCard({ item, onSwipe, isTop, stackIndex, labels, onTap, children }) {
   const prefersReducedMotion = useReducedMotion();
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -42,7 +44,7 @@ export function SwipeCard({ item, gradient, onSwipe, isTop, stackIndex, labels, 
         transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.8 }}
         style={{ zIndex: 10 - stackIndex, width: "100%", originY: 1 }}
       >
-        <div className={`tema-escuro w-full h-full rounded-3xl bg-gradient-to-br ${gradient} shadow-2xl`} />
+        <div className="w-full h-full rounded-lg bg-stack" />
       </motion.div>
     );
   }
@@ -58,8 +60,8 @@ export function SwipeCard({ item, gradient, onSwipe, isTop, stackIndex, labels, 
       onDragEnd={handleDragEnd}
       onTap={onTap}
       initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1, filter: "drop-shadow(0 0px 0px rgba(0,0,0,0))" }}
-      whileDrag={{ scale: 0.97, filter: "drop-shadow(0 24px 52px rgba(0,0,0,0.6))" }}
+      animate={{ scale: 1, opacity: 1 }}
+      whileDrag={{ scale: 0.98 }}
       variants={{
         exit: ({ vx = 0, dir } = {}) => {
           const cx = x.get();
@@ -86,14 +88,21 @@ export function SwipeCard({ item, gradient, onSwipe, isTop, stackIndex, labels, 
       }}
       exit="exit"
     >
-      <div className={`tema-escuro w-full h-full rounded-3xl overflow-hidden shadow-2xl relative select-none bg-gradient-to-br ${gradient}`}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      <div className="w-full h-full rounded-lg overflow-hidden shadow relative select-none bg-brand text-on-brand">
         {children}
-        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(22,163,74,0.55)", opacity: greenOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[-20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">{labels.right}</span></div></motion.div>
-        <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(220,38,38,0.55)", opacity: redOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2 rotate-[20deg]"><span className="text-white font-black text-2xl tracking-widest uppercase">{labels.left}</span></div></motion.div>
-        {allowUp && <motion.div className="absolute inset-0 rounded-3xl flex items-center justify-center z-30 pointer-events-none" style={{ backgroundColor: "rgba(37,99,235,0.6)", opacity: blueOpacity }}><div className="border-[3px] border-white/90 rounded-xl px-5 py-2"><span className="text-white font-black text-2xl tracking-widest uppercase">{labels.up} ↑</span></div></motion.div>}
+        <Carimbo opacity={greenOpacity} bg="rgb(var(--pos) / 0.92)" Icon={Check} label={labels.right} />
+        <Carimbo opacity={redOpacity} bg="rgb(var(--neg) / 0.92)" Icon={X} label={labels.left} />
+        {allowUp && <Carimbo opacity={blueOpacity} bg="rgb(17 19 24 / 0.92)" Icon={Split} label={labels.up} />}
       </div>
+    </motion.div>
+  );
+}
+
+function Carimbo({ opacity, bg, Icon, label }) {
+  return (
+    <motion.div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 pointer-events-none text-on-brand" style={{ backgroundColor: bg, opacity }}>
+      <Icon size={40} strokeWidth={ICON_STROKE} aria-hidden />
+      <span className="text-xl font-semibold">{label}</span>
     </motion.div>
   );
 }
