@@ -14,6 +14,7 @@ import { findCategoria } from "../lib/categories.js";
 import { useOcultarValores } from "../lib/privacy.js";
 import { formatBRL, splitCents } from "../lib/money.js";
 import { computeSnoozeUntil, todayKey } from "../lib/dates.js";
+import { usePlanoCtx } from "../hooks/usePlano.js";
 import { deckLancamentos, itensRevisao, revisaoPendente, economiaPotencial } from "../lib/finance.js";
 
 const LABELS_SAIDA   = { right: "Paguei", left: "Adiar", up: "Dividir" };
@@ -27,6 +28,7 @@ export function FinDeck({
   keyboardEnabled, onActivity, onDecision, onDividido, onQuitouDivida, onDeckComplete,
   onNavigate, showToast, stats, headerActions,
 }) {
+  const { tentar } = usePlanoCtx();
   const { lancamentos, categorias, contas, contaPadrao, recorrentes, revisoes } = finance;
   const [mode, setMode] = useState("contas"); // "contas" | "painel" | "revisar"
   const [swipeExit, setSwipeExit] = useState({ vx: 0, vy: 0, dir: null });
@@ -109,6 +111,7 @@ export function FinDeck({
       return true;
     }
     if (direction === "up" && l.tipo === "saida") {
+      if (!tentar("cobrancas")) return false; // dividir cria uma cobrança
       setSplitCtx({ lancamento: l, vel });
       return false;
     }

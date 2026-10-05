@@ -6,6 +6,8 @@ import { useSocial } from "./hooks/useSocial.js";
 import { usePublishProfileStats } from "./hooks/useProfileStats.js";
 import { useSplits } from "./hooks/useSplits.js";
 import { useCobrancas } from "./hooks/useCobrancas.js";
+import { usePlano, PlanoProvider, criarTentar } from "./hooks/usePlano.js";
+import { maxEscudos, limitesValem } from "./lib/plano.js";
 import { useUsernameStatus } from "./hooks/useUsernameStatus.js";
 import { UsernameHint } from "./components/UsernameHint.jsx";
 import { normalizeUsername } from "./lib/username.js";
@@ -13,7 +15,7 @@ import { AuthScreen } from "./components/AuthScreen.jsx";
 import { SetupProfile } from "./components/SetupProfile.jsx";
 import { SocialExplore } from "./components/SocialExplore.jsx";
 import { CreatePollModal } from "./components/CreatePollModal.jsx";
-import { migrateAnonPolls } from "./lib/polls.js";
+import { migrateAnonPolls, fetchMyPolls } from "./lib/polls.js";
 import { startSync, stopSync, finishSync, limparAparelho, MESCLADO_EVENT } from "./lib/sync.js";
 import { resumoTexto, duplicadoTexto, SALDO_MANTIDO_TEXTO } from "./lib/mesclar.js";
 import { registrarDiaUso, deveAvisarConta, MOTIVOS_CONTA } from "./lib/convidado.js";
@@ -135,6 +137,30 @@ export default function MainApp() {
   });
   const splits = useSplits(auth.user?.id);
   const cob    = useCobrancas(finance);
+
+  // Plano (grátis/Pro). Com PRO_ATIVO = false, tentar() sempre libera e o
+  // escudo segue o máximo de hoje (lib/plano.js).
+  const plano = usePlano(auth.user?.id);
+  const padroes = new Set(DEFAULT_CATEGORIAS.map((c) => c.id));
+  const planoCtx = {
+    ...plano,
+    tentar: criarTentar({
+      ...plano,
+      contagens: {
+        cobrancas: cob.cobrancas.filter((c) => !c.arquivada).length,
+        caixinhas: finance.metas.length,
+        categorias: finance.categorias.filter((c) => !padroes.has(c.id)).length,
+      },
+      avisar: (texto) => showToast(texto, "bg-amber-600/90"),
+    }),
+  };
+  async function abrirBora() {
+    if (limitesValem(plano)) {
+      const abertos = (await fetchMyPolls(auth.user?.id)).filter((p) => p.status === "open").length;
+      if (!planoCtx.tentar("bora", abertos)) return;
+    }
+    setShowCreatePollModal(true);
+  }
 
   // Aviso discreto pro convidado (lib/convidado.js): conta dias de uso.
   const [diasUso, setDiasUso] = usePersistedState(SK.diasUso, []);
@@ -279,9 +305,10 @@ export default function MainApp() {
       if (s.lastActiveDate === today) return s;
       const gap = s.lastActiveDate ? daysBetween(s.lastActiveDate, today) : null;
       const count = (gap === null || gap > 1) ? 1 : (gap === 1 ? s.count + 1 : s.count);
-      const gainFreeze = count % 7 === 0 && count > 0 && s.freezesAvailable < 2;
+      const teto = maxEscudos(plano);
+      const gainFreeze = count % 7 === 0 && count > 0 && s.freezesAvailable < teto;
       if (gainFreeze) setTimeout(() => showToast("Você ganhou um escudo de sequência", "bg-blue-600/90"), 400);
-      return { ...s, count, best: Math.max(s.best, count), lastActiveDate: today, freezesAvailable: gainFreeze ? Math.min(2, s.freezesAvailable + 1) : s.freezesAvailable };
+      return { ...s, count, best: Math.max(s.best, count), lastActiveDate: today, freezesAvailable: gainFreeze ? Math.min(teto, s.freezesAvailable + 1) : s.freezesAvailable };
     });
   }
 
@@ -477,7 +504,7 @@ export default function MainApp() {
             onDeckComplete={() => { if (!prefersReducedMotion) fireDeckCompleteConfetti(); }} onNavigate={setActiveTab} showToast={showToast} stats={statsMes}
             headerActions={<>
               <button type="button" onClick={() => setActiveTab("create")} className={`${btnCls.primary} h-10 px-4 text-sm flex-1 sm:flex-none`}><Plus size={18} strokeWidth={ICON_STROKE} aria-hidden />Novo lançamento</button>
-              <button type="button" onClick={() => setShowCreatePollModal(true)} title="Bora? — enquete de grupo" className={`${btnCls.secondary} h-10 px-4 text-sm`}><Vote size={18} strokeWidth={ICON_STROKE} aria-hidden />Bora?</button>
+              <button type="button" onClick={abrirBora} title="Bora? — enquete de grupo" className={`${btnCls.secondary} h-10 px-4 text-sm`}><Vote size={18} strokeWidth={ICON_STROKE} aria-hidden />Bora?</button>
             </>}
           />
           <div className={`flex flex-col gap-6 ${isDesktop ? "" : "mt-10"}`}>
@@ -513,10 +540,11 @@ export default function MainApp() {
       finance={finance} conquistas={conquistas} reservaMeses={reservaMeses} setReservaMeses={setReservaMeses} onNavigate={setActiveTab} showToast={showToast}
     />
   );
-  const social_ = <SocialExplore isDesktop={isDesktop} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={() => setShowCreatePollModal(true)} onRequireLogin={pedirConta} initialTab={socialTab} />;
+  const social_ = <SocialExplore isDesktop={isDesktop} isLoggedIn={auth.isLoggedIn} userId={auth.user?.id} social={social} splits={splits} cob={cob} finance={finance} nome={displayProfile.name} showToast={showToast} onCreatePoll={abrirBora} onRequireLogin={pedirConta} initialTab={socialTab} />;
 
   // ════════════════════════════════════════════════════════
   return (
+    <PlanoProvider value={planoCtx}>
     <div className="min-h-screen w-full bg-page">
       <div className="flex w-full" style={{ height: "100dvh" }}>
         {bp !== "mobile" && (
@@ -675,5 +703,6 @@ export default function MainApp() {
 
       <Toast visible={toast.visible} message={toast.message} color={toast.color} />
     </div>
+    </PlanoProvider>
   );
 }

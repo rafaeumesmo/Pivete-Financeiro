@@ -5,6 +5,7 @@ import { MoneyInput } from "./MoneyInput.jsx";
 import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls } from "./ui.jsx";
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey, fromDateStr } from "../lib/dates.js";
+import { usePlanoCtx } from "../hooks/usePlano.js";
 import { PiggyBank } from "lucide-react";
 
 // Quanto falta guardar por mês pra bater a meta no prazo.
@@ -19,16 +20,18 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
   const { metas, contas } = finance;
   const [editando, setEditando] = useState(null); // meta | {} (nova)
   const [aporte, setAporte] = useState(null);     // { meta, modo: "aportar" | "retirar" }
+  const { tentar } = usePlanoCtx();
+  function nova() { if (tentar("caixinhas")) setEditando({}); } // limite do grátis (lib/plano.js)
   const hoje = todayKey();
   const total = metas.reduce((a, m) => a + m.guardado, 0);
 
   return (
     <div className="flex flex-col gap-3">
-      <SectionTitle action={<SmallButton tone="blue" onClick={() => setEditando({})}>+ Nova caixinha</SmallButton>}>
+      <SectionTitle action={<SmallButton tone="blue" onClick={nova}>+ Nova caixinha</SmallButton>}>
         Guardado · {formatBRL(total)}
       </SectionTitle>
       {metas.length === 0 && (
-        <EmptyHint icon={PiggyBank} title="Nenhuma caixinha ainda" action={<SmallButton tone="blue" onClick={() => setEditando({})}>Criar a primeira</SmallButton>}>
+        <EmptyHint icon={PiggyBank} title="Nenhuma caixinha ainda" action={<SmallButton tone="blue" onClick={nova}>Criar a primeira</SmallButton>}>
           Separe dinheiro pra reserva de emergência, viagem, troca de celular… Cada aporte sai de uma conta e fica guardado aqui.
         </EmptyHint>
       )}
