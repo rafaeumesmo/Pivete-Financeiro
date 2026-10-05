@@ -5,6 +5,7 @@ import { MoneyInput } from "./MoneyInput.jsx";
 import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls } from "./ui.jsx";
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey, fromDateStr } from "../lib/dates.js";
+import { PiggyBank } from "lucide-react";
 
 // Quanto falta guardar por mês pra bater a meta no prazo.
 function porMes(meta, hoje) {
@@ -27,7 +28,7 @@ export function CaixinhasPanel({ finance, showToast, onActivity }) {
         Guardado · {formatBRL(total)}
       </SectionTitle>
       {metas.length === 0 && (
-        <EmptyHint icon="🐷" title="Nenhuma caixinha ainda" action={<SmallButton tone="blue" onClick={() => setEditando({})}>Criar a primeira</SmallButton>}>
+        <EmptyHint icon={PiggyBank} title="Nenhuma caixinha ainda" action={<SmallButton tone="blue" onClick={() => setEditando({})}>Criar a primeira</SmallButton>}>
           Separe dinheiro pra reserva de emergência, viagem, troca de celular… Cada aporte sai de uma conta e fica guardado aqui.
         </EmptyHint>
       )}

@@ -6,6 +6,7 @@ import { formatBRL } from "../lib/money.js";
 import { useOcultarValores } from "../lib/privacy.js";
 import { toDateStr, fromDateStr, addDays, formatDateShort, todayKey, formatMonth } from "../lib/dates.js";
 import { ocorrencias, custoEfetivo } from "../lib/finance.js";
+import { CalendarDays } from "lucide-react";
 
 const DAY_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -140,7 +141,7 @@ export function FinCalendar({ finance, onPagar, onEditar }) {
       <div>
         <SectionTitle>Sem vencimento definido · {semData.length}</SectionTitle>
         {semData.length === 0 ? (
-          <EmptyHint icon="📅" title="Tudo com data">Lançamentos sem data aparecem aqui pra você encaixar num dia.</EmptyHint>
+          <EmptyHint icon={CalendarDays} title="Tudo com data">Lançamentos sem data aparecem aqui pra você encaixar num dia.</EmptyHint>
         ) : (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">
             {semData.map(l => (

@@ -6,6 +6,7 @@ import { formatBRL } from "../lib/money.js";
 import { todayKey, monthKey, formatMonth, fromDateStr } from "../lib/dates.js";
 import { custoEfetivo } from "../lib/finance.js";
 import { useOcultarValores } from "../lib/privacy.js";
+import { Receipt } from "lucide-react";
 
 const selectCls = "rounded-xl border border-white/[0.08] bg-sheet px-3 py-2 text-[13px] text-white outline-none focus:border-[#2563eb]/60 min-w-0";
 
@@ -60,7 +61,7 @@ export function ExtratoPanel({ finance, onEditar }) {
       </div>
 
       {lista.length === 0 ? (
-        <EmptyHint icon="🧾" title="Nada por aqui">Nenhum lançamento com esses filtros em {formatMonth(mes).toLowerCase()}.</EmptyHint>
+        <EmptyHint icon={Receipt} title="Nada por aqui">Nenhum lançamento com esses filtros em {formatMonth(mes).toLowerCase()}.</EmptyHint>
       ) : porDia.map(g => (
         <div key={g.data}>
           <p className="text-[11px] font-semibold text-white/35 mb-1.5 px-1 capitalize">{fromDateStr(g.data).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</p>

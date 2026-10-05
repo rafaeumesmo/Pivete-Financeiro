@@ -6,6 +6,7 @@ import { SectionTitle, SmallButton, EmptyHint, inputCls, labelCls } from "./ui.j
 import { findCategoria } from "../lib/categories.js";
 import { formatBRL } from "../lib/money.js";
 import { todayKey } from "../lib/dates.js";
+import { CreditCard, Repeat } from "lucide-react";
 import {
   frequenciaLabel, valorMensal, parcelasRestantes, jurosAlto, fixosMensais, rendaMensal, DAY_NAMES, JUROS_ALTO_MES,
 } from "../lib/finance.js";
@@ -47,7 +48,7 @@ export function FixosDividasPanel({ finance, showToast }) {
           Gastos fixos · {formatBRL(fixosMensais(recorrentes))}/mês
         </SectionTitle>
         {saidas.length === 0 ? (
-          <EmptyHint icon="🔁" title="Nenhum gasto fixo">Aluguel, internet, assinaturas, passagem… Cadastre uma vez e eles viram contas no deck todo mês.</EmptyHint>
+          <EmptyHint icon={Repeat} title="Nenhum gasto fixo">Aluguel, internet, assinaturas, passagem… Cadastre uma vez e eles viram contas no deck todo mês.</EmptyHint>
         ) : (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] divide-y divide-white/[0.05]">{saidas.map(r => <RecRow key={r.id} r={r} />)}</div>
         )}
@@ -69,7 +70,7 @@ export function FixosDividasPanel({ finance, showToast }) {
           Dívidas · {formatBRL(ativas.reduce((a, d) => a + d.saldoDevedor, 0))}
         </SectionTitle>
         {ativas.length === 0 && quitadas.length === 0 && (
-          <EmptyHint icon="💳" title="Nenhuma dívida cadastrada">Cartão, empréstimo, financiamento… Com saldo, parcela e juros dá pra estimar quando cada uma acaba.</EmptyHint>
+          <EmptyHint icon={CreditCard} title="Nenhuma dívida cadastrada">Cartão, empréstimo, financiamento… Com saldo, parcela e juros dá pra estimar quando cada uma acaba.</EmptyHint>
         )}
         <div className="flex flex-col gap-2">
           {[...ativas].sort((a, b) => (b.jurosMes || 0) - (a.jurosMes || 0)).map(d => {

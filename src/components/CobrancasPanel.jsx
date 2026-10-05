@@ -6,6 +6,7 @@ import { MoneyInput } from "./MoneyInput.jsx";
 import { SectionTitle, SmallButton, EmptyHint, ProgressBar, inputCls, labelCls } from "./ui.jsx";
 import { formatBRL } from "../lib/money.js";
 import { formatDateShort } from "../lib/dates.js";
+import { Receipt } from "lucide-react";
 
 // Avisos "paguei" que chegaram pelo link, lidos pela função
 // charge_payments_for (02_charges.sql) — só com o id da própria cobrança.
@@ -102,7 +103,7 @@ export function CobrancasPanel({ cob, finance, nome, showToast }) {
 
       <SectionTitle>A receber · {formatBRL(totalAberto)}</SectionTitle>
       {abertas.length === 0 ? (
-        <EmptyHint icon="🧾" title="Nenhuma cobrança aberta">
+        <EmptyHint icon={Receipt} title="Nenhuma cobrança aberta">
           No deck, arraste uma conta pra cima ("Dividir") — você escolhe entre quantas pessoas e manda o link. Quem recebe vê o valor e marca "paguei", sem precisar de conta.
         </EmptyHint>
       ) : abertas.map(c => <Card key={c.id} c={c} />)}

@@ -7,6 +7,7 @@ import { formatBRL } from "../lib/money.js";
 import { formatDateShort, todayKey } from "../lib/dates.js";
 import { saldosComigo, totaisSaldos, partesIguais } from "../lib/splits.js";
 import { makeId } from "../lib/finance.js";
+import { Users } from "lucide-react";
 
 const nomeDe = (p) => p ? `@${p.username}` : "alguém";
 
@@ -54,7 +55,7 @@ export function DividirPanel({ splits, social, userId, finance, showToast }) {
       <div>
         <SectionTitle action={<SmallButton tone="blue" onClick={() => setNovoGrupo(true)}>+ Grupo</SmallButton>}>Grupos</SectionTitle>
         {groups.length === 0 ? (
-          <EmptyHint icon="👥" title={splits.loading ? "Carregando…" : "Nenhum grupo ainda"}>
+          <EmptyHint icon={Users} title={splits.loading ? "Carregando…" : "Nenhum grupo ainda"}>
             Crie um grupo (república, viagem, rolê) com seus amigos, lance quem pagou o quê e o app calcula quem deve pra quem.
           </EmptyHint>
         ) : (
