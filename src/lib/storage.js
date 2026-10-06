@@ -57,11 +57,21 @@ let gerarExemplo = () => ({});
 
 export function modoArmazenamento() { return modo; }
 
-// Dado real no aparelho sem sessão: algum dado pessoal com conteúdo.
+// Dado real no aparelho sem sessão: algo que a pessoa cadastrou. Versões
+// antigas gravavam padrões só de abrir o app (stats zerados, ofensiva,
+// categorias padrão, "Conta corrente" com saldo 0) — isso não conta, senão
+// quem já abriu o app uma vez cai no legado vazio em vez do exemplo. Os
+// fixos de exemplo do onboarding antigo (`exemplo: true`, ids "ex-") também
+// não. As sobras ficam no localStorage (o exemplo não mexe nelas).
 export function temDadosNoAparelho() {
-  const vazio = new Set(["[]", "{}", "null", '""']);
-  try { return DADOS_KEYS.some((k) => { const v = localStorage.getItem(k); return v !== null && !vazio.has(v); }); }
-  catch { return false; }
+  const ler = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+  const lista = (k) => (Array.isArray(ler(k)) ? ler(k) : []);
+  const doExemploAntigo = (x) => x?.exemplo === true || String(x?.recorrenteId ?? "").startsWith("ex-");
+  try {
+    if ([SK.lancamentos, SK.recorrentes, SK.dividas, SK.metas, SK.cobrancas].some((k) => lista(k).some((x) => !doExemploAntigo(x)))) return true;
+    const contas = lista(SK.contas);
+    return contas.length > 1 || contas.some((c) => c?.saldo);
+  } catch { return false; }
 }
 
 // Boot (main.jsx, antes do primeiro render). `exemplo` gera o mês fictício

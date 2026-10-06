@@ -54,6 +54,25 @@ describe("modos de armazenamento", () => {
     expect(iniciarArmazenamento({ exemplo })).toBe("exemplo");
   });
 
+  it("só padrões gravados por versões antigas: exemplo (as sobras ficam no aparelho)", () => {
+    localStorage.setItem(SK.stats, '{"accepted":0,"rejected":0,"shared":0}');
+    localStorage.setItem(SK.streak, '{"count":0,"best":0,"lastActiveDate":null,"freezesAvailable":1}');
+    localStorage.setItem(SK.contas, '[{"id":"conta-corrente","nome":"Conta corrente","saldo":0}]');
+    localStorage.setItem(SK.categorias, '[{"id":"casa"}]');
+    localStorage.setItem(SK.profile, '{"name":"Seu Nome"}');
+    localStorage.setItem(SK.recorrentes, '[{"id":"ex-salario","exemplo":true}]');
+    localStorage.setItem(SK.lancamentos, '[{"id":"l1","recorrenteId":"ex-salario"}]');
+    expect(iniciarArmazenamento({ exemplo })).toBe("exemplo");
+    expect(localStorage.getItem(SK.stats)).not.toBeNull();
+  });
+
+  it("saldo informado ou mais de uma conta: legado", () => {
+    localStorage.setItem(SK.contas, '[{"id":"conta-corrente","saldo":5000}]');
+    expect(iniciarArmazenamento({ exemplo })).toBe("legado");
+    localStorage.setItem(SK.contas, '[{"id":"a","saldo":0},{"id":"b","saldo":0}]');
+    expect(iniciarArmazenamento({ exemplo })).toBe("legado");
+  });
+
   it("com sessão: conta", () => {
     expect(iniciarArmazenamento({ temSessao: true, exemplo })).toBe("conta");
     save(SK.lancamentos, [1]);
