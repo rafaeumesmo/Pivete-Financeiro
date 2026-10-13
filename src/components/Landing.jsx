@@ -28,7 +28,7 @@ const DESTAQUES = [
   { Icon: Users,       titulo: "Cobrar amigo sem climão",  texto: "Mande o link da cobrança pro parça, com a chave Pix. Ele avisa que pagou sem nem baixar o app." },
 ];
 
-// Só o que já existe. O Completo não tem pagamento ainda: nada de botão.
+// Só o que já existe. Não tem plano pago: o projeto é open source.
 const GRATIS = ["Swipe das contas", "Lançamentos e fixos", "Caixinhas", "Painel", "Sequência e conquistas", "Cobrança e Bora?"];
 
 const GESTOS = [
@@ -175,12 +175,9 @@ export function Landing({ onStart, saiu = false }) {
           </ul>
         </div>
         <div className="rounded-lg bg-tile border border-line p-5">
-          <div className="flex items-center gap-2">
-            <p className="text-[15px] font-semibold text-fg">Pivete Completo</p>
-            <span className="text-[12px] font-semibold text-brand-ink border border-line bg-surface rounded-sm px-1.5 py-0.5">em breve</span>
-          </div>
-          <p className="text-[28px] font-bold tracking-tight text-fg-2 tabular-nums mt-1">R$ 5,99<span className="text-[15px] font-medium">/mês</span></p>
-          <p className="mt-4 text-[14px] text-fg-2 leading-relaxed">Tá no forno. Ainda não dá pra assinar, e tudo do grátis continua grátis.</p>
+          <p className="text-[15px] font-semibold text-fg">Código aberto</p>
+          <p className="text-[28px] font-bold tracking-tight text-fg tabular-nums mt-1">Sem plano pago</p>
+          <p className="mt-4 text-[14px] text-fg-2 leading-relaxed">O Pivete é open source: o código fica aberto pra qualquer um ver como funciona. Sem assinatura e sem pegadinha.</p>
         </div>
       </div>
     </section>
